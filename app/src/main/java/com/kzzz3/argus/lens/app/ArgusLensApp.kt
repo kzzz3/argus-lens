@@ -7,6 +7,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import com.kzzz3.argus.lens.app.navigation.AppRoute
+import com.kzzz3.argus.lens.feature.auth.AuthEntryAction
 import com.kzzz3.argus.lens.feature.auth.AuthLoginMode
 import com.kzzz3.argus.lens.feature.auth.AuthEntryScreen
 import com.kzzz3.argus.lens.feature.auth.buildDemoPasswordSignInResult
@@ -47,24 +48,32 @@ fun ArgusLensApp() {
 
         AppRoute.AuthEntry -> AuthEntryScreen(
             state = authState,
-            onModeChange = {
-                authMode = it
-                submitResult = null
-            },
-            onAccountChange = {
-                account = it
-                submitResult = null
-            },
-            onPasswordChange = {
-                password = it
-                submitResult = null
-            },
-            onPrimaryActionClick = {
-                submitResult = buildDemoPasswordSignInResult(account)
-            },
-            onBackClick = {
-                currentRoute = AppRoute.Home
-                submitResult = null
+            onAction = { action ->
+                when (action) {
+                    is AuthEntryAction.ChangeMode -> {
+                        authMode = action.mode
+                        submitResult = null
+                    }
+
+                    is AuthEntryAction.ChangeAccount -> {
+                        account = action.value
+                        submitResult = null
+                    }
+
+                    is AuthEntryAction.ChangePassword -> {
+                        password = action.value
+                        submitResult = null
+                    }
+
+                    AuthEntryAction.SubmitPasswordLogin -> {
+                        submitResult = buildDemoPasswordSignInResult(account)
+                    }
+
+                    AuthEntryAction.NavigateBack -> {
+                        currentRoute = AppRoute.Home
+                        submitResult = null
+                    }
+                }
             }
         )
     }

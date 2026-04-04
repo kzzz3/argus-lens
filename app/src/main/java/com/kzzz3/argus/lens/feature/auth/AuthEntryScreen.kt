@@ -29,11 +29,7 @@ import com.kzzz3.argus.lens.ui.theme.ArguslensTheme
 @Composable
 fun AuthEntryScreen(
     state: AuthEntryUiState,
-    onModeChange: (AuthLoginMode) -> Unit,
-    onAccountChange: (String) -> Unit,
-    onPasswordChange: (String) -> Unit,
-    onPrimaryActionClick: () -> Unit,
-    onBackClick: () -> Unit,
+    onAction: (AuthEntryAction) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -84,13 +80,13 @@ fun AuthEntryScreen(
                     AuthModeButton(
                         label = "Password",
                         selected = state.selectedMode == AuthLoginMode.Password,
-                        onClick = { onModeChange(AuthLoginMode.Password) },
+                        onClick = { onAction(AuthEntryAction.ChangeMode(AuthLoginMode.Password)) },
                         modifier = Modifier.weight(1f)
                     )
                     AuthModeButton(
                         label = "Code",
                         selected = state.selectedMode == AuthLoginMode.VerificationCode,
-                        onClick = { onModeChange(AuthLoginMode.VerificationCode) },
+                        onClick = { onAction(AuthEntryAction.ChangeMode(AuthLoginMode.VerificationCode)) },
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -110,7 +106,7 @@ fun AuthEntryScreen(
                 if (state.selectedMode == AuthLoginMode.Password) {
                     OutlinedTextField(
                         value = state.account,
-                        onValueChange = onAccountChange,
+                        onValueChange = { onAction(AuthEntryAction.ChangeAccount(it)) },
                         modifier = Modifier.fillMaxWidth(),
                         label = { Text(text = "Account") },
                         placeholder = { Text(text = "Enter username or email") },
@@ -128,7 +124,7 @@ fun AuthEntryScreen(
 
                     OutlinedTextField(
                         value = state.password,
-                        onValueChange = onPasswordChange,
+                        onValueChange = { onAction(AuthEntryAction.ChangePassword(it)) },
                         modifier = Modifier.fillMaxWidth(),
                         label = { Text(text = "Password") },
                         placeholder = { Text(text = "Enter password") },
@@ -154,7 +150,7 @@ fun AuthEntryScreen(
                     }
 
                     Button(
-                        onClick = onPrimaryActionClick,
+                        onClick = { onAction(AuthEntryAction.SubmitPasswordLogin) },
                         enabled = state.isPrimaryActionEnabled,
                         modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.buttonColors(
@@ -186,7 +182,7 @@ fun AuthEntryScreen(
                 }
 
                 OutlinedButton(
-                    onClick = onBackClick,
+                    onClick = { onAction(AuthEntryAction.NavigateBack) },
                     modifier = Modifier.fillMaxWidth(),
                     border = BorderStroke(1.dp, Color(0xFF9AD0FF)),
                     colors = ButtonDefaults.outlinedButtonColors(
@@ -250,11 +246,7 @@ private fun AuthEntryScreenPreview() {
                 primaryActionLabel = "Sign in with password",
                 secondaryActionLabel = "Back to HUD"
             ),
-            onModeChange = {},
-            onAccountChange = {},
-            onPasswordChange = {},
-            onPrimaryActionClick = {},
-            onBackClick = {}
+            onAction = {}
         )
     }
 }
