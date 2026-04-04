@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.MaterialTheme
@@ -112,8 +114,17 @@ fun AuthEntryScreen(
                         modifier = Modifier.fillMaxWidth(),
                         label = { Text(text = "Account") },
                         placeholder = { Text(text = "Enter username or email") },
+                        isError = state.accountError != null,
                         singleLine = true,
                     )
+
+                    if (state.accountError != null) {
+                        Text(
+                            text = state.accountError,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
 
                     OutlinedTextField(
                         value = state.password,
@@ -121,13 +132,37 @@ fun AuthEntryScreen(
                         modifier = Modifier.fillMaxWidth(),
                         label = { Text(text = "Password") },
                         placeholder = { Text(text = "Enter password") },
+                        isError = state.passwordError != null,
                         singleLine = true,
                         visualTransformation = PasswordVisualTransformation(),
                     )
 
+                    if (state.passwordError != null) {
+                        Text(
+                            text = state.passwordError,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+
+                    if (state.submitResult != null) {
+                        Text(
+                            text = state.submitResult,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color(0xFFB8D9F4)
+                        )
+                    }
+
                     Button(
                         onClick = onPrimaryActionClick,
-                        modifier = Modifier.fillMaxWidth()
+                        enabled = state.isPrimaryActionEnabled,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF7AF5C9),
+                            contentColor = Color(0xFF062118),
+                            disabledContainerColor = Color(0xCC4E6A61),
+                            disabledContentColor = Color(0xFFF2FFFA)
+                        )
                     ) {
                         Text(text = state.primaryActionLabel)
                     }
@@ -140,7 +175,11 @@ fun AuthEntryScreen(
                     OutlinedButton(
                         onClick = {},
                         enabled = false,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        border = BorderStroke(1.dp, Color(0xFF89A7BD)),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            disabledContentColor = Color(0xFFE3EEF8)
+                        )
                     ) {
                         Text(text = "Verification code module coming soon")
                     }
@@ -148,7 +187,11 @@ fun AuthEntryScreen(
 
                 OutlinedButton(
                     onClick = onBackClick,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    border = BorderStroke(1.dp, Color(0xFF9AD0FF)),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = Color(0xFFF4FAFF)
+                    )
                 ) {
                     Text(text = state.secondaryActionLabel)
                 }
@@ -168,6 +211,10 @@ private fun AuthModeButton(
         Button(
             onClick = onClick,
             modifier = modifier,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color(0xFF9AD0FF),
+                contentColor = Color(0xFF062038)
+            )
         ) {
             Text(text = label)
         }
@@ -175,6 +222,10 @@ private fun AuthModeButton(
         OutlinedButton(
             onClick = onClick,
             modifier = modifier,
+            border = BorderStroke(1.dp, Color(0xFF7EA8C7)),
+            colors = ButtonDefaults.outlinedButtonColors(
+                contentColor = Color(0xFFEAF6FF)
+            )
         ) {
             Text(text = label)
         }
@@ -192,7 +243,11 @@ private fun AuthEntryScreenPreview() {
                 selectedMode = AuthLoginMode.Password,
                 account = "",
                 password = "",
-                primaryActionLabel = "Enter login module",
+                accountError = "Account is required",
+                passwordError = "Password must be at least 6 characters",
+                submitResult = "",
+                isPrimaryActionEnabled = false,
+                primaryActionLabel = "Sign in with password",
                 secondaryActionLabel = "Back to HUD"
             ),
             onModeChange = {},
