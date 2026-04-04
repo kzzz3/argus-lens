@@ -7,6 +7,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import com.kzzz3.argus.lens.app.navigation.AppRoute
+import com.kzzz3.argus.lens.feature.auth.AuthLoginMode
 import com.kzzz3.argus.lens.feature.auth.AuthEntryScreen
 import com.kzzz3.argus.lens.feature.auth.AuthEntryUiState
 import com.kzzz3.argus.lens.feature.home.HomeHudScreen
@@ -22,15 +23,22 @@ fun ArgusLensApp() {
             primaryHint = "Next module: login + session bootstrap"
         )
     }
-    val authState = remember {
+    var currentRoute by rememberSaveable { mutableStateOf(AppRoute.Home) }
+    var authMode by rememberSaveable { mutableStateOf(AuthLoginMode.Password) }
+    var account by rememberSaveable { mutableStateOf("") }
+    var password by rememberSaveable { mutableStateOf("") }
+
+    val authState = remember(authMode, account, password) {
         AuthEntryUiState(
             title = "Stage 1 Login Entry",
             subtitle = "We start with a fake login shell before touching real networking.",
-            primaryActionLabel = "Enter login module",
+            selectedMode = authMode,
+            account = account,
+            password = password,
+            primaryActionLabel = "Sign in with password",
             secondaryActionLabel = "Back to HUD"
         )
     }
-    var currentRoute by rememberSaveable { mutableStateOf(AppRoute.Home) }
 
     when (currentRoute) {
         AppRoute.Home -> HomeHudScreen(
@@ -40,6 +48,9 @@ fun ArgusLensApp() {
 
         AppRoute.AuthEntry -> AuthEntryScreen(
             state = authState,
+            onModeChange = { authMode = it },
+            onAccountChange = { account = it },
+            onPasswordChange = { password = it },
             onPrimaryActionClick = {},
             onBackClick = { currentRoute = AppRoute.Home }
         )
