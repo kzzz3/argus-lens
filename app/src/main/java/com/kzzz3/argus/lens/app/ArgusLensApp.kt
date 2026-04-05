@@ -8,8 +8,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import com.kzzz3.argus.lens.app.navigation.AppRoute
 import com.kzzz3.argus.lens.feature.auth.AuthEntryAction
-import com.kzzz3.argus.lens.feature.auth.AuthLoginMode
 import com.kzzz3.argus.lens.feature.auth.AuthEntryScreen
+import com.kzzz3.argus.lens.feature.auth.AuthFormState
 import com.kzzz3.argus.lens.feature.auth.buildDemoPasswordSignInResult
 import com.kzzz3.argus.lens.feature.auth.createAuthEntryUiState
 import com.kzzz3.argus.lens.feature.home.HomeHudScreen
@@ -26,17 +26,13 @@ fun ArgusLensApp() {
         )
     }
     var currentRoute by rememberSaveable { mutableStateOf(AppRoute.Home) }
-    var authMode by rememberSaveable { mutableStateOf(AuthLoginMode.Password) }
-    var account by rememberSaveable { mutableStateOf("") }
-    var password by rememberSaveable { mutableStateOf("") }
-    var submitResult by rememberSaveable { mutableStateOf<String?>(null) }
+    var authFormState by rememberSaveable(stateSaver = AuthFormState.Saver) {
+        mutableStateOf(AuthFormState())
+    }
 
-    val authState = remember(authMode, account, password, submitResult) {
+    val authState = remember(authFormState) {
         createAuthEntryUiState(
-            selectedMode = authMode,
-            account = account,
-            password = password,
-            submitResult = submitResult,
+            formState = authFormState,
         )
     }
 
@@ -51,27 +47,35 @@ fun ArgusLensApp() {
             onAction = { action ->
                 when (action) {
                     is AuthEntryAction.ChangeMode -> {
-                        authMode = action.mode
-                        submitResult = null
+                        authFormState = authFormState.copy(
+                            mode = action.mode,
+                            submitResult = null,
+                        )
                     }
 
                     is AuthEntryAction.ChangeAccount -> {
-                        account = action.value
-                        submitResult = null
+                        authFormState = authFormState.copy(
+                            account = action.value,
+                            submitResult = null,
+                        )
                     }
 
                     is AuthEntryAction.ChangePassword -> {
-                        password = action.value
-                        submitResult = null
+                        authFormState = authFormState.copy(
+                            password = action.value,
+                            submitResult = null,
+                        )
                     }
 
                     AuthEntryAction.SubmitPasswordLogin -> {
-                        submitResult = buildDemoPasswordSignInResult(account)
+                        authFormState = authFormState.copy(
+                            submitResult = buildDemoPasswordSignInResult(authFormState),
+                        )
                     }
 
                     AuthEntryAction.NavigateBack -> {
                         currentRoute = AppRoute.Home
-                        submitResult = null
+                        authFormState = authFormState.copy(submitResult = null)
                     }
                 }
             }
