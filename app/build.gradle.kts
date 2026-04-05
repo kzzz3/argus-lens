@@ -22,8 +22,13 @@ android {
     }
 
     buildTypes {
+        debug {
+            buildConfigField("String", "AUTH_BASE_URL", "\"http://10.0.2.2:8080/\"")
+        }
+
         release {
             isMinifyEnabled = false
+            buildConfigField("String", "AUTH_BASE_URL", "\"http://10.0.2.2:8080/\"")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -36,6 +41,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -48,6 +54,11 @@ dependencies {
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
+    implementation(libs.retrofit)
+    implementation(libs.retrofit.gson)
+    implementation(libs.okhttp.logging)
+    implementation(libs.gson)
+    implementation(libs.kotlinx.coroutines.android)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
