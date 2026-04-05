@@ -7,6 +7,9 @@ data class AuthFormState(
     val mode: AuthLoginMode = AuthLoginMode.Password,
     val account: String = "",
     val password: String = "",
+    val accountTouched: Boolean = false,
+    val passwordTouched: Boolean = false,
+    val submitAttempted: Boolean = false,
     val submitResult: String? = null,
 ) {
     companion object {
@@ -16,6 +19,9 @@ data class AuthFormState(
                     state.mode.name,
                     state.account,
                     state.password,
+                    state.accountTouched,
+                    state.passwordTouched,
+                    state.submitAttempted,
                     state.submitResult.orEmpty(),
                 )
             },
@@ -24,7 +30,10 @@ data class AuthFormState(
                     mode = AuthLoginMode.valueOf(values[0] as String),
                     account = values[1] as String,
                     password = values[2] as String,
-                    submitResult = (values[3] as String).ifEmpty { null },
+                    accountTouched = values[3] as Boolean,
+                    passwordTouched = values[4] as Boolean,
+                    submitAttempted = values[5] as Boolean,
+                    submitResult = (values[6] as String).ifEmpty { null },
                 )
             }
         )

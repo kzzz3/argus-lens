@@ -13,6 +13,9 @@ fun reduceAuthFormState(
         is AuthEntryAction.ChangeMode -> AuthReducerResult(
             formState = currentState.copy(
                 mode = action.mode,
+                accountTouched = false,
+                passwordTouched = false,
+                submitAttempted = false,
                 submitResult = null,
             )
         )
@@ -20,6 +23,7 @@ fun reduceAuthFormState(
         is AuthEntryAction.ChangeAccount -> AuthReducerResult(
             formState = currentState.copy(
                 account = action.value,
+                accountTouched = true,
                 submitResult = null,
             )
         )
@@ -27,13 +31,21 @@ fun reduceAuthFormState(
         is AuthEntryAction.ChangePassword -> AuthReducerResult(
             formState = currentState.copy(
                 password = action.value,
+                passwordTouched = true,
                 submitResult = null,
             )
         )
 
         AuthEntryAction.SubmitPasswordLogin -> AuthReducerResult(
             formState = currentState.copy(
-                submitResult = buildDemoPasswordSignInResult(currentState),
+                accountTouched = true,
+                passwordTouched = true,
+                submitAttempted = true,
+                submitResult = if (isPasswordLoginSubmittable(currentState)) {
+                    buildDemoPasswordSignInResult(currentState)
+                } else {
+                    null
+                },
             )
         )
 
