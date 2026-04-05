@@ -8,10 +8,11 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import com.kzzz3.argus.lens.app.navigation.AppRoute
 import com.kzzz3.argus.lens.feature.auth.AuthEntryAction
+import com.kzzz3.argus.lens.feature.auth.AuthEntryEffect
 import com.kzzz3.argus.lens.feature.auth.AuthEntryScreen
 import com.kzzz3.argus.lens.feature.auth.AuthFormState
-import com.kzzz3.argus.lens.feature.auth.buildDemoPasswordSignInResult
 import com.kzzz3.argus.lens.feature.auth.createAuthEntryUiState
+import com.kzzz3.argus.lens.feature.auth.reduceAuthFormState
 import com.kzzz3.argus.lens.feature.home.HomeHudScreen
 import com.kzzz3.argus.lens.feature.home.HomeHudUiState
 
@@ -45,38 +46,15 @@ fun ArgusLensApp() {
         AppRoute.AuthEntry -> AuthEntryScreen(
             state = authState,
             onAction = { action ->
-                when (action) {
-                    is AuthEntryAction.ChangeMode -> {
-                        authFormState = authFormState.copy(
-                            mode = action.mode,
-                            submitResult = null,
-                        )
-                    }
+                val result = reduceAuthFormState(
+                    currentState = authFormState,
+                    action = action,
+                )
+                authFormState = result.formState
 
-                    is AuthEntryAction.ChangeAccount -> {
-                        authFormState = authFormState.copy(
-                            account = action.value,
-                            submitResult = null,
-                        )
-                    }
-
-                    is AuthEntryAction.ChangePassword -> {
-                        authFormState = authFormState.copy(
-                            password = action.value,
-                            submitResult = null,
-                        )
-                    }
-
-                    AuthEntryAction.SubmitPasswordLogin -> {
-                        authFormState = authFormState.copy(
-                            submitResult = buildDemoPasswordSignInResult(authFormState),
-                        )
-                    }
-
-                    AuthEntryAction.NavigateBack -> {
-                        currentRoute = AppRoute.Home
-                        authFormState = authFormState.copy(submitResult = null)
-                    }
+                when (result.effect) {
+                    AuthEntryEffect.NavigateBack -> currentRoute = AppRoute.Home
+                    null -> Unit
                 }
             }
         )
