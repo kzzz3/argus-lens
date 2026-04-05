@@ -17,6 +17,9 @@ import com.kzzz3.argus.lens.feature.auth.createAuthEntryUiState
 import com.kzzz3.argus.lens.feature.auth.reduceAuthFormState
 import com.kzzz3.argus.lens.feature.home.HomeHudScreen
 import com.kzzz3.argus.lens.feature.home.HomeHudUiState
+import com.kzzz3.argus.lens.feature.inbox.ChatPlaceholderScreen
+import com.kzzz3.argus.lens.feature.inbox.ChatPlaceholderUiState
+import com.kzzz3.argus.lens.feature.inbox.InboxConversationItem
 import com.kzzz3.argus.lens.feature.inbox.InboxPlaceholderScreen
 import com.kzzz3.argus.lens.feature.inbox.InboxPlaceholderUiState
 
@@ -36,6 +39,33 @@ fun ArgusLensApp() {
     }
     var appSessionState by rememberSaveable(stateSaver = AppSessionState.Saver) {
         mutableStateOf(AppSessionState())
+    }
+    var selectedConversationId by rememberSaveable { mutableStateOf("") }
+
+    val fakeConversations = remember {
+        listOf(
+            InboxConversationItem(
+                id = "conv-zhang-san",
+                title = "Zhang San",
+                preview = "Let me know when the stage-1 IM shell is ready.",
+                timestampLabel = "09:24",
+                unreadCount = 2,
+            ),
+            InboxConversationItem(
+                id = "conv-project-group",
+                title = "Project Group",
+                preview = "We can wire real message sync after the inbox UI stabilizes.",
+                timestampLabel = "Yesterday",
+                unreadCount = 0,
+            ),
+            InboxConversationItem(
+                id = "conv-li-si",
+                title = "Li Si",
+                preview = "The auth flow is ready for the next module.",
+                timestampLabel = "Mon",
+                unreadCount = 1,
+            )
+        )
     }
 
     val authState = remember(authFormState) {
@@ -57,7 +87,20 @@ fun ArgusLensApp() {
             } else {
                 "Session placeholder is empty."
             },
+            conversations = fakeConversations,
             primaryActionLabel = "Sign out to HUD"
+        )
+    }
+    val selectedConversation = remember(selectedConversationId, fakeConversations) {
+        fakeConversations.firstOrNull { it.id == selectedConversationId }
+    }
+    val chatState = remember(selectedConversation) {
+        ChatPlaceholderUiState(
+            conversationTitle = selectedConversation?.title ?: "Conversation",
+            conversationSubtitle = "Stage-1 chat placeholder",
+            messagePreview = selectedConversation?.preview
+                ?: "Next step: render a real message timeline here.",
+            primaryActionLabel = "Back to inbox"
         )
     }
 
@@ -89,11 +132,21 @@ fun ArgusLensApp() {
 
         AppRoute.InboxPlaceholder -> InboxPlaceholderScreen(
             state = inboxState,
+            onConversationClick = { conversation ->
+                selectedConversationId = conversation.id
+                currentRoute = AppRoute.ChatPlaceholder
+            },
             onPrimaryActionClick = {
                 appSessionState = AppSessionState()
                 authFormState = AuthFormState()
+                selectedConversationId = ""
                 currentRoute = AppRoute.Home
             }
+        )
+
+        AppRoute.ChatPlaceholder -> ChatPlaceholderScreen(
+            state = chatState,
+            onBackClick = { currentRoute = AppRoute.InboxPlaceholder }
         )
     }
 }

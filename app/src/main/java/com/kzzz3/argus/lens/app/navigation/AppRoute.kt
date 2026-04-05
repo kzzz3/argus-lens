@@ -4,4 +4,5 @@ enum class AppRoute {
     Home,
     AuthEntry,
     InboxPlaceholder,
+    ChatPlaceholder,
 }
