@@ -162,6 +162,17 @@ fun AuthEntryScreen(
                     ) {
                         Text(text = state.primaryActionLabel)
                     }
+
+                    OutlinedButton(
+                        onClick = { onAction(AuthEntryAction.NavigateToRegister) },
+                        modifier = Modifier.fillMaxWidth(),
+                        border = BorderStroke(1.dp, Color(0xFF7AF5C9)),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = Color(0xFFDFFFF3)
+                        )
+                    ) {
+                        Text(text = state.registerActionLabel)
+                    }
                 } else {
                     Text(
                         text = "Verification code login is reserved for the next step. For now we only build account/password login.",
@@ -242,8 +253,10 @@ private fun AuthEntryScreenPreview() {
                 accountError = "Account is required",
                 passwordError = "Password must be at least 6 characters",
                 submitResult = "",
+                isSubmitting = false,
                 isPrimaryActionEnabled = false,
                 primaryActionLabel = "Sign in with password",
+                registerActionLabel = "Create new account",
                 secondaryActionLabel = "Back to HUD"
             ),
             onAction = {}

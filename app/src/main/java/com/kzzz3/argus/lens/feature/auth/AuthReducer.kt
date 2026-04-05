@@ -16,6 +16,7 @@ fun reduceAuthFormState(
                 accountTouched = false,
                 passwordTouched = false,
                 submitAttempted = false,
+                isSubmitting = false,
                 submitResult = null,
             )
         )
@@ -24,6 +25,7 @@ fun reduceAuthFormState(
             formState = currentState.copy(
                 account = action.value,
                 accountTouched = true,
+                isSubmitting = false,
                 submitResult = null,
             )
         )
@@ -32,6 +34,7 @@ fun reduceAuthFormState(
             formState = currentState.copy(
                 password = action.value,
                 passwordTouched = true,
+                isSubmitting = false,
                 submitResult = null,
             )
         )
@@ -41,21 +44,26 @@ fun reduceAuthFormState(
                 accountTouched = true,
                 passwordTouched = true,
                 submitAttempted = true,
-                submitResult = if (isPasswordLoginSubmittable(currentState)) {
-                    buildDemoPasswordSignInResult(currentState)
-                } else {
-                    null
-                },
+                isSubmitting = isPasswordLoginSubmittable(currentState),
+                submitResult = null,
             ),
             effect = if (isPasswordLoginSubmittable(currentState)) {
-                AuthEntryEffect.NavigateToInboxPlaceholder
+                AuthEntryEffect.SubmitPasswordLogin(
+                    account = currentState.account.trim(),
+                    password = currentState.password,
+                )
             } else {
                 null
             }
         )
 
+        AuthEntryAction.NavigateToRegister -> AuthReducerResult(
+            formState = currentState.copy(isSubmitting = false, submitResult = null),
+            effect = AuthEntryEffect.NavigateToRegister,
+        )
+
         AuthEntryAction.NavigateBack -> AuthReducerResult(
-            formState = currentState.copy(submitResult = null),
+            formState = currentState.copy(isSubmitting = false, submitResult = null),
             effect = AuthEntryEffect.NavigateBack,
         )
     }
