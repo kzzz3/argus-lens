@@ -4,11 +4,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import com.kzzz3.argus.lens.app.navigation.AppRoute
 import com.kzzz3.argus.lens.app.session.AppSessionState
-import com.kzzz3.argus.lens.app.session.createPlaceholderSession
+import com.kzzz3.argus.lens.app.session.createAuthenticatedSession
+import com.kzzz3.argus.lens.data.auth.AuthRepositoryResult
+import com.kzzz3.argus.lens.data.auth.createAuthRepository
 import com.kzzz3.argus.lens.feature.auth.AuthEntryAction
 import com.kzzz3.argus.lens.feature.auth.AuthEntryEffect
 import com.kzzz3.argus.lens.feature.auth.AuthEntryScreen
@@ -24,6 +27,13 @@ import com.kzzz3.argus.lens.feature.inbox.InboxConversationItem
 import com.kzzz3.argus.lens.feature.inbox.InboxAction
 import com.kzzz3.argus.lens.feature.inbox.InboxPlaceholderScreen
 import com.kzzz3.argus.lens.feature.inbox.InboxPlaceholderUiState
+import com.kzzz3.argus.lens.feature.register.RegisterAction
+import com.kzzz3.argus.lens.feature.register.RegisterEffect
+import com.kzzz3.argus.lens.feature.register.RegisterFormState
+import com.kzzz3.argus.lens.feature.register.RegisterScreen
+import com.kzzz3.argus.lens.feature.register.createRegisterUiState
+import com.kzzz3.argus.lens.feature.register.reduceRegisterFormState
+import kotlinx.coroutines.launch
 
 @Composable
 fun ArgusLensApp() {
@@ -39,10 +49,15 @@ fun ArgusLensApp() {
     var authFormState by rememberSaveable(stateSaver = AuthFormState.Saver) {
         mutableStateOf(AuthFormState())
     }
+    var registerFormState by rememberSaveable(stateSaver = RegisterFormState.Saver) {
+        mutableStateOf(RegisterFormState())
+    }
     var appSessionState by rememberSaveable(stateSaver = AppSessionState.Saver) {
         mutableStateOf(AppSessionState())
     }
     var selectedConversationId by rememberSaveable { mutableStateOf("") }
+    val authRepository = remember { createAuthRepository() }
+    val coroutineScope = rememberCoroutineScope()
 
     val fakeConversations = remember {
         listOf(
@@ -75,6 +90,9 @@ fun ArgusLensApp() {
             formState = authFormState,
         )
     }
+    val registerState = remember(registerFormState) {
+        createRegisterUiState(registerFormState)
+    }
     val inboxState = remember(appSessionState) {
         InboxPlaceholderUiState(
             title = "Login success",
@@ -85,7 +103,7 @@ fun ArgusLensApp() {
                 "No active session"
             },
             sessionSummary = if (appSessionState.isAuthenticated) {
-                "Account ID: ${appSessionState.accountId}. Session placeholder is active and ready for future backend integration."
+                "Account ID: ${appSessionState.accountId}. Access token is cached locally and the stage-1 auth API is now wired."
             } else {
                 "Session placeholder is empty."
             },
@@ -123,9 +141,86 @@ fun ArgusLensApp() {
 
                 when (result.effect) {
                     AuthEntryEffect.NavigateBack -> currentRoute = AppRoute.Home
-                    AuthEntryEffect.NavigateToInboxPlaceholder -> {
-                        appSessionState = createPlaceholderSession(authFormState.account)
-                        currentRoute = AppRoute.InboxPlaceholder
+                    AuthEntryEffect.NavigateToRegister -> currentRoute = AppRoute.RegisterEntry
+                    is AuthEntryEffect.SubmitPasswordLogin -> {
+                        coroutineScope.launch {
+                            when (
+                                val authResult = authRepository.login(
+                                    account = result.effect.account,
+                                    password = result.effect.password,
+                                )
+                            ) {
+                                is AuthRepositoryResult.Success -> {
+                                    authFormState = authFormState.copy(
+                                        isSubmitting = false,
+                                        submitResult = authResult.session.message,
+                                    )
+                                    appSessionState = createAuthenticatedSession(
+                                        accountId = authResult.session.accountId,
+                                        displayName = authResult.session.displayName,
+                                        accessToken = authResult.session.accessToken,
+                                    )
+                                    selectedConversationId = ""
+                                    currentRoute = AppRoute.InboxPlaceholder
+                                }
+
+                                is AuthRepositoryResult.Failure -> {
+                                    authFormState = authFormState.copy(
+                                        isSubmitting = false,
+                                        submitResult = authResult.message,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    null -> Unit
+                }
+            }
+        )
+
+        AppRoute.RegisterEntry -> RegisterScreen(
+            state = registerState,
+            onAction = { action ->
+                val result = reduceRegisterFormState(
+                    currentState = registerFormState,
+                    action = action,
+                )
+                registerFormState = result.formState
+
+                when (result.effect) {
+                    RegisterEffect.NavigateBackToLogin -> currentRoute = AppRoute.AuthEntry
+                    is RegisterEffect.SubmitRegistration -> {
+                        coroutineScope.launch {
+                            when (
+                                val authResult = authRepository.register(
+                                    displayName = result.effect.displayName,
+                                    account = result.effect.account,
+                                    password = result.effect.password,
+                                )
+                            ) {
+                                is AuthRepositoryResult.Success -> {
+                                    registerFormState = registerFormState.copy(
+                                        isSubmitting = false,
+                                        submitResult = authResult.session.message,
+                                    )
+                                    appSessionState = createAuthenticatedSession(
+                                        accountId = authResult.session.accountId,
+                                        displayName = authResult.session.displayName,
+                                        accessToken = authResult.session.accessToken,
+                                    )
+                                    selectedConversationId = ""
+                                    authFormState = AuthFormState(account = authResult.session.accountId)
+                                    currentRoute = AppRoute.InboxPlaceholder
+                                }
+
+                                is AuthRepositoryResult.Failure -> {
+                                    registerFormState = registerFormState.copy(
+                                        isSubmitting = false,
+                                        submitResult = authResult.message,
+                                    )
+                                }
+                            }
+                        }
                     }
                     null -> Unit
                 }
@@ -144,6 +239,7 @@ fun ArgusLensApp() {
                     InboxAction.SignOutToHud -> {
                         appSessionState = AppSessionState()
                         authFormState = AuthFormState()
+                        registerFormState = RegisterFormState()
                         selectedConversationId = ""
                         currentRoute = AppRoute.Home
                     }
