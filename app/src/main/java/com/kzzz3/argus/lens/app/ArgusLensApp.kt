@@ -17,9 +17,11 @@ import com.kzzz3.argus.lens.feature.auth.createAuthEntryUiState
 import com.kzzz3.argus.lens.feature.auth.reduceAuthFormState
 import com.kzzz3.argus.lens.feature.home.HomeHudScreen
 import com.kzzz3.argus.lens.feature.home.HomeHudUiState
+import com.kzzz3.argus.lens.feature.inbox.ChatAction
 import com.kzzz3.argus.lens.feature.inbox.ChatPlaceholderScreen
 import com.kzzz3.argus.lens.feature.inbox.ChatPlaceholderUiState
 import com.kzzz3.argus.lens.feature.inbox.InboxConversationItem
+import com.kzzz3.argus.lens.feature.inbox.InboxAction
 import com.kzzz3.argus.lens.feature.inbox.InboxPlaceholderScreen
 import com.kzzz3.argus.lens.feature.inbox.InboxPlaceholderUiState
 
@@ -132,21 +134,30 @@ fun ArgusLensApp() {
 
         AppRoute.InboxPlaceholder -> InboxPlaceholderScreen(
             state = inboxState,
-            onConversationClick = { conversation ->
-                selectedConversationId = conversation.id
-                currentRoute = AppRoute.ChatPlaceholder
-            },
-            onPrimaryActionClick = {
-                appSessionState = AppSessionState()
-                authFormState = AuthFormState()
-                selectedConversationId = ""
-                currentRoute = AppRoute.Home
+            onAction = { action ->
+                when (action) {
+                    is InboxAction.OpenConversation -> {
+                        selectedConversationId = action.conversationId
+                        currentRoute = AppRoute.ChatPlaceholder
+                    }
+
+                    InboxAction.SignOutToHud -> {
+                        appSessionState = AppSessionState()
+                        authFormState = AuthFormState()
+                        selectedConversationId = ""
+                        currentRoute = AppRoute.Home
+                    }
+                }
             }
         )
 
         AppRoute.ChatPlaceholder -> ChatPlaceholderScreen(
             state = chatState,
-            onBackClick = { currentRoute = AppRoute.InboxPlaceholder }
+            onAction = { action ->
+                when (action) {
+                    ChatAction.NavigateBackToInbox -> currentRoute = AppRoute.InboxPlaceholder
+                }
+            }
         )
     }
 }
