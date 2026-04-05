@@ -46,7 +46,12 @@ fun reduceAuthFormState(
                 } else {
                     null
                 },
-            )
+            ),
+            effect = if (isPasswordLoginSubmittable(currentState)) {
+                AuthEntryEffect.NavigateToInboxPlaceholder
+            } else {
+                null
+            }
         )
 
         AuthEntryAction.NavigateBack -> AuthReducerResult(

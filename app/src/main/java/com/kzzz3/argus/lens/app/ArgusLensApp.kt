@@ -15,6 +15,8 @@ import com.kzzz3.argus.lens.feature.auth.createAuthEntryUiState
 import com.kzzz3.argus.lens.feature.auth.reduceAuthFormState
 import com.kzzz3.argus.lens.feature.home.HomeHudScreen
 import com.kzzz3.argus.lens.feature.home.HomeHudUiState
+import com.kzzz3.argus.lens.feature.inbox.InboxPlaceholderScreen
+import com.kzzz3.argus.lens.feature.inbox.InboxPlaceholderUiState
 
 @Composable
 fun ArgusLensApp() {
@@ -24,6 +26,13 @@ fun ArgusLensApp() {
             syncStatus = "Stage 1 Baseline Ready",
             activeMode = "IM Foundation",
             primaryHint = "Next module: login + session bootstrap"
+        )
+    }
+    val inboxState = remember {
+        InboxPlaceholderUiState(
+            title = "Login success",
+            subtitle = "You have entered the stage-1 inbox placeholder.",
+            primaryActionLabel = "Back to HUD"
         )
     }
     var currentRoute by rememberSaveable { mutableStateOf(AppRoute.Home) }
@@ -54,9 +63,15 @@ fun ArgusLensApp() {
 
                 when (result.effect) {
                     AuthEntryEffect.NavigateBack -> currentRoute = AppRoute.Home
+                    AuthEntryEffect.NavigateToInboxPlaceholder -> currentRoute = AppRoute.InboxPlaceholder
                     null -> Unit
                 }
             }
+        )
+
+        AppRoute.InboxPlaceholder -> InboxPlaceholderScreen(
+            state = inboxState,
+            onPrimaryActionClick = { currentRoute = AppRoute.Home }
         )
     }
 }
