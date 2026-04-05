@@ -27,8 +27,7 @@ import com.kzzz3.argus.lens.ui.theme.ArguslensTheme
 @Composable
 fun InboxPlaceholderScreen(
     state: InboxPlaceholderUiState,
-    onConversationClick: (InboxConversationItem) -> Unit,
-    onPrimaryActionClick: () -> Unit,
+    onAction: (InboxAction) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -98,13 +97,13 @@ fun InboxPlaceholderScreen(
             state.conversations.forEach { item ->
                 ConversationCard(
                     item = item,
-                    onClick = { onConversationClick(item) }
+                    onClick = { onAction(InboxAction.OpenConversation(item.id)) }
                 )
             }
         }
 
         Button(
-            onClick = onPrimaryActionClick,
+            onClick = { onAction(InboxAction.SignOutToHud) },
             modifier = Modifier.fillMaxWidth()
         ) {
             Text(text = state.primaryActionLabel)
@@ -194,8 +193,7 @@ private fun InboxPlaceholderScreenPreview() {
                 ),
                 primaryActionLabel = "Back to HUD"
             ),
-            onConversationClick = {},
-            onPrimaryActionClick = {}
+            onAction = {}
         )
     }
 }

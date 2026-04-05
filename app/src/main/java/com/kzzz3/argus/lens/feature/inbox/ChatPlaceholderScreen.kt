@@ -23,7 +23,7 @@ import com.kzzz3.argus.lens.ui.theme.ArguslensTheme
 @Composable
 fun ChatPlaceholderScreen(
     state: ChatPlaceholderUiState,
-    onBackClick: () -> Unit,
+    onAction: (ChatAction) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -70,7 +70,7 @@ fun ChatPlaceholderScreen(
         }
 
         Button(
-            onClick = onBackClick,
+            onClick = { onAction(ChatAction.NavigateBackToInbox) },
             modifier = Modifier.fillMaxWidth()
         ) {
             Text(text = state.primaryActionLabel)
@@ -89,7 +89,7 @@ private fun ChatPlaceholderScreenPreview() {
                 messagePreview = "Next step: render a real message timeline here.",
                 primaryActionLabel = "Back to inbox"
             ),
-            onBackClick = {}
+            onAction = {}
         )
     }
 }
