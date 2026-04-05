@@ -7,6 +7,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import com.kzzz3.argus.lens.app.navigation.AppRoute
+import com.kzzz3.argus.lens.app.session.AppSessionState
+import com.kzzz3.argus.lens.app.session.createPlaceholderSession
 import com.kzzz3.argus.lens.feature.auth.AuthEntryAction
 import com.kzzz3.argus.lens.feature.auth.AuthEntryEffect
 import com.kzzz3.argus.lens.feature.auth.AuthEntryScreen
@@ -28,21 +30,34 @@ fun ArgusLensApp() {
             primaryHint = "Next module: login + session bootstrap"
         )
     }
-    val inboxState = remember {
-        InboxPlaceholderUiState(
-            title = "Login success",
-            subtitle = "You have entered the stage-1 inbox placeholder.",
-            primaryActionLabel = "Back to HUD"
-        )
-    }
     var currentRoute by rememberSaveable { mutableStateOf(AppRoute.Home) }
     var authFormState by rememberSaveable(stateSaver = AuthFormState.Saver) {
         mutableStateOf(AuthFormState())
+    }
+    var appSessionState by rememberSaveable(stateSaver = AppSessionState.Saver) {
+        mutableStateOf(AppSessionState())
     }
 
     val authState = remember(authFormState) {
         createAuthEntryUiState(
             formState = authFormState,
+        )
+    }
+    val inboxState = remember(appSessionState) {
+        InboxPlaceholderUiState(
+            title = "Login success",
+            subtitle = "You have entered the stage-1 inbox placeholder.",
+            sessionLabel = if (appSessionState.isAuthenticated) {
+                "Signed in as ${appSessionState.displayName}"
+            } else {
+                "No active session"
+            },
+            sessionSummary = if (appSessionState.isAuthenticated) {
+                "Account ID: ${appSessionState.accountId}. Session placeholder is active and ready for future backend integration."
+            } else {
+                "Session placeholder is empty."
+            },
+            primaryActionLabel = "Sign out to HUD"
         )
     }
 
@@ -63,7 +78,10 @@ fun ArgusLensApp() {
 
                 when (result.effect) {
                     AuthEntryEffect.NavigateBack -> currentRoute = AppRoute.Home
-                    AuthEntryEffect.NavigateToInboxPlaceholder -> currentRoute = AppRoute.InboxPlaceholder
+                    AuthEntryEffect.NavigateToInboxPlaceholder -> {
+                        appSessionState = createPlaceholderSession(authFormState.account)
+                        currentRoute = AppRoute.InboxPlaceholder
+                    }
                     null -> Unit
                 }
             }
@@ -71,7 +89,11 @@ fun ArgusLensApp() {
 
         AppRoute.InboxPlaceholder -> InboxPlaceholderScreen(
             state = inboxState,
-            onPrimaryActionClick = { currentRoute = AppRoute.Home }
+            onPrimaryActionClick = {
+                appSessionState = AppSessionState()
+                authFormState = AuthFormState()
+                currentRoute = AppRoute.Home
+            }
         )
     }
 }

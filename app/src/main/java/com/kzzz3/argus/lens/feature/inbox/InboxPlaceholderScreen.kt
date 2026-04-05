@@ -23,6 +23,8 @@ import com.kzzz3.argus.lens.ui.theme.ArguslensTheme
 data class InboxPlaceholderUiState(
     val title: String,
     val subtitle: String,
+    val sessionLabel: String,
+    val sessionSummary: String,
     val primaryActionLabel: String,
 )
 
@@ -68,6 +70,17 @@ fun InboxPlaceholderScreen(
                     color = Color(0xFFD8EBFB)
                 )
                 Text(
+                    text = state.sessionLabel,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = Color(0xFF9AD0FF),
+                    fontWeight = FontWeight.Medium
+                )
+                Text(
+                    text = state.sessionSummary,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color(0xFFEAF6FF)
+                )
+                Text(
                     text = "This is the first post-login placeholder. Later it will become the IM inbox / conversation list.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = Color(0xFFAAC9E3)
@@ -92,6 +105,8 @@ private fun InboxPlaceholderScreenPreview() {
             state = InboxPlaceholderUiState(
                 title = "Login success",
                 subtitle = "You have entered the stage-1 inbox placeholder.",
+                sessionLabel = "Signed in as demo-account",
+                sessionSummary = "Session placeholder is active and ready for future backend integration.",
                 primaryActionLabel = "Back to HUD"
             ),
             onPrimaryActionClick = {}
