@@ -14,7 +14,9 @@ data class AuthEntryUiState(
     val accountError: String?,
     val passwordError: String?,
     val submitResult: String?,
+    val isSubmitting: Boolean,
     val isPrimaryActionEnabled: Boolean,
     val primaryActionLabel: String,
+    val registerActionLabel: String,
     val secondaryActionLabel: String,
 )

@@ -5,5 +5,6 @@ sealed interface AuthEntryAction {
     data class ChangeAccount(val value: String) : AuthEntryAction
     data class ChangePassword(val value: String) : AuthEntryAction
     data object SubmitPasswordLogin : AuthEntryAction
+    data object NavigateToRegister : AuthEntryAction
     data object NavigateBack : AuthEntryAction
 }

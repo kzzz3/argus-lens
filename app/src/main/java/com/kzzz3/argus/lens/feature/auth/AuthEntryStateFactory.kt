@@ -34,20 +34,17 @@ fun createAuthEntryUiState(
 
     return AuthEntryUiState(
         title = "Stage 1 Login Entry",
-        subtitle = "We start with a fake login shell before touching real networking.",
+        subtitle = "This step wires the password login flow to the stage-1 auth API.",
         selectedMode = formState.mode,
         account = formState.account,
         password = formState.password,
         accountError = accountError,
         passwordError = passwordError,
         submitResult = formState.submitResult,
-        isPrimaryActionEnabled = isPasswordLoginSubmittable(formState),
-        primaryActionLabel = "Sign in with password",
+        isSubmitting = formState.isSubmitting,
+        isPrimaryActionEnabled = isPasswordLoginSubmittable(formState) && !formState.isSubmitting,
+        primaryActionLabel = if (formState.isSubmitting) "Signing in..." else "Sign in with password",
+        registerActionLabel = "Create new account",
         secondaryActionLabel = "Back to HUD"
     )
-}
-
-fun buildDemoPasswordSignInResult(formState: AuthFormState): String {
-    val trimmedAccount = formState.account.trim()
-    return "Demo sign-in passed for $trimmedAccount. Real network login comes next."
 }
