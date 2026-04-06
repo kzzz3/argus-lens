@@ -8,6 +8,10 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
 fun createAuthRepository(): AuthRepository {
+    return LocalAuthRepository()
+}
+
+fun createRemoteAuthRepository(): AuthRepository {
     val gson = Gson()
     val loggingInterceptor = HttpLoggingInterceptor().apply {
         level = HttpLoggingInterceptor.Level.BODY
