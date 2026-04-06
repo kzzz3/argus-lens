@@ -10,12 +10,9 @@ data class AppSessionState(
     val accessToken: String = "",
 ) {
     companion object {
-        private const val SAVER_VERSION = "app-session-v2"
-
         val Saver: Saver<AppSessionState, Any> = listSaver(
             save = { state ->
                 listOf(
-                    SAVER_VERSION,
                     state.isAuthenticated,
                     state.accountId,
                     state.displayName,
@@ -23,14 +20,14 @@ data class AppSessionState(
                 )
             },
             restore = { values ->
-                if (values.size != 5 || values[0] != SAVER_VERSION) {
+                if (values.size != 4) {
                     null
                 } else {
                     AppSessionState(
-                        isAuthenticated = values[1] as Boolean,
-                        accountId = values[2] as String,
-                        displayName = values[3] as String,
-                        accessToken = values[4] as String,
+                        isAuthenticated = values[0] as Boolean,
+                        accountId = values[1] as String,
+                        displayName = values[2] as String,
+                        accessToken = values[3] as String,
                     )
                 }
             }
