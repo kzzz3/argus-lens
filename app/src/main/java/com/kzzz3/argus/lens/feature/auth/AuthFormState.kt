@@ -14,12 +14,9 @@ data class AuthFormState(
     val submitResult: String? = null,
 ) {
     companion object {
-        private const val SAVER_VERSION = "auth-form-v2"
-
         val Saver: Saver<AuthFormState, Any> = listSaver(
             save = { state ->
                 listOf(
-                    SAVER_VERSION,
                     state.mode.name,
                     state.account,
                     state.password,
@@ -31,18 +28,18 @@ data class AuthFormState(
                 )
             },
             restore = { values ->
-                if (values.size != 9 || values[0] != SAVER_VERSION) {
+                if (values.size != 8) {
                     null
                 } else {
                     AuthFormState(
-                        mode = AuthLoginMode.valueOf(values[1] as String),
-                        account = values[2] as String,
-                        password = values[3] as String,
-                        accountTouched = values[4] as Boolean,
-                        passwordTouched = values[5] as Boolean,
-                        submitAttempted = values[6] as Boolean,
-                        isSubmitting = values[7] as Boolean,
-                        submitResult = (values[8] as String).ifEmpty { null },
+                        mode = AuthLoginMode.valueOf(values[0] as String),
+                        account = values[1] as String,
+                        password = values[2] as String,
+                        accountTouched = values[3] as Boolean,
+                        passwordTouched = values[4] as Boolean,
+                        submitAttempted = values[5] as Boolean,
+                        isSubmitting = values[6] as Boolean,
+                        submitResult = (values[7] as String).ifEmpty { null },
                     )
                 }
             }
