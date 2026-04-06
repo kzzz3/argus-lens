@@ -21,12 +21,16 @@ import com.kzzz3.argus.lens.feature.auth.reduceAuthFormState
 import com.kzzz3.argus.lens.feature.home.HomeHudScreen
 import com.kzzz3.argus.lens.feature.home.HomeHudUiState
 import com.kzzz3.argus.lens.feature.inbox.ChatAction
-import com.kzzz3.argus.lens.feature.inbox.ChatPlaceholderScreen
-import com.kzzz3.argus.lens.feature.inbox.ChatPlaceholderUiState
-import com.kzzz3.argus.lens.feature.inbox.InboxConversationItem
+import com.kzzz3.argus.lens.feature.inbox.ChatEffect
+import com.kzzz3.argus.lens.feature.inbox.ChatScreen
+import com.kzzz3.argus.lens.feature.inbox.ChatState
 import com.kzzz3.argus.lens.feature.inbox.InboxAction
-import com.kzzz3.argus.lens.feature.inbox.InboxPlaceholderScreen
-import com.kzzz3.argus.lens.feature.inbox.InboxPlaceholderUiState
+import com.kzzz3.argus.lens.feature.inbox.InboxConversationThread
+import com.kzzz3.argus.lens.feature.inbox.InboxScreen
+import com.kzzz3.argus.lens.feature.inbox.createChatUiState
+import com.kzzz3.argus.lens.feature.inbox.createInboxSampleThreads
+import com.kzzz3.argus.lens.feature.inbox.createInboxUiState
+import com.kzzz3.argus.lens.feature.inbox.reduceChatState
 import com.kzzz3.argus.lens.feature.register.RegisterAction
 import com.kzzz3.argus.lens.feature.register.RegisterEffect
 import com.kzzz3.argus.lens.feature.register.RegisterFormState
@@ -42,10 +46,10 @@ fun ArgusLensApp() {
             deviceLabel = "Android Glasses Simulator",
             syncStatus = "Stage 1 Baseline Ready",
             activeMode = "IM Foundation",
-            primaryHint = "Next module: login + session bootstrap"
+            primaryHint = "Current module: local inbox + chat shell"
         )
     }
-    var currentRoute by rememberSaveable { mutableStateOf(AppRoute.Home) }
+    var currentRoute by rememberSaveable(stateSaver = AppRoute.Saver) { mutableStateOf(AppRoute.Home) }
     var authFormState by rememberSaveable(stateSaver = AuthFormState.Saver) {
         mutableStateOf(AuthFormState())
     }
@@ -58,31 +62,11 @@ fun ArgusLensApp() {
     var selectedConversationId by rememberSaveable { mutableStateOf("") }
     val authRepository = remember { createAuthRepository() }
     val coroutineScope = rememberCoroutineScope()
-
-    val fakeConversations = remember {
-        listOf(
-            InboxConversationItem(
-                id = "conv-zhang-san",
-                title = "Zhang San",
-                preview = "Let me know when the stage-1 IM shell is ready.",
-                timestampLabel = "09:24",
-                unreadCount = 2,
-            ),
-            InboxConversationItem(
-                id = "conv-project-group",
-                title = "Project Group",
-                preview = "We can wire real message sync after the inbox UI stabilizes.",
-                timestampLabel = "Yesterday",
-                unreadCount = 0,
-            ),
-            InboxConversationItem(
-                id = "conv-li-si",
-                title = "Li Si",
-                preview = "The auth flow is ready for the next module.",
-                timestampLabel = "Mon",
-                unreadCount = 1,
-            )
-        )
+    val initialThreads = remember {
+        createInboxSampleThreads(currentUserDisplayName = "Argus Tester")
+    }
+    var conversationThreads by remember {
+        mutableStateOf(initialThreads)
     }
 
     val authState = remember(authFormState) {
@@ -93,35 +77,32 @@ fun ArgusLensApp() {
     val registerState = remember(registerFormState) {
         createRegisterUiState(registerFormState)
     }
-    val inboxState = remember(appSessionState) {
-        InboxPlaceholderUiState(
-            title = "Login success",
-            subtitle = "You have entered the stage-1 inbox placeholder.",
-            sessionLabel = if (appSessionState.isAuthenticated) {
-                "Signed in as ${appSessionState.displayName}"
-            } else {
-                "No active session"
-            },
-            sessionSummary = if (appSessionState.isAuthenticated) {
-                "Account ID: ${appSessionState.accountId}. Access token is cached locally and the stage-1 auth API is now wired."
-            } else {
-                "Session placeholder is empty."
-            },
-            conversations = fakeConversations,
-            primaryActionLabel = "Sign out to HUD"
+    val sessionDisplayName = remember(appSessionState.displayName) {
+        appSessionState.displayName.ifBlank { "Argus Tester" }
+    }
+    val inboxState = remember(appSessionState, conversationThreads) {
+        createInboxUiState(
+            sessionState = appSessionState,
+            threads = conversationThreads,
         )
     }
-    val selectedConversation = remember(selectedConversationId, fakeConversations) {
-        fakeConversations.firstOrNull { it.id == selectedConversationId }
+    val selectedConversation = remember(selectedConversationId, conversationThreads) {
+        conversationThreads.firstOrNull { it.id == selectedConversationId }
     }
-    val chatState = remember(selectedConversation) {
-        ChatPlaceholderUiState(
-            conversationTitle = selectedConversation?.title ?: "Conversation",
-            conversationSubtitle = "Stage-1 chat placeholder",
-            messagePreview = selectedConversation?.preview
-                ?: "Next step: render a real message timeline here.",
-            primaryActionLabel = "Back to inbox"
-        )
+    val chatState = remember(selectedConversation, sessionDisplayName) {
+        selectedConversation?.let { conversation ->
+            ChatState(
+                conversationId = conversation.id,
+                conversationTitle = conversation.title,
+                conversationSubtitle = conversation.subtitle,
+                currentUserDisplayName = sessionDisplayName,
+                messages = conversation.messages,
+                draftMessage = conversation.draftMessage,
+            )
+        }
+    }
+    val chatUiState = remember(chatState) {
+        chatState?.let(::createChatUiState)
     }
 
     when (currentRoute) {
@@ -160,8 +141,11 @@ fun ArgusLensApp() {
                                         displayName = authResult.session.displayName,
                                         accessToken = authResult.session.accessToken,
                                     )
+                                    conversationThreads = createInboxSampleThreads(
+                                        currentUserDisplayName = authResult.session.displayName,
+                                    )
                                     selectedConversationId = ""
-                                    currentRoute = AppRoute.InboxPlaceholder
+                                    currentRoute = AppRoute.Inbox
                                 }
 
                                 is AuthRepositoryResult.Failure -> {
@@ -208,9 +192,12 @@ fun ArgusLensApp() {
                                         displayName = authResult.session.displayName,
                                         accessToken = authResult.session.accessToken,
                                     )
+                                    conversationThreads = createInboxSampleThreads(
+                                        currentUserDisplayName = authResult.session.displayName,
+                                    )
                                     selectedConversationId = ""
                                     authFormState = AuthFormState(account = authResult.session.accountId)
-                                    currentRoute = AppRoute.InboxPlaceholder
+                                    currentRoute = AppRoute.Inbox
                                 }
 
                                 is AuthRepositoryResult.Failure -> {
@@ -227,19 +214,24 @@ fun ArgusLensApp() {
             }
         )
 
-        AppRoute.InboxPlaceholder -> InboxPlaceholderScreen(
+        AppRoute.Inbox -> InboxScreen(
             state = inboxState,
             onAction = { action ->
                 when (action) {
                     is InboxAction.OpenConversation -> {
+                        conversationThreads = markConversationAsRead(
+                            threads = conversationThreads,
+                            conversationId = action.conversationId,
+                        )
                         selectedConversationId = action.conversationId
-                        currentRoute = AppRoute.ChatPlaceholder
+                        currentRoute = AppRoute.Chat
                     }
 
                     InboxAction.SignOutToHud -> {
                         appSessionState = AppSessionState()
                         authFormState = AuthFormState()
                         registerFormState = RegisterFormState()
+                        conversationThreads = initialThreads
                         selectedConversationId = ""
                         currentRoute = AppRoute.Home
                     }
@@ -247,13 +239,83 @@ fun ArgusLensApp() {
             }
         )
 
-        AppRoute.ChatPlaceholder -> ChatPlaceholderScreen(
-            state = chatState,
-            onAction = { action ->
-                when (action) {
-                    ChatAction.NavigateBackToInbox -> currentRoute = AppRoute.InboxPlaceholder
-                }
+        AppRoute.Chat -> {
+            val resolvedChatUiState = chatUiState
+            val resolvedChatState = chatState
+
+            if (resolvedChatUiState == null || resolvedChatState == null) {
+                InboxScreen(
+                    state = inboxState,
+                    onAction = { action ->
+                        when (action) {
+                            is InboxAction.OpenConversation -> {
+                                conversationThreads = markConversationAsRead(
+                                    threads = conversationThreads,
+                                    conversationId = action.conversationId,
+                                )
+                                selectedConversationId = action.conversationId
+                            }
+
+                            InboxAction.SignOutToHud -> {
+                                appSessionState = AppSessionState()
+                                authFormState = AuthFormState()
+                                registerFormState = RegisterFormState()
+                                conversationThreads = initialThreads
+                                selectedConversationId = ""
+                                currentRoute = AppRoute.Home
+                            }
+                        }
+                    }
+                )
+            } else {
+                ChatScreen(
+                    state = resolvedChatUiState,
+                    onAction = { action ->
+                        val result = reduceChatState(
+                            currentState = resolvedChatState,
+                            action = action,
+                        )
+                        conversationThreads = updateConversationThread(
+                            threads = conversationThreads,
+                            updatedState = result.state,
+                        )
+
+                        when (result.effect) {
+                            ChatEffect.NavigateBackToInbox -> currentRoute = AppRoute.Inbox
+                            null -> Unit
+                        }
+                    }
+                )
             }
-        )
+        }
+    }
+}
+
+private fun markConversationAsRead(
+    threads: List<InboxConversationThread>,
+    conversationId: String,
+): List<InboxConversationThread> {
+    return threads.map { thread ->
+        if (thread.id == conversationId) {
+            thread.copy(unreadCount = 0)
+        } else {
+            thread
+        }
+    }
+}
+
+private fun updateConversationThread(
+    threads: List<InboxConversationThread>,
+    updatedState: ChatState,
+): List<InboxConversationThread> {
+    return threads.map { thread ->
+        if (thread.id == updatedState.conversationId) {
+            thread.copy(
+                messages = updatedState.messages,
+                draftMessage = updatedState.draftMessage,
+            )
+        } else {
+            thread
+        }
     }
 }

@@ -130,7 +130,7 @@ fun HomeHudScreen(
                         .fillMaxWidth()
                         .padding(16.dp)
                 ) {
-                    Text(text = "Go to login skeleton")
+                    Text(text = "Open login + inbox flow")
                 }
             }
         }
@@ -162,7 +162,7 @@ private fun HomeHudScreenPreview() {
                 deviceLabel = "Android Glasses Simulator",
                 syncStatus = "Stage 1 Baseline Ready",
                 activeMode = "IM Foundation",
-                primaryHint = "Next module: login + session bootstrap"
+                primaryHint = "Current module: local inbox + chat shell"
             ),
             onPrimaryActionClick = {}
         )
