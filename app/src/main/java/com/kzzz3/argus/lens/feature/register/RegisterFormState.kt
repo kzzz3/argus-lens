@@ -17,12 +17,9 @@ data class RegisterFormState(
     val submitResult: String? = null,
 ) {
     companion object {
-        private const val SAVER_VERSION = "register-form-v2"
-
         val Saver: Saver<RegisterFormState, Any> = listSaver(
             save = { state ->
                 listOf(
-                    SAVER_VERSION,
                     state.displayName,
                     state.account,
                     state.password,
@@ -37,21 +34,21 @@ data class RegisterFormState(
                 )
             },
             restore = { values ->
-                if (values.size != 12 || values[0] != SAVER_VERSION) {
+                if (values.size != 11) {
                     null
                 } else {
                     RegisterFormState(
-                        displayName = values[1] as String,
-                        account = values[2] as String,
-                        password = values[3] as String,
-                        confirmPassword = values[4] as String,
-                        displayNameTouched = values[5] as Boolean,
-                        accountTouched = values[6] as Boolean,
-                        passwordTouched = values[7] as Boolean,
-                        confirmPasswordTouched = values[8] as Boolean,
-                        submitAttempted = values[9] as Boolean,
-                        isSubmitting = values[10] as Boolean,
-                        submitResult = (values[11] as String).ifEmpty { null },
+                        displayName = values[0] as String,
+                        account = values[1] as String,
+                        password = values[2] as String,
+                        confirmPassword = values[3] as String,
+                        displayNameTouched = values[4] as Boolean,
+                        accountTouched = values[5] as Boolean,
+                        passwordTouched = values[6] as Boolean,
+                        confirmPasswordTouched = values[7] as Boolean,
+                        submitAttempted = values[8] as Boolean,
+                        isSubmitting = values[9] as Boolean,
+                        submitResult = (values[10] as String).ifEmpty { null },
                     )
                 }
             }
