@@ -7,4 +7,6 @@ data class ChatState(
     val currentUserDisplayName: String,
     val messages: List<ChatMessageItem>,
     val draftMessage: String = "",
+    val draftAttachments: List<ChatDraftAttachment> = emptyList(),
+    val isVoiceRecording: Boolean = false,
 )
