@@ -2,15 +2,12 @@ package com.kzzz3.argus.lens.feature.inbox
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
 import androidx.compose.material3.Badge
+import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -25,8 +22,8 @@ import androidx.compose.ui.unit.dp
 import com.kzzz3.argus.lens.ui.theme.ArguslensTheme
 
 @Composable
-fun InboxPlaceholderScreen(
-    state: InboxPlaceholderUiState,
+fun InboxScreen(
+    state: InboxUiState,
     onAction: (InboxAction) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -76,25 +73,21 @@ fun InboxPlaceholderScreen(
                     style = MaterialTheme.typography.bodyMedium,
                     color = Color(0xFFEAF6FF)
                 )
-                Text(
-                    text = "This is the first post-login placeholder. Later it will become the IM inbox / conversation list.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color(0xFFAAC9E3)
-                )
             }
         }
 
-        Column(
+        Text(
+            text = "Conversations",
+            style = MaterialTheme.typography.titleMedium,
+            color = Color.White,
+            fontWeight = FontWeight.SemiBold
+        )
+
+        LazyColumn(
+            modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Text(
-                text = "Conversation Preview",
-                style = MaterialTheme.typography.titleMedium,
-                color = Color.White,
-                fontWeight = FontWeight.SemiBold
-            )
-
-            state.conversations.forEach { item ->
+            items(state.conversations, key = { it.id }) { item ->
                 ConversationCard(
                     item = item,
                     onClick = { onAction(InboxAction.OpenConversation(item.id)) }
@@ -134,12 +127,21 @@ private fun ConversationCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = item.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = Color.White,
-                    fontWeight = FontWeight.Medium
-                )
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        text = item.title,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = Color.White,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Text(
+                        text = item.subtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color(0xFF9FB7CC)
+                    )
+                }
                 Text(
                     text = item.timestampLabel,
                     style = MaterialTheme.typography.bodySmall,
@@ -167,18 +169,19 @@ private fun ConversationCard(
 
 @Preview(showBackground = true)
 @Composable
-private fun InboxPlaceholderScreenPreview() {
+private fun InboxScreenPreview() {
     ArguslensTheme {
-        InboxPlaceholderScreen(
-            state = InboxPlaceholderUiState(
-                title = "Login success",
-                subtitle = "You have entered the stage-1 inbox placeholder.",
+        InboxScreen(
+            state = InboxUiState(
+                title = "Stage-1 Inbox",
+                subtitle = "Real local conversation list",
                 sessionLabel = "Signed in as demo-account",
-                sessionSummary = "Session placeholder is active and ready for future backend integration.",
+                sessionSummary = "Auth is real; messages are local for this step.",
                 conversations = listOf(
                     InboxConversationItem(
                         id = "conv-1",
                         title = "Zhang San",
+                        subtitle = "1:1 direct chat",
                         preview = "Let me know when the stage-1 IM shell is ready.",
                         timestampLabel = "09:24",
                         unreadCount = 2,
@@ -186,7 +189,8 @@ private fun InboxPlaceholderScreenPreview() {
                     InboxConversationItem(
                         id = "conv-2",
                         title = "Project Group",
-                        preview = "We can wire real message sync after the inbox UI stabilizes.",
+                        subtitle = "3 members",
+                        preview = "We can wire real sync later.",
                         timestampLabel = "Yesterday",
                         unreadCount = 0,
                     )
