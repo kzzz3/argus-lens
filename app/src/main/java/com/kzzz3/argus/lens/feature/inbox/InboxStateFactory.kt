@@ -21,6 +21,17 @@ fun createInboxUiState(
         },
         conversations = threads.map { thread ->
             val latestMessage = thread.messages.lastOrNull()
+            val statusLabel = when (latestMessage?.deliveryStatus) {
+                ChatMessageDeliveryStatus.Sending -> "Sending"
+                ChatMessageDeliveryStatus.Sent -> if (latestMessage.isFromCurrentUser) "Sent" else null
+                ChatMessageDeliveryStatus.Failed -> "Failed"
+                null -> null
+            }
+            val statusColorToken = when (latestMessage?.deliveryStatus) {
+                ChatMessageDeliveryStatus.Failed -> InboxStatusColorToken.Warning
+                ChatMessageDeliveryStatus.Sent -> InboxStatusColorToken.Success
+                else -> InboxStatusColorToken.Neutral
+            }
             InboxConversationItem(
                 id = thread.id,
                 title = thread.title,
@@ -28,8 +39,11 @@ fun createInboxUiState(
                 preview = latestMessage?.body ?: "No messages yet",
                 timestampLabel = latestMessage?.timestampLabel ?: "--:--",
                 unreadCount = thread.unreadCount,
+                latestMessageStatusLabel = statusLabel,
+                latestMessageStatusColorToken = statusColorToken,
             )
         },
+        contactsActionLabel = "Open contacts",
         primaryActionLabel = "Sign out to HUD",
     )
 }

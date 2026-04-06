@@ -6,5 +6,6 @@ data class InboxUiState(
     val sessionLabel: String,
     val sessionSummary: String,
     val conversations: List<InboxConversationItem>,
+    val contactsActionLabel: String,
     val primaryActionLabel: String,
 )

@@ -7,6 +7,7 @@ enum class AppRoute {
     AuthEntry,
     RegisterEntry,
     Inbox,
+    Contacts,
     Chat;
 
     companion object {

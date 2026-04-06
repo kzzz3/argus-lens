@@ -95,11 +95,22 @@ fun InboxScreen(
             }
         }
 
-        Button(
-            onClick = { onAction(InboxAction.SignOutToHud) },
-            modifier = Modifier.fillMaxWidth()
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Text(text = state.primaryActionLabel)
+            Button(
+                onClick = { onAction(InboxAction.OpenContacts) },
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(text = state.contactsActionLabel)
+            }
+            Button(
+                onClick = { onAction(InboxAction.SignOutToHud) },
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(text = state.primaryActionLabel)
+            }
         }
     }
 }
@@ -155,6 +166,19 @@ private fun ConversationCard(
                 color = Color(0xFFDCEBFA)
             )
 
+            item.latestMessageStatusLabel?.let { label ->
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = when (item.latestMessageStatusColorToken) {
+                        InboxStatusColorToken.Neutral -> Color(0xFFAAC9E3)
+                        InboxStatusColorToken.Success -> Color(0xFF7AF5C9)
+                        InboxStatusColorToken.Warning -> Color(0xFFFF9A8B)
+                    },
+                    fontWeight = FontWeight.Medium
+                )
+            }
+
             if (item.unreadCount > 0) {
                 Badge(containerColor = Color(0xFF7AF5C9)) {
                     Text(
@@ -185,6 +209,8 @@ private fun InboxScreenPreview() {
                         preview = "Let me know when the stage-1 IM shell is ready.",
                         timestampLabel = "09:24",
                         unreadCount = 2,
+                        latestMessageStatusLabel = "Sent",
+                        latestMessageStatusColorToken = InboxStatusColorToken.Success,
                     ),
                     InboxConversationItem(
                         id = "conv-2",
@@ -193,8 +219,11 @@ private fun InboxScreenPreview() {
                         preview = "We can wire real sync later.",
                         timestampLabel = "Yesterday",
                         unreadCount = 0,
+                        latestMessageStatusLabel = "Sending",
+                        latestMessageStatusColorToken = InboxStatusColorToken.Neutral,
                     )
                 ),
+                contactsActionLabel = "Open contacts",
                 primaryActionLabel = "Back to HUD"
             ),
             onAction = {}
