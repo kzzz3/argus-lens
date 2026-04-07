@@ -27,6 +27,7 @@ import com.kzzz3.argus.lens.feature.call.createCallSessionUiState
 import com.kzzz3.argus.lens.feature.call.createInitialCallSessionState
 import com.kzzz3.argus.lens.feature.call.reduceCallSessionState
 import com.kzzz3.argus.lens.feature.contacts.ContactsAction
+import com.kzzz3.argus.lens.feature.contacts.ConversationCreationMode
 import com.kzzz3.argus.lens.feature.contacts.ContactsEffect
 import com.kzzz3.argus.lens.feature.contacts.ContactsScreen
 import com.kzzz3.argus.lens.feature.contacts.ContactsState
@@ -309,6 +310,7 @@ fun ArgusLensApp() {
                         val nextThreads = ensureConversationThread(
                             threads = conversationThreads,
                             displayName = effect.displayName,
+                            mode = effect.mode,
                         )
                         conversationThreads = nextThreads
                         selectedConversationId = resolveConversationId(
@@ -530,6 +532,7 @@ private fun shouldFailOutgoingMessage(
 private fun ensureConversationThread(
     threads: List<InboxConversationThread>,
     displayName: String,
+    mode: ConversationCreationMode,
 ): List<InboxConversationThread> {
     val normalizedName = displayName.trim()
     if (normalizedName.isEmpty()) return threads
@@ -542,7 +545,11 @@ private fun ensureConversationThread(
     val nextThread = InboxConversationThread(
         id = createConversationId(normalizedName, threads.size + 1),
         title = normalizedName,
-        subtitle = "New local conversation",
+        subtitle = if (mode == ConversationCreationMode.Group) {
+            "New local group conversation"
+        } else {
+            "New local conversation"
+        },
         unreadCount = 0,
         messages = emptyList(),
     )

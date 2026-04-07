@@ -25,6 +25,17 @@ fun reduceContactsState(
             effect = null,
         )
 
+        ContactsAction.ToggleCreationMode -> ContactsReducerResult(
+            state = currentState.copy(
+                creationMode = if (currentState.creationMode == ConversationCreationMode.Direct) {
+                    ConversationCreationMode.Group
+                } else {
+                    ConversationCreationMode.Direct
+                }
+            ),
+            effect = null,
+        )
+
         ContactsAction.CreateConversation -> {
             val trimmedName = currentState.draftConversationName.trim()
             if (trimmedName.isEmpty()) {
@@ -35,7 +46,10 @@ fun reduceContactsState(
             } else {
                 ContactsReducerResult(
                     state = currentState.copy(draftConversationName = ""),
-                    effect = ContactsEffect.CreateConversation(trimmedName),
+                    effect = ContactsEffect.CreateConversation(
+                        displayName = trimmedName,
+                        mode = currentState.creationMode,
+                    ),
                 )
             }
         }

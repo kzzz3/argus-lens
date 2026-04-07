@@ -6,6 +6,8 @@ data class ContactsUiState(
     val draftConversationName: String,
     val draftLabel: String,
     val draftPlaceholder: String,
+    val creationModeLabel: String,
+    val toggleCreationModeActionLabel: String,
     val createConversationActionLabel: String,
     val isCreateConversationEnabled: Boolean,
     val contacts: List<ContactEntryUiState>,

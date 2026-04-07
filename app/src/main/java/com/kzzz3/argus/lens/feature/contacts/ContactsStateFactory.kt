@@ -10,9 +10,31 @@ fun createContactsUiState(
         title = "Contacts",
         subtitle = "Start a conversation from your current local thread roster.",
         draftConversationName = state.draftConversationName,
-        draftLabel = "New local conversation",
-        draftPlaceholder = "Type a contact or chat title",
-        createConversationActionLabel = "Create chat",
+        draftLabel = if (state.creationMode == ConversationCreationMode.Group) {
+            "New local group"
+        } else {
+            "New local conversation"
+        },
+        draftPlaceholder = if (state.creationMode == ConversationCreationMode.Group) {
+            "Type a group name"
+        } else {
+            "Type a contact or chat title"
+        },
+        creationModeLabel = if (state.creationMode == ConversationCreationMode.Group) {
+            "Group mode"
+        } else {
+            "Direct mode"
+        },
+        toggleCreationModeActionLabel = if (state.creationMode == ConversationCreationMode.Group) {
+            "Switch to direct"
+        } else {
+            "Switch to group"
+        },
+        createConversationActionLabel = if (state.creationMode == ConversationCreationMode.Group) {
+            "Create group"
+        } else {
+            "Create chat"
+        },
         isCreateConversationEnabled = state.draftConversationName.trim().isNotEmpty(),
         contacts = threads.map { thread ->
             ContactEntryUiState(

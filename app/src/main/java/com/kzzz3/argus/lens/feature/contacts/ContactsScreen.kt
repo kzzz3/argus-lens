@@ -89,6 +89,25 @@ fun ContactsScreen(
                     placeholder = { Text(text = state.draftPlaceholder) },
                     maxLines = 1,
                 )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = state.creationModeLabel,
+                        style = MaterialTheme.typography.labelLarge,
+                        color = Color(0xFFAAC9E3),
+                        fontWeight = FontWeight.Medium
+                    )
+                    Text(
+                        text = state.toggleCreationModeActionLabel,
+                        modifier = Modifier.clickable(onClick = { onAction(ContactsAction.ToggleCreationMode) }),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = Color(0xFF7AF5C9),
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
                 Button(
                     onClick = { onAction(ContactsAction.CreateConversation) },
                     enabled = state.isCreateConversationEnabled,
@@ -182,6 +201,8 @@ private fun ContactsScreenPreview() {
                 draftConversationName = "",
                 draftLabel = "New local conversation",
                 draftPlaceholder = "Type a contact or chat title",
+                creationModeLabel = "Direct mode",
+                toggleCreationModeActionLabel = "Switch to group",
                 createConversationActionLabel = "Create chat",
                 isCreateConversationEnabled = false,
                 contacts = listOf(
