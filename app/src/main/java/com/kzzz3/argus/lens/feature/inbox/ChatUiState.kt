@@ -11,6 +11,8 @@ data class ChatUiState(
     val imageActionLabel: String,
     val videoActionLabel: String,
     val voiceActionLabel: String,
+    val audioCallActionLabel: String,
+    val videoCallActionLabel: String,
     val isSendEnabled: Boolean,
     val sendActionLabel: String,
     val backActionLabel: String,

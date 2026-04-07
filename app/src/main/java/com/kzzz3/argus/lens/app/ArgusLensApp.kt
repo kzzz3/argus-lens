@@ -18,6 +18,14 @@ import com.kzzz3.argus.lens.feature.auth.AuthEntryScreen
 import com.kzzz3.argus.lens.feature.auth.AuthFormState
 import com.kzzz3.argus.lens.feature.auth.createAuthEntryUiState
 import com.kzzz3.argus.lens.feature.auth.reduceAuthFormState
+import com.kzzz3.argus.lens.feature.call.CallSessionAction
+import com.kzzz3.argus.lens.feature.call.CallSessionMode
+import com.kzzz3.argus.lens.feature.call.CallSessionScreen
+import com.kzzz3.argus.lens.feature.call.CallSessionState
+import com.kzzz3.argus.lens.feature.call.CallSessionStatus
+import com.kzzz3.argus.lens.feature.call.createCallSessionUiState
+import com.kzzz3.argus.lens.feature.call.createInitialCallSessionState
+import com.kzzz3.argus.lens.feature.call.reduceCallSessionState
 import com.kzzz3.argus.lens.feature.contacts.ContactsAction
 import com.kzzz3.argus.lens.feature.contacts.ContactsEffect
 import com.kzzz3.argus.lens.feature.contacts.ContactsScreen
@@ -27,6 +35,7 @@ import com.kzzz3.argus.lens.feature.contacts.reduceContactsState
 import com.kzzz3.argus.lens.feature.home.HomeHudScreen
 import com.kzzz3.argus.lens.feature.home.HomeHudUiState
 import com.kzzz3.argus.lens.feature.inbox.ChatAction
+import com.kzzz3.argus.lens.feature.inbox.ChatCallMode
 import com.kzzz3.argus.lens.feature.inbox.ChatEffect
 import com.kzzz3.argus.lens.feature.inbox.ChatMessageDeliveryStatus
 import com.kzzz3.argus.lens.feature.inbox.ChatScreen
@@ -70,6 +79,9 @@ fun ArgusLensApp() {
     }
     var contactsStateModel by rememberSaveable(stateSaver = ContactsState.Saver) {
         mutableStateOf(ContactsState())
+    }
+    var callSessionState by rememberSaveable(stateSaver = CallSessionState.Saver) {
+        mutableStateOf(CallSessionState())
     }
     var selectedConversationId by rememberSaveable { mutableStateOf("") }
     val authRepository = remember { createAuthRepository() }
@@ -124,6 +136,9 @@ fun ArgusLensApp() {
     val chatUiState = remember(chatState) {
         chatState?.let(::createChatUiState)
     }
+    val callSessionUiState = remember(callSessionState) {
+        createCallSessionUiState(callSessionState)
+    }
 
     when (currentRoute) {
         AppRoute.Home -> HomeHudScreen(
@@ -161,6 +176,7 @@ fun ArgusLensApp() {
                                         displayName = authResult.session.displayName,
                                         accessToken = authResult.session.accessToken,
                                     )
+                                    callSessionState = CallSessionState()
                                     conversationThreads = createInboxSampleThreads(
                                         currentUserDisplayName = authResult.session.displayName,
                                     )
@@ -212,6 +228,7 @@ fun ArgusLensApp() {
                                         displayName = authResult.session.displayName,
                                         accessToken = authResult.session.accessToken,
                                     )
+                                    callSessionState = CallSessionState()
                                     conversationThreads = createInboxSampleThreads(
                                         currentUserDisplayName = authResult.session.displayName,
                                     )
@@ -254,6 +271,7 @@ fun ArgusLensApp() {
                         authFormState = AuthFormState()
                         registerFormState = RegisterFormState()
                         contactsStateModel = ContactsState()
+                        callSessionState = CallSessionState()
                         conversationThreads = initialThreads
                         selectedConversationId = ""
                         currentRoute = AppRoute.Home
@@ -300,6 +318,16 @@ fun ArgusLensApp() {
             }
         )
 
+        AppRoute.CallSession -> CallSessionScreen(
+            state = callSessionUiState,
+            onAction = { action ->
+                callSessionState = reduceCallSessionState(callSessionState, action)
+                if (action == CallSessionAction.EndCall) {
+                    currentRoute = AppRoute.Chat
+                }
+            }
+        )
+
         AppRoute.Chat -> {
             val resolvedChatUiState = chatUiState
             val resolvedChatState = chatState
@@ -324,6 +352,7 @@ fun ArgusLensApp() {
                                 authFormState = AuthFormState()
                                 registerFormState = RegisterFormState()
                                 contactsStateModel = ContactsState()
+                                callSessionState = CallSessionState()
                                 conversationThreads = initialThreads
                                 selectedConversationId = ""
                                 currentRoute = AppRoute.Home
@@ -346,6 +375,18 @@ fun ArgusLensApp() {
 
                         when (result.effect) {
                             ChatEffect.NavigateBackToInbox -> currentRoute = AppRoute.Inbox
+                            is ChatEffect.StartCall -> {
+                                callSessionState = createInitialCallSessionState(
+                                    conversationId = result.effect.conversationId,
+                                    contactDisplayName = result.effect.contactDisplayName,
+                                    mode = if (result.effect.mode == ChatCallMode.Video) {
+                                        CallSessionMode.Video
+                                    } else {
+                                        CallSessionMode.Audio
+                                    },
+                                ).copy(status = CallSessionStatus.Active)
+                                currentRoute = AppRoute.CallSession
+                            }
                             is ChatEffect.DispatchOutgoingMessages -> {
                                 coroutineScope.launch {
                                     delay(350)

@@ -8,6 +8,7 @@ enum class AppRoute {
     RegisterEntry,
     Inbox,
     Contacts,
+    CallSession,
     Chat;
 
     companion object {

@@ -2,6 +2,8 @@ package com.kzzz3.argus.lens.feature.inbox
 
 sealed interface ChatAction {
     data class UpdateDraftMessage(val value: String) : ChatAction
+    data object StartAudioCall : ChatAction
+    data object StartVideoCall : ChatAction
     data object AddImageAttachment : ChatAction
     data object AddVideoAttachment : ChatAction
     data object ToggleVoiceDraft : ChatAction

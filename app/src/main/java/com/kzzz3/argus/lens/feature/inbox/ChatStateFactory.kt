@@ -18,6 +18,8 @@ fun createChatUiState(
         imageActionLabel = "Add image",
         videoActionLabel = "Add video",
         voiceActionLabel = if (state.isVoiceRecording) "Finish voice" else "Voice draft",
+        audioCallActionLabel = "Audio call",
+        videoCallActionLabel = "Video call",
         isSendEnabled = state.draftMessage.trim().isNotEmpty() || state.draftAttachments.isNotEmpty(),
         sendActionLabel = "Send draft",
         backActionLabel = "Back to inbox",

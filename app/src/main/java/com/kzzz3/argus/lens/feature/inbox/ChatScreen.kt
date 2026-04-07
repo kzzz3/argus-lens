@@ -75,6 +75,24 @@ fun ChatScreen(
                     style = MaterialTheme.typography.bodyLarge,
                     color = Color(0xFFD8EBFB)
                 )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    ComposerActionChip(
+                        label = state.audioCallActionLabel,
+                        accentColor = Color(0xFF7AF5C9),
+                        onClick = { onAction(ChatAction.StartAudioCall) },
+                        modifier = Modifier.weight(1f)
+                    )
+                    ComposerActionChip(
+                        label = state.videoCallActionLabel,
+                        accentColor = Color(0xFF83C9FF),
+                        onClick = { onAction(ChatAction.StartVideoCall) },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
             }
         }
 
@@ -457,6 +475,8 @@ private fun ChatScreenPreview() {
                 imageActionLabel = "Add image",
                 videoActionLabel = "Add video",
                 voiceActionLabel = "Voice draft",
+                audioCallActionLabel = "Audio call",
+                videoCallActionLabel = "Video call",
                 isSendEnabled = false,
                 sendActionLabel = "Send draft",
                 backActionLabel = "Back to inbox",

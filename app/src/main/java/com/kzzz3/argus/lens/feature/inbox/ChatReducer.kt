@@ -15,6 +15,24 @@ fun reduceChatState(
             effect = ChatEffect.NavigateBackToInbox,
         )
 
+        ChatAction.StartAudioCall -> ChatReducerResult(
+            state = currentState,
+            effect = ChatEffect.StartCall(
+                conversationId = currentState.conversationId,
+                contactDisplayName = currentState.conversationTitle,
+                mode = ChatCallMode.Audio,
+            ),
+        )
+
+        ChatAction.StartVideoCall -> ChatReducerResult(
+            state = currentState,
+            effect = ChatEffect.StartCall(
+                conversationId = currentState.conversationId,
+                contactDisplayName = currentState.conversationTitle,
+                mode = ChatCallMode.Video,
+            ),
+        )
+
         ChatAction.AddImageAttachment -> ChatReducerResult(
             state = currentState.copy(
                 draftAttachments = currentState.draftAttachments + createDraftAttachment(
