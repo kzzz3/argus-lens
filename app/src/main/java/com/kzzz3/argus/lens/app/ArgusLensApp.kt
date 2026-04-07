@@ -54,6 +54,7 @@ import com.kzzz3.argus.lens.feature.register.RegisterFormState
 import com.kzzz3.argus.lens.feature.register.RegisterScreen
 import com.kzzz3.argus.lens.feature.register.createRegisterUiState
 import com.kzzz3.argus.lens.feature.register.reduceRegisterFormState
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -86,6 +87,7 @@ fun ArgusLensApp() {
     var selectedConversationId by rememberSaveable { mutableStateOf("") }
     val authRepository = remember { createAuthRepository() }
     val coroutineScope = rememberCoroutineScope()
+    var callSessionJob by remember { mutableStateOf<Job?>(null) }
     val initialThreads = remember {
         createInboxSampleThreads(currentUserDisplayName = "Argus Tester")
     }
@@ -176,6 +178,7 @@ fun ArgusLensApp() {
                                         displayName = authResult.session.displayName,
                                         accessToken = authResult.session.accessToken,
                                     )
+                                    callSessionJob?.cancel()
                                     callSessionState = CallSessionState()
                                     conversationThreads = createInboxSampleThreads(
                                         currentUserDisplayName = authResult.session.displayName,
@@ -228,6 +231,7 @@ fun ArgusLensApp() {
                                         displayName = authResult.session.displayName,
                                         accessToken = authResult.session.accessToken,
                                     )
+                                    callSessionJob?.cancel()
                                     callSessionState = CallSessionState()
                                     conversationThreads = createInboxSampleThreads(
                                         currentUserDisplayName = authResult.session.displayName,
@@ -271,6 +275,7 @@ fun ArgusLensApp() {
                         authFormState = AuthFormState()
                         registerFormState = RegisterFormState()
                         contactsStateModel = ContactsState()
+                        callSessionJob?.cancel()
                         callSessionState = CallSessionState()
                         conversationThreads = initialThreads
                         selectedConversationId = ""
@@ -323,7 +328,11 @@ fun ArgusLensApp() {
             onAction = { action ->
                 callSessionState = reduceCallSessionState(callSessionState, action)
                 if (action == CallSessionAction.EndCall) {
-                    currentRoute = AppRoute.Chat
+                    callSessionJob?.cancel()
+                    coroutineScope.launch {
+                        delay(300)
+                        currentRoute = AppRoute.Chat
+                    }
                 }
             }
         )
@@ -352,6 +361,7 @@ fun ArgusLensApp() {
                                 authFormState = AuthFormState()
                                 registerFormState = RegisterFormState()
                                 contactsStateModel = ContactsState()
+                                callSessionJob?.cancel()
                                 callSessionState = CallSessionState()
                                 conversationThreads = initialThreads
                                 selectedConversationId = ""
@@ -384,7 +394,20 @@ fun ArgusLensApp() {
                                     } else {
                                         CallSessionMode.Audio
                                     },
-                                ).copy(status = CallSessionStatus.Active)
+                                )
+                                callSessionJob?.cancel()
+                                callSessionJob = coroutineScope.launch {
+                                    delay(800)
+                                    if (callSessionState.status == CallSessionStatus.Connecting) {
+                                        callSessionState = callSessionState.copy(status = CallSessionStatus.Active)
+                                    }
+                                    while (callSessionState.status == CallSessionStatus.Active && currentRoute == AppRoute.CallSession) {
+                                        delay(1000)
+                                        callSessionState = callSessionState.copy(
+                                            durationLabel = incrementCallDurationLabel(callSessionState.durationLabel)
+                                        )
+                                    }
+                                }
                                 currentRoute = AppRoute.CallSession
                             }
                             is ChatEffect.DispatchOutgoingMessages -> {
@@ -511,4 +534,18 @@ private fun createConversationId(
         .trim('-')
         .ifEmpty { "local-contact" }
     return "conv-$slug-$ordinal"
+}
+
+private fun incrementCallDurationLabel(
+    currentLabel: String,
+): String {
+    val parts = currentLabel.split(":")
+    if (parts.size != 2) return "00:01"
+
+    val minutes = parts[0].toIntOrNull() ?: 0
+    val seconds = parts[1].toIntOrNull() ?: 0
+    val totalSeconds = minutes * 60 + seconds + 1
+    val nextMinutes = totalSeconds / 60
+    val nextSeconds = totalSeconds % 60
+    return "%02d:%02d".format(nextMinutes, nextSeconds)
 }
