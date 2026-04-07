@@ -69,12 +69,33 @@ class ChatReducerTest {
         )
 
         val armed = reduceChatState(state, ChatAction.ToggleVoiceDraft)
-        val finished = reduceChatState(armed.state, ChatAction.ToggleVoiceDraft)
+        val ticking = reduceChatState(armed.state, ChatAction.TickVoiceRecording)
+        val finished = reduceChatState(ticking.state, ChatAction.ToggleVoiceDraft)
 
         assertTrue(armed.state.isVoiceRecording)
+        assertEquals(1, ticking.state.voiceRecordingSeconds)
         assertFalse(finished.state.isVoiceRecording)
+        assertEquals(0, finished.state.voiceRecordingSeconds)
         assertEquals(1, finished.state.draftAttachments.size)
         assertEquals(ChatDraftAttachmentKind.Voice, finished.state.draftAttachments.first().kind)
+    }
+
+    @Test
+    fun cancelVoiceRecording_stopsRecordingAndClearsDuration() {
+        val state = ChatState(
+            conversationId = "conv-1",
+            conversationTitle = "Zhang San",
+            conversationSubtitle = "1:1 direct chat",
+            currentUserDisplayName = "Argus Tester",
+            messages = emptyList(),
+            isVoiceRecording = true,
+            voiceRecordingSeconds = 4,
+        )
+
+        val result = reduceChatState(state, ChatAction.CancelVoiceRecording)
+
+        assertFalse(result.state.isVoiceRecording)
+        assertEquals(0, result.state.voiceRecordingSeconds)
     }
 
     @Test

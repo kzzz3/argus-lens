@@ -7,6 +7,8 @@ sealed interface ChatAction {
     data object AddImageAttachment : ChatAction
     data object AddVideoAttachment : ChatAction
     data object ToggleVoiceDraft : ChatAction
+    data object TickVoiceRecording : ChatAction
+    data object CancelVoiceRecording : ChatAction
     data class RemoveDraftAttachment(val attachmentId: String) : ChatAction
     data class RetryFailedMessage(val messageId: String) : ChatAction
     data object SendMessage : ChatAction

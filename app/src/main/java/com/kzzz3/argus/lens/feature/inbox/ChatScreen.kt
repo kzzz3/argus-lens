@@ -24,6 +24,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.kzzz3.argus.lens.ui.theme.ArguslensTheme
+import kotlinx.coroutines.delay
 
 @Composable
 fun ChatScreen(
@@ -37,6 +38,15 @@ fun ChatScreen(
         val lastMessageIndex = state.messages.lastIndex
         if (lastMessageIndex >= 0) {
             messageListState.animateScrollToItem(lastMessageIndex)
+        }
+    }
+
+    LaunchedEffect(state.isCancelVoiceVisible) {
+        if (state.isCancelVoiceVisible) {
+            while (true) {
+                delay(1000)
+                onAction(ChatAction.TickVoiceRecording)
+            }
         }
     }
 
@@ -147,6 +157,12 @@ fun ChatScreen(
                     style = MaterialTheme.typography.bodyMedium,
                     color = Color(0xFFAEC7DC)
                 )
+                Text(
+                    text = state.voiceRecordingLabel,
+                    style = MaterialTheme.typography.labelLarge,
+                    color = if (state.isCancelVoiceVisible) Color(0xFF7AF5C9) else Color(0xFFAAC9E3),
+                    fontWeight = FontWeight.Medium
+                )
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -183,6 +199,16 @@ fun ChatScreen(
                             )
                         }
                     }
+                }
+
+                if (state.isCancelVoiceVisible) {
+                    Text(
+                        text = state.cancelVoiceActionLabel,
+                        modifier = Modifier.clickable(onClick = { onAction(ChatAction.CancelVoiceRecording) }),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = Color(0xFFFF9A8B),
+                        fontWeight = FontWeight.SemiBold
+                    )
                 }
             }
         }
@@ -474,7 +500,10 @@ private fun ChatScreenPreview() {
                 composerHint = "Build a local draft with text, image, video, or voice.",
                 imageActionLabel = "Add image",
                 videoActionLabel = "Add video",
-                voiceActionLabel = "Voice draft",
+                voiceActionLabel = "Start voice",
+                voiceRecordingLabel = "Ready for local voice note",
+                cancelVoiceActionLabel = "Cancel voice",
+                isCancelVoiceVisible = false,
                 audioCallActionLabel = "Audio call",
                 videoCallActionLabel = "Video call",
                 isSendEnabled = false,

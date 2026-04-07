@@ -12,6 +12,7 @@ data class InboxConversationThread(
     val draftMessage: String = "",
     val draftAttachments: List<ChatDraftAttachment> = emptyList(),
     val isVoiceRecording: Boolean = false,
+    val voiceRecordingSeconds: Int = 0,
 ) {
     companion object {
         val Saver: Saver<InboxConversationThread, Any> = listSaver(
@@ -25,10 +26,11 @@ data class InboxConversationThread(
                     thread.draftMessage,
                     thread.draftAttachments.map(::saveChatDraftAttachment),
                     thread.isVoiceRecording,
+                    thread.voiceRecordingSeconds,
                 )
             },
             restore = { values ->
-                if (values.size != 8) {
+                if (values.size != 9) {
                     null
                 } else {
                     InboxConversationThread(
@@ -40,6 +42,7 @@ data class InboxConversationThread(
                         draftMessage = values[5] as String,
                         draftAttachments = restoreChatDraftAttachmentList(values[6]),
                         isVoiceRecording = values[7] as Boolean,
+                        voiceRecordingSeconds = values[8] as Int,
                     )
                 }
             }
@@ -123,6 +126,7 @@ private fun saveInboxConversationThread(
         thread.draftMessage,
         thread.draftAttachments.map(::saveChatDraftAttachment),
         thread.isVoiceRecording,
+        thread.voiceRecordingSeconds,
     )
 }
 
@@ -130,7 +134,7 @@ private fun restoreInboxConversationThread(
     value: Any?,
 ): InboxConversationThread? {
     val values = value as? List<*> ?: return null
-    if (values.size != 8) return null
+    if (values.size != 9) return null
 
     return InboxConversationThread(
         id = values[0] as String,
@@ -141,6 +145,7 @@ private fun restoreInboxConversationThread(
         draftMessage = values[5] as String,
         draftAttachments = restoreChatDraftAttachmentList(values[6]),
         isVoiceRecording = values[7] as Boolean,
+        voiceRecordingSeconds = values[8] as Int,
     )
 }
 

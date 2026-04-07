@@ -9,4 +9,5 @@ data class ChatState(
     val draftMessage: String = "",
     val draftAttachments: List<ChatDraftAttachment> = emptyList(),
     val isVoiceRecording: Boolean = false,
+    val voiceRecordingSeconds: Int = 0,
 )

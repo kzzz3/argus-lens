@@ -132,6 +132,7 @@ fun ArgusLensApp() {
                 draftMessage = conversation.draftMessage,
                 draftAttachments = conversation.draftAttachments,
                 isVoiceRecording = conversation.isVoiceRecording,
+                voiceRecordingSeconds = conversation.voiceRecordingSeconds,
             )
         }
     }
@@ -453,6 +454,7 @@ private fun updateConversationThread(
                 draftMessage = updatedState.draftMessage,
                 draftAttachments = updatedState.draftAttachments,
                 isVoiceRecording = updatedState.isVoiceRecording,
+                voiceRecordingSeconds = updatedState.voiceRecordingSeconds,
             )
         } else {
             thread

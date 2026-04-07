@@ -64,17 +64,39 @@ fun reduceChatState(
                             conversationId = currentState.conversationId,
                             nextIndex = currentState.draftAttachments.size + 1,
                             kind = ChatDraftAttachmentKind.Voice,
-                        )
+                            voiceRecordingSeconds = currentState.voiceRecordingSeconds,
+                        ),
+                        voiceRecordingSeconds = 0,
                     ),
                     effect = null,
                 )
             } else {
                 ChatReducerResult(
-                    state = currentState.copy(isVoiceRecording = true),
+                    state = currentState.copy(
+                        isVoiceRecording = true,
+                        voiceRecordingSeconds = 0,
+                    ),
                     effect = null,
                 )
             }
         }
+
+        ChatAction.TickVoiceRecording -> ChatReducerResult(
+            state = if (currentState.isVoiceRecording) {
+                currentState.copy(voiceRecordingSeconds = currentState.voiceRecordingSeconds + 1)
+            } else {
+                currentState
+            },
+            effect = null,
+        )
+
+        ChatAction.CancelVoiceRecording -> ChatReducerResult(
+            state = currentState.copy(
+                isVoiceRecording = false,
+                voiceRecordingSeconds = 0,
+            ),
+            effect = null,
+        )
 
         is ChatAction.RemoveDraftAttachment -> ChatReducerResult(
             state = currentState.copy(
@@ -143,6 +165,7 @@ fun reduceChatState(
                         draftMessage = "",
                         draftAttachments = emptyList(),
                         isVoiceRecording = false,
+                        voiceRecordingSeconds = 0,
                     ),
                     effect = ChatEffect.DispatchOutgoingMessages(
                         conversationId = currentState.conversationId,
@@ -163,11 +186,12 @@ private fun createDraftAttachment(
     conversationId: String,
     nextIndex: Int,
     kind: ChatDraftAttachmentKind,
+    voiceRecordingSeconds: Int = 0,
 ): ChatDraftAttachment {
     val title = when (kind) {
         ChatDraftAttachmentKind.Image -> "Image draft $nextIndex"
         ChatDraftAttachmentKind.Video -> "Video draft $nextIndex"
-        ChatDraftAttachmentKind.Voice -> "Voice clip $nextIndex"
+        ChatDraftAttachmentKind.Voice -> "Voice clip ${formatVoiceAttachmentDuration(voiceRecordingSeconds)}"
     }
     val summary = when (kind) {
         ChatDraftAttachmentKind.Image -> "Local gallery placeholder ready to send"
@@ -191,4 +215,12 @@ private fun draftAttachmentMessageBody(
         ChatDraftAttachmentKind.Video -> "[Video] ${attachment.title} · ${attachment.summary}"
         ChatDraftAttachmentKind.Voice -> "[Voice] ${attachment.title} · ${attachment.summary}"
     }
+}
+
+private fun formatVoiceAttachmentDuration(
+    seconds: Int,
+): String {
+    val minutes = seconds / 60
+    val remainSeconds = seconds % 60
+    return "%02d:%02d".format(minutes, remainSeconds)
 }
