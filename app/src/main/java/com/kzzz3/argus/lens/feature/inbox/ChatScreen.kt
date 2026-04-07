@@ -365,7 +365,8 @@ private fun MessageBubble(
 
         OutgoingStatusRow(
             message = message,
-            onRetry = { onAction(ChatAction.RetryFailedMessage(message.id)) }
+            onRetry = { onAction(ChatAction.RetryFailedMessage(message.id)) },
+            onRecall = { onAction(ChatAction.RecallMessage(message.id)) },
         )
     }
 }
@@ -374,26 +375,47 @@ private fun MessageBubble(
 private fun OutgoingStatusRow(
     message: ChatMessageItem,
     onRetry: () -> Unit,
+    onRecall: () -> Unit,
 ) {
     if (!message.isFromCurrentUser) return
 
     val (label, color) = when (message.deliveryStatus) {
         ChatMessageDeliveryStatus.Sending -> "Sending" to Color(0xFFAEC7DC)
         ChatMessageDeliveryStatus.Sent -> "Sent" to Color(0xFF7AF5C9)
+        ChatMessageDeliveryStatus.Delivered -> "Delivered" to Color(0xFF7AF5C9)
         ChatMessageDeliveryStatus.Failed -> "Failed · Tap to retry" to Color(0xFFFF9A8B)
+        ChatMessageDeliveryStatus.Recalled -> "Recalled" to Color(0xFFAAC9E3)
     }
 
-    Text(
-        text = label,
-        modifier = if (message.deliveryStatus == ChatMessageDeliveryStatus.Failed) {
-            Modifier.clickable(onClick = onRetry)
-        } else {
-            Modifier
-        },
-        style = MaterialTheme.typography.labelMedium,
-        color = color,
-        fontWeight = FontWeight.Medium
-    )
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = label,
+            modifier = if (message.deliveryStatus == ChatMessageDeliveryStatus.Failed) {
+                Modifier.clickable(onClick = onRetry)
+            } else {
+                Modifier
+            },
+            style = MaterialTheme.typography.labelMedium,
+            color = color,
+            fontWeight = FontWeight.Medium
+        )
+
+        if (
+            message.deliveryStatus == ChatMessageDeliveryStatus.Sent ||
+            message.deliveryStatus == ChatMessageDeliveryStatus.Delivered
+        ) {
+            Text(
+                text = "Recall",
+                modifier = Modifier.clickable(onClick = onRecall),
+                style = MaterialTheme.typography.labelMedium,
+                color = Color(0xFFFFD27A),
+                fontWeight = FontWeight.Medium
+            )
+        }
+    }
 }
 
 @Composable

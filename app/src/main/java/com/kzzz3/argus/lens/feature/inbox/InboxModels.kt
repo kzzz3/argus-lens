@@ -86,7 +86,9 @@ data class ChatMessageItem(
 enum class ChatMessageDeliveryStatus {
     Sending,
     Sent,
+    Delivered,
     Failed,
+    Recalled,
 }
 
 enum class ChatDraftAttachmentKind {

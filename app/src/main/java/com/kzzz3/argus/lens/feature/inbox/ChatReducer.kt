@@ -123,6 +123,29 @@ fun reduceChatState(
             )
         }
 
+        is ChatAction.RecallMessage -> {
+            val recalledMessages = currentState.messages.map { message ->
+                if (
+                    message.id == action.messageId &&
+                    message.isFromCurrentUser &&
+                    (message.deliveryStatus == ChatMessageDeliveryStatus.Sent ||
+                        message.deliveryStatus == ChatMessageDeliveryStatus.Delivered)
+                ) {
+                    message.copy(
+                        body = "You recalled a message",
+                        deliveryStatus = ChatMessageDeliveryStatus.Recalled,
+                    )
+                } else {
+                    message
+                }
+            }
+
+            ChatReducerResult(
+                state = currentState.copy(messages = recalledMessages),
+                effect = null,
+            )
+        }
+
         ChatAction.SendMessage -> {
             val trimmedDraft = currentState.draftMessage.trim()
             val sentMessages = buildList {

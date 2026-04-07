@@ -419,6 +419,12 @@ fun ArgusLensApp() {
                                         conversationId = result.effect.conversationId,
                                         messageIds = result.effect.messageIds,
                                     )
+                                    delay(700)
+                                    conversationThreads = resolveDeliveredMessageStatuses(
+                                        threads = conversationThreads,
+                                        conversationId = result.effect.conversationId,
+                                        messageIds = result.effect.messageIds,
+                                    )
                                 }
                             }
                             null -> Unit
@@ -479,6 +485,31 @@ private fun resolveOutgoingMessageStatuses(
                                 ChatMessageDeliveryStatus.Sent
                             }
                         )
+                    } else {
+                        message
+                    }
+                }
+            )
+        } else {
+            thread
+        }
+    }
+}
+
+private fun resolveDeliveredMessageStatuses(
+    threads: List<InboxConversationThread>,
+    conversationId: String,
+    messageIds: List<String>,
+): List<InboxConversationThread> {
+    return threads.map { thread ->
+        if (thread.id == conversationId) {
+            thread.copy(
+                messages = thread.messages.map { message ->
+                    if (
+                        message.id in messageIds &&
+                        message.deliveryStatus == ChatMessageDeliveryStatus.Sent
+                    ) {
+                        message.copy(deliveryStatus = ChatMessageDeliveryStatus.Delivered)
                     } else {
                         message
                     }

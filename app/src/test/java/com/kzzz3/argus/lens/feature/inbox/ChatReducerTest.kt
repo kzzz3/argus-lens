@@ -158,6 +158,31 @@ class ChatReducerTest {
     }
 
     @Test
+    fun recallMessage_marksOwnDeliveredMessageRecalled() {
+        val state = ChatState(
+            conversationId = "conv-1",
+            conversationTitle = "Zhang San",
+            conversationSubtitle = "1:1 direct chat",
+            currentUserDisplayName = "Argus Tester",
+            messages = listOf(
+                ChatMessageItem(
+                    id = "m1",
+                    senderDisplayName = "Argus Tester",
+                    body = "Ship it",
+                    timestampLabel = "Now",
+                    isFromCurrentUser = true,
+                    deliveryStatus = ChatMessageDeliveryStatus.Delivered,
+                )
+            ),
+        )
+
+        val result = reduceChatState(state, ChatAction.RecallMessage("m1"))
+
+        assertEquals(ChatMessageDeliveryStatus.Recalled, result.state.messages.first().deliveryStatus)
+        assertEquals("You recalled a message", result.state.messages.first().body)
+    }
+
+    @Test
     fun sendMessage_withBlankDraft_keepsStateUnchanged() {
         val state = ChatState(
             conversationId = "conv-1",

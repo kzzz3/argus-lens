@@ -11,6 +11,7 @@ sealed interface ChatAction {
     data object CancelVoiceRecording : ChatAction
     data class RemoveDraftAttachment(val attachmentId: String) : ChatAction
     data class RetryFailedMessage(val messageId: String) : ChatAction
+    data class RecallMessage(val messageId: String) : ChatAction
     data object SendMessage : ChatAction
     data object NavigateBackToInbox : ChatAction
 }
