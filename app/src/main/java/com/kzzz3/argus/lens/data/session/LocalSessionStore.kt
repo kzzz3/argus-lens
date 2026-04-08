@@ -12,12 +12,12 @@ import kotlinx.coroutines.flow.map
 
 class LocalSessionStore(
     private val context: Context,
-) {
+) : SessionRepository {
     private val dataStore = PreferenceDataStoreFactory.create(
         produceFile = { context.preferencesDataStoreFile("argus-lens-session.preferences_pb") }
     )
 
-    suspend fun loadSession(): AppSessionState {
+    override suspend fun loadSession(): AppSessionState {
         return dataStore.data.map { preferences ->
             AppSessionState(
                 isAuthenticated = preferences[IsAuthenticatedKey] ?: false,
@@ -28,7 +28,7 @@ class LocalSessionStore(
         }.first()
     }
 
-    suspend fun saveSession(
+    override suspend fun saveSession(
         state: AppSessionState,
     ) {
         dataStore.edit { preferences ->
@@ -39,7 +39,7 @@ class LocalSessionStore(
         }
     }
 
-    suspend fun clearSession() {
+    override suspend fun clearSession() {
         dataStore.edit { preferences ->
             preferences.clear()
         }
@@ -55,6 +55,6 @@ class LocalSessionStore(
 
 fun createLocalSessionStore(
     context: Context,
-): LocalSessionStore {
+) : SessionRepository {
     return LocalSessionStore(context.applicationContext)
 }

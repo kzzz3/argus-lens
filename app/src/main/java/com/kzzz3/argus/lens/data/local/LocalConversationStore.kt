@@ -1,6 +1,7 @@
 package com.kzzz3.argus.lens.data.local
 
 import android.content.Context
+import com.kzzz3.argus.lens.data.conversation.ConversationRepository
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.kzzz3.argus.lens.feature.contacts.ConversationCreationMode
@@ -140,8 +141,8 @@ class LocalConversationStore(
 
 class LocalConversationCoordinator(
     private val store: LocalConversationStore,
-) {
-    fun createPreviewState(
+) : ConversationRepository {
+    override fun createPreviewState(
         currentUserDisplayName: String,
     ): ConversationThreadsState {
         return ConversationThreadsState(
@@ -149,7 +150,7 @@ class LocalConversationCoordinator(
         )
     }
 
-    suspend fun loadOrCreateConversationThreads(
+    override suspend fun loadOrCreateConversationThreads(
         accountId: String,
         currentUserDisplayName: String,
     ): ConversationThreadsState {
@@ -163,7 +164,7 @@ class LocalConversationCoordinator(
         return seededState
     }
 
-    suspend fun saveConversationThreads(
+    override suspend fun saveConversationThreads(
         accountId: String,
         state: ConversationThreadsState,
     ) {
@@ -171,12 +172,12 @@ class LocalConversationCoordinator(
         store.saveConversationThreads(accountId, state.threads)
     }
 
-    suspend fun clearConversationThreads(accountId: String) {
+    override suspend fun clearConversationThreads(accountId: String) {
         if (accountId.isBlank()) return
         store.clearConversationThreads(accountId)
     }
 
-    fun markConversationAsRead(
+    override fun markConversationAsRead(
         state: ConversationThreadsState,
         conversationId: String,
     ): ConversationThreadsState {
@@ -191,7 +192,7 @@ class LocalConversationCoordinator(
         )
     }
 
-    fun updateConversationFromChatState(
+    override fun updateConversationFromChatState(
         state: ConversationThreadsState,
         updatedState: ChatState,
     ): ConversationThreadsState {
@@ -212,7 +213,7 @@ class LocalConversationCoordinator(
         )
     }
 
-    fun createConversation(
+    override fun createConversation(
         state: ConversationThreadsState,
         displayName: String,
         mode: ConversationCreationMode,
@@ -237,7 +238,7 @@ class LocalConversationCoordinator(
         return state.copy(threads = listOf(nextThread) + state.threads)
     }
 
-    fun resolveConversationId(
+    override fun resolveConversationId(
         state: ConversationThreadsState,
         displayName: String,
     ): String {
@@ -245,7 +246,7 @@ class LocalConversationCoordinator(
         return state.threads.firstOrNull { it.title.equals(normalizedName, ignoreCase = true) }?.id.orEmpty()
     }
 
-    fun resolveOutgoingMessages(
+    override fun resolveOutgoingMessages(
         state: ConversationThreadsState,
         conversationId: String,
         messageIds: List<String>,
@@ -275,7 +276,7 @@ class LocalConversationCoordinator(
         )
     }
 
-    fun resolveDeliveredMessages(
+    override fun resolveDeliveredMessages(
         state: ConversationThreadsState,
         conversationId: String,
         messageIds: List<String>,
@@ -316,7 +317,7 @@ fun createLocalConversationStore(
 
 fun createLocalConversationCoordinator(
     context: Context,
-): LocalConversationCoordinator {
+) : ConversationRepository {
     return LocalConversationCoordinator(createLocalConversationStore(context))
 }
 
