@@ -8,8 +8,13 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
-    entities = [ConversationSnapshotEntity::class, LocalConversationEntity::class, LocalMessageEntity::class],
-    version = 2,
+    entities = [
+        ConversationSnapshotEntity::class,
+        LocalConversationEntity::class,
+        LocalMessageEntity::class,
+        LocalDraftAttachmentEntity::class,
+    ],
+    version = 3,
     exportSchema = false,
 )
 abstract class ArgusLensDatabase : RoomDatabase() {
@@ -71,13 +76,41 @@ abstract class ArgusLensDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `local_draft_attachment` (
+                        `storageId` TEXT NOT NULL,
+                        `id` TEXT NOT NULL,
+                        `accountId` TEXT NOT NULL,
+                        `conversationId` TEXT NOT NULL,
+                        `conversationStorageId` TEXT NOT NULL,
+                        `kind` TEXT NOT NULL,
+                        `title` TEXT NOT NULL,
+                        `summary` TEXT NOT NULL,
+                        `sortOrder` INTEGER NOT NULL,
+                        PRIMARY KEY(`storageId`),
+                        FOREIGN KEY(`conversationStorageId`) REFERENCES `local_conversation`(`storageId`) ON UPDATE NO ACTION ON DELETE CASCADE
+                    )
+                    """.trimIndent()
+                )
+                database.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_local_draft_attachment_accountId_conversationStorageId_sortOrder` ON `local_draft_attachment` (`accountId`, `conversationStorageId`, `sortOrder`)"
+                )
+                database.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_local_draft_attachment_conversationStorageId` ON `local_draft_attachment` (`conversationStorageId`)"
+                )
+            }
+        }
+
         fun getInstance(context: Context): ArgusLensDatabase {
             return INSTANCE ?: synchronized(this) {
                 INSTANCE ?: Room.databaseBuilder(
                     context = context.applicationContext,
                     klass = ArgusLensDatabase::class.java,
                     name = "argus-lens.db",
-                ).addMigrations(MIGRATION_1_2).build().also { INSTANCE = it }
+                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3).build().also { INSTANCE = it }
             }
         }
     }

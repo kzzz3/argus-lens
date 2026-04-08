@@ -33,11 +33,24 @@ class LocalConversationStore(
                                 body = message.body,
                                 timestampLabel = message.timestampLabel,
                                 isFromCurrentUser = message.isFromCurrentUser,
-                                deliveryStatus = ChatMessageDeliveryStatus.valueOf(message.deliveryStatus),
+                            deliveryStatus = ChatMessageDeliveryStatus.valueOf(message.deliveryStatus),
                             )
                         },
                     draftMessage = row.conversation.draftMessage,
-                    draftAttachments = restoreDraftAttachments(row.conversation.draftAttachmentsJson),
+                    draftAttachments = if (row.draftAttachments.isNotEmpty()) {
+                        row.draftAttachments
+                            .sortedBy { it.sortOrder }
+                            .map { attachment ->
+                                ChatDraftAttachment(
+                                    id = attachment.id,
+                                    kind = com.kzzz3.argus.lens.feature.inbox.ChatDraftAttachmentKind.valueOf(attachment.kind),
+                                    title = attachment.title,
+                                    summary = attachment.summary,
+                                )
+                            }
+                    } else {
+                        restoreDraftAttachments(row.conversation.draftAttachmentsJson)
+                    },
                     isVoiceRecording = row.conversation.isVoiceRecording,
                     voiceRecordingSeconds = row.conversation.voiceRecordingSeconds,
                 )
@@ -65,7 +78,7 @@ class LocalConversationStore(
                 subtitle = thread.subtitle,
                 unreadCount = thread.unreadCount,
                 draftMessage = thread.draftMessage,
-                draftAttachmentsJson = gson.toJson(thread.draftAttachments),
+                draftAttachmentsJson = "",
                 isVoiceRecording = thread.isVoiceRecording,
                 voiceRecordingSeconds = thread.voiceRecordingSeconds,
                 sortOrder = index,
@@ -90,11 +103,27 @@ class LocalConversationStore(
             }
         }
 
-        dao.replaceAccountSnapshot(accountId, conversationEntities, messageEntities)
+        val draftAttachmentEntities = threads.flatMap { thread ->
+            thread.draftAttachments.mapIndexed { index, attachment ->
+                LocalDraftAttachmentEntity(
+                    storageId = draftAttachmentStorageId(accountId, thread.id, attachment.id),
+                    id = attachment.id,
+                    accountId = accountId,
+                    conversationId = thread.id,
+                    conversationStorageId = conversationStorageId(accountId, thread.id),
+                    kind = attachment.kind.name,
+                    title = attachment.title,
+                    summary = attachment.summary,
+                    sortOrder = index,
+                )
+            }
+        }
+
+        dao.replaceAccountSnapshot(accountId, conversationEntities, messageEntities, draftAttachmentEntities)
     }
 
     suspend fun clearConversationThreads(accountId: String) {
-        dao.replaceAccountSnapshot(accountId, emptyList(), emptyList())
+        dao.replaceAccountSnapshot(accountId, emptyList(), emptyList(), emptyList())
         snapshotDao.deleteByKey(conversationSnapshotKey(accountId))
     }
 
@@ -181,4 +210,12 @@ private fun messageStorageId(
     messageId: String,
 ): String {
     return "${accountId.trim()}:${conversationId.trim()}:${messageId.trim()}"
+}
+
+private fun draftAttachmentStorageId(
+    accountId: String,
+    conversationId: String,
+    attachmentId: String,
+): String {
+    return "${accountId.trim()}:${conversationId.trim()}:${attachmentId.trim()}"
 }
