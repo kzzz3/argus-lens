@@ -10,13 +10,14 @@ import androidx.room.PrimaryKey
     foreignKeys = [
         ForeignKey(
             entity = LocalConversationEntity::class,
-            parentColumns = ["id"],
-            childColumns = ["conversationId"],
+            parentColumns = ["storageId"],
+            childColumns = ["conversationStorageId"],
             onDelete = ForeignKey.CASCADE,
         )
     ],
     indices = [
         Index(value = ["accountId", "conversationId", "sortOrder"]),
+        Index(value = ["conversationStorageId"]),
         Index(value = ["conversationId"]),
     ]
 )

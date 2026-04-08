@@ -26,8 +26,8 @@ abstract class ArgusLensDatabase : RoomDatabase() {
         private var INSTANCE: ArgusLensDatabase? = null
 
         private val MIGRATION_1_2 = object : Migration(1, 2) {
-            override fun migrate(database: SupportSQLiteDatabase) {
-                database.execSQL(
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
                     """
                     CREATE TABLE IF NOT EXISTS `local_conversation` (
                         `storageId` TEXT NOT NULL,
@@ -45,10 +45,10 @@ abstract class ArgusLensDatabase : RoomDatabase() {
                     )
                     """.trimIndent()
                 )
-                database.execSQL(
+                db.execSQL(
                     "CREATE INDEX IF NOT EXISTS `index_local_conversation_accountId_sortOrder` ON `local_conversation` (`accountId`, `sortOrder`)"
                 )
-                database.execSQL(
+                db.execSQL(
                     """
                     CREATE TABLE IF NOT EXISTS `local_message` (
                         `storageId` TEXT NOT NULL,
@@ -67,18 +67,21 @@ abstract class ArgusLensDatabase : RoomDatabase() {
                     )
                     """.trimIndent()
                 )
-                database.execSQL(
+                db.execSQL(
                     "CREATE INDEX IF NOT EXISTS `index_local_message_accountId_conversationId_sortOrder` ON `local_message` (`accountId`, `conversationId`, `sortOrder`)"
                 )
-                database.execSQL(
-                    "CREATE INDEX IF NOT EXISTS `index_local_message_conversationId` ON `local_message` (`conversationStorageId`)"
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_local_message_conversationStorageId` ON `local_message` (`conversationStorageId`)"
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_local_message_conversationId` ON `local_message` (`conversationId`)"
                 )
             }
         }
 
         private val MIGRATION_2_3 = object : Migration(2, 3) {
-            override fun migrate(database: SupportSQLiteDatabase) {
-                database.execSQL(
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
                     """
                     CREATE TABLE IF NOT EXISTS `local_draft_attachment` (
                         `storageId` TEXT NOT NULL,
@@ -95,10 +98,10 @@ abstract class ArgusLensDatabase : RoomDatabase() {
                     )
                     """.trimIndent()
                 )
-                database.execSQL(
+                db.execSQL(
                     "CREATE INDEX IF NOT EXISTS `index_local_draft_attachment_accountId_conversationStorageId_sortOrder` ON `local_draft_attachment` (`accountId`, `conversationStorageId`, `sortOrder`)"
                 )
-                database.execSQL(
+                db.execSQL(
                     "CREATE INDEX IF NOT EXISTS `index_local_draft_attachment_conversationStorageId` ON `local_draft_attachment` (`conversationStorageId`)"
                 )
             }
