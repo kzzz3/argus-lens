@@ -7,7 +7,29 @@ import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
-fun createAuthRepository(): AuthRepository {
+enum class AuthMode {
+    LOCAL,
+    REMOTE,
+}
+
+fun createAuthRepository(
+    mode: AuthMode = resolveAuthMode(),
+): AuthRepository {
+    return when (mode) {
+        AuthMode.LOCAL -> createLocalAuthRepository()
+        AuthMode.REMOTE -> createRemoteAuthRepository()
+    }
+}
+
+fun resolveAuthMode(): AuthMode {
+    return runCatching {
+        AuthMode.valueOf(BuildConfig.AUTH_MODE)
+    }.getOrElse {
+        AuthMode.LOCAL
+    }
+}
+
+fun createLocalAuthRepository(): AuthRepository {
     return LocalAuthRepository()
 }
 

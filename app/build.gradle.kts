@@ -26,11 +26,13 @@ android {
 
     buildTypes {
         debug {
+            buildConfigField("String", "AUTH_MODE", "\"LOCAL\"")
             buildConfigField("String", "AUTH_BASE_URL", "\"http://10.0.2.2:8080/\"")
         }
 
         release {
             isMinifyEnabled = false
+            buildConfigField("String", "AUTH_MODE", "\"LOCAL\"")
             buildConfigField("String", "AUTH_BASE_URL", "\"http://10.0.2.2:8080/\"")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
