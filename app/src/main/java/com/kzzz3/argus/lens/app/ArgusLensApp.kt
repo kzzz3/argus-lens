@@ -229,11 +229,11 @@ fun ArgusLensApp() {
                                     )
                                     hydratedConversationAccountId = null
                                     callSessionJob?.cancel()
-                                    callSessionState = CallSessionState()
                                     val signedInState = appShellCoordinator.handleSignedIn(appSessionState)
+                                    callSessionState = signedInState.callSessionState
                                     conversationThreadsState = signedInState.conversationThreadsState
                                     hydratedConversationAccountId = signedInState.hydratedConversationAccountId
-                                    selectedConversationId = ""
+                                    selectedConversationId = signedInState.selectedConversationId
                                     currentRoute = AppRoute.Inbox
                                 }
 
@@ -283,11 +283,11 @@ fun ArgusLensApp() {
                                     )
                                     hydratedConversationAccountId = null
                                     callSessionJob?.cancel()
-                                    callSessionState = CallSessionState()
                                     val signedInState = appShellCoordinator.handleSignedIn(appSessionState)
+                                    callSessionState = signedInState.callSessionState
                                     conversationThreadsState = signedInState.conversationThreadsState
                                     hydratedConversationAccountId = signedInState.hydratedConversationAccountId
-                                    selectedConversationId = ""
+                                    selectedConversationId = signedInState.selectedConversationId
                                     authFormState = AuthFormState(account = authResult.session.accountId)
                                     currentRoute = AppRoute.Inbox
                                 }

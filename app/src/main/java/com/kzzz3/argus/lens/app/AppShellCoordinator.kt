@@ -16,6 +16,8 @@ data class AppHydrationState(
 data class AppSignedInState(
     val conversationThreadsState: ConversationThreadsState,
     val hydratedConversationAccountId: String,
+    val callSessionState: CallSessionState,
+    val selectedConversationId: String,
 )
 
 data class AppSignedOutState(
@@ -92,6 +94,8 @@ class AppShellCoordinator(
         return AppSignedInState(
             conversationThreadsState = threads,
             hydratedConversationAccountId = session.accountId,
+            callSessionState = CallSessionState(),
+            selectedConversationId = "",
         )
     }
 
