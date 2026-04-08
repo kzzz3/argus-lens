@@ -95,6 +95,12 @@ fun ArgusLensApp() {
     val context = LocalContext.current
     val localConversationCoordinator = remember(context) { createLocalConversationCoordinator(context) }
     val localSessionStore = remember(context) { createLocalSessionStore(context) }
+    val appShellCoordinator = remember(localConversationCoordinator, localSessionStore) {
+        AppShellCoordinator(
+            sessionRepository = localSessionStore,
+            conversationRepository = localConversationCoordinator,
+        )
+    }
     var callSessionJob by remember { mutableStateOf<Job?>(null) }
     var hydratedConversationAccountId by remember { mutableStateOf<String?>(null) }
     var hydratedSession by remember { mutableStateOf(false) }
@@ -155,43 +161,34 @@ fun ArgusLensApp() {
     }
 
     LaunchedEffect(Unit) {
-        appSessionState = localSessionStore.loadSession()
+        val hydratedState = appShellCoordinator.hydrateAppState(previewThreadsState)
+        appSessionState = hydratedState.session
+        conversationThreadsState = hydratedState.conversationThreadsState
+        hydratedConversationAccountId = hydratedState.hydratedConversationAccountId
         hydratedSession = true
     }
 
     LaunchedEffect(hydratedSession, appSessionState) {
-        if (hydratedSession) {
-            if (appSessionState.isAuthenticated) {
-                localSessionStore.saveSession(appSessionState)
-            } else {
-                localSessionStore.clearSession()
-            }
-        }
+        appShellCoordinator.persistSession(hydratedSession, appSessionState)
     }
 
     LaunchedEffect(appSessionState.isAuthenticated, appSessionState.accountId, appSessionState.displayName) {
         if (hydratedSession && appSessionState.isAuthenticated) {
             hydratedConversationAccountId = null
-            conversationThreadsState = localConversationCoordinator.loadOrCreateConversationThreads(
-                accountId = appSessionState.accountId,
-                currentUserDisplayName = appSessionState.displayName,
-            )
-            hydratedConversationAccountId = appSessionState.accountId
+            val signedInState = appShellCoordinator.handleSignedIn(appSessionState)
+            conversationThreadsState = signedInState.conversationThreadsState
+            hydratedConversationAccountId = signedInState.hydratedConversationAccountId
         } else {
             hydratedConversationAccountId = null
         }
     }
 
     LaunchedEffect(appSessionState.isAuthenticated, appSessionState.accountId, hydratedConversationAccountId, conversationThreadsState) {
-        if (
-            appSessionState.isAuthenticated &&
-            hydratedConversationAccountId == appSessionState.accountId
-        ) {
-            localConversationCoordinator.saveConversationThreads(
-                accountId = appSessionState.accountId,
-                state = conversationThreadsState,
-            )
-        }
+        appShellCoordinator.persistConversationThreads(
+            session = appSessionState,
+            hydratedConversationAccountId = hydratedConversationAccountId,
+            state = conversationThreadsState,
+        )
     }
 
     when (currentRoute) {
@@ -233,11 +230,9 @@ fun ArgusLensApp() {
                                     hydratedConversationAccountId = null
                                     callSessionJob?.cancel()
                                     callSessionState = CallSessionState()
-                                    conversationThreadsState = localConversationCoordinator.loadOrCreateConversationThreads(
-                                        accountId = authResult.session.accountId,
-                                        currentUserDisplayName = authResult.session.displayName,
-                                    )
-                                    hydratedConversationAccountId = authResult.session.accountId
+                                    val signedInState = appShellCoordinator.handleSignedIn(appSessionState)
+                                    conversationThreadsState = signedInState.conversationThreadsState
+                                    hydratedConversationAccountId = signedInState.hydratedConversationAccountId
                                     selectedConversationId = ""
                                     currentRoute = AppRoute.Inbox
                                 }
@@ -289,11 +284,9 @@ fun ArgusLensApp() {
                                     hydratedConversationAccountId = null
                                     callSessionJob?.cancel()
                                     callSessionState = CallSessionState()
-                                    conversationThreadsState = localConversationCoordinator.loadOrCreateConversationThreads(
-                                        accountId = authResult.session.accountId,
-                                        currentUserDisplayName = authResult.session.displayName,
-                                    )
-                                    hydratedConversationAccountId = authResult.session.accountId
+                                    val signedInState = appShellCoordinator.handleSignedIn(appSessionState)
+                                    conversationThreadsState = signedInState.conversationThreadsState
+                                    hydratedConversationAccountId = signedInState.hydratedConversationAccountId
                                     selectedConversationId = ""
                                     authFormState = AuthFormState(account = authResult.session.accountId)
                                     currentRoute = AppRoute.Inbox
@@ -329,15 +322,16 @@ fun ArgusLensApp() {
                     InboxAction.OpenContacts -> currentRoute = AppRoute.Contacts
 
                     InboxAction.SignOutToHud -> {
+                        val signedOutState = appShellCoordinator.createSignedOutState(previewThreadsState)
                         appSessionState = AppSessionState()
-                        authFormState = AuthFormState()
-                        registerFormState = RegisterFormState()
-                        contactsStateModel = ContactsState()
+                        authFormState = signedOutState.authFormState
+                        registerFormState = signedOutState.registerFormState
+                        contactsStateModel = signedOutState.contactsState
                         callSessionJob?.cancel()
-                        callSessionState = CallSessionState()
+                        callSessionState = signedOutState.callSessionState
                         hydratedConversationAccountId = null
-                        conversationThreadsState = previewThreadsState
-                        selectedConversationId = ""
+                        conversationThreadsState = signedOutState.conversationThreadsState
+                        selectedConversationId = signedOutState.selectedConversationId
                         currentRoute = AppRoute.Home
                     }
                 }
@@ -417,15 +411,16 @@ fun ArgusLensApp() {
                             InboxAction.OpenContacts -> currentRoute = AppRoute.Contacts
 
                             InboxAction.SignOutToHud -> {
+                                val signedOutState = appShellCoordinator.createSignedOutState(previewThreadsState)
                                 appSessionState = AppSessionState()
-                                authFormState = AuthFormState()
-                                registerFormState = RegisterFormState()
-                                contactsStateModel = ContactsState()
+                                authFormState = signedOutState.authFormState
+                                registerFormState = signedOutState.registerFormState
+                                contactsStateModel = signedOutState.contactsState
                                 callSessionJob?.cancel()
-                                callSessionState = CallSessionState()
+                                callSessionState = signedOutState.callSessionState
                                 hydratedConversationAccountId = null
-                                conversationThreadsState = previewThreadsState
-                                selectedConversationId = ""
+                                conversationThreadsState = signedOutState.conversationThreadsState
+                                selectedConversationId = signedOutState.selectedConversationId
                                 currentRoute = AppRoute.Home
                             }
                         }
