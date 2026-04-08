@@ -15,6 +15,7 @@ import com.kzzz3.argus.lens.app.session.createAuthenticatedSession
 import com.kzzz3.argus.lens.data.auth.AuthRepositoryResult
 import com.kzzz3.argus.lens.data.auth.createAuthRepository
 import com.kzzz3.argus.lens.data.local.createLocalConversationCoordinator
+import com.kzzz3.argus.lens.data.session.createLocalSessionStore
 import com.kzzz3.argus.lens.feature.auth.AuthEntryAction
 import com.kzzz3.argus.lens.feature.auth.AuthEntryEffect
 import com.kzzz3.argus.lens.feature.auth.AuthEntryScreen
@@ -93,8 +94,10 @@ fun ArgusLensApp() {
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
     val localConversationCoordinator = remember(context) { createLocalConversationCoordinator(context) }
+    val localSessionStore = remember(context) { createLocalSessionStore(context) }
     var callSessionJob by remember { mutableStateOf<Job?>(null) }
     var hydratedConversationAccountId by remember { mutableStateOf<String?>(null) }
+    var hydratedSession by remember { mutableStateOf(false) }
     val previewThreadsState = remember {
         localConversationCoordinator.createPreviewState(currentUserDisplayName = "Argus Tester")
     }
@@ -151,8 +154,23 @@ fun ArgusLensApp() {
         createCallSessionUiState(callSessionState)
     }
 
+    LaunchedEffect(Unit) {
+        appSessionState = localSessionStore.loadSession()
+        hydratedSession = true
+    }
+
+    LaunchedEffect(hydratedSession, appSessionState) {
+        if (hydratedSession) {
+            if (appSessionState.isAuthenticated) {
+                localSessionStore.saveSession(appSessionState)
+            } else {
+                localSessionStore.clearSession()
+            }
+        }
+    }
+
     LaunchedEffect(appSessionState.isAuthenticated, appSessionState.accountId, appSessionState.displayName) {
-        if (appSessionState.isAuthenticated) {
+        if (hydratedSession && appSessionState.isAuthenticated) {
             hydratedConversationAccountId = null
             conversationThreadsState = localConversationCoordinator.loadOrCreateConversationThreads(
                 accountId = appSessionState.accountId,
