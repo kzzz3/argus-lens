@@ -1,8 +1,9 @@
 package com.kzzz3.argus.lens.feature.auth
 
-import androidx.compose.runtime.saveable.Saver
-import androidx.compose.runtime.saveable.listSaver
+import android.os.Parcelable
+import kotlinx.parcelize.Parcelize
 
+@Parcelize
 data class AuthFormState(
     val mode: AuthLoginMode = AuthLoginMode.Password,
     val account: String = "",
@@ -12,37 +13,4 @@ data class AuthFormState(
     val submitAttempted: Boolean = false,
     val isSubmitting: Boolean = false,
     val submitResult: String? = null,
-) {
-    companion object {
-        val Saver: Saver<AuthFormState, Any> = listSaver(
-            save = { state ->
-                listOf(
-                    state.mode.name,
-                    state.account,
-                    state.password,
-                    state.accountTouched,
-                    state.passwordTouched,
-                    state.submitAttempted,
-                    state.isSubmitting,
-                    state.submitResult.orEmpty(),
-                )
-            },
-            restore = { values ->
-                if (values.size != 8) {
-                    null
-                } else {
-                    AuthFormState(
-                        mode = AuthLoginMode.valueOf(values[0] as String),
-                        account = values[1] as String,
-                        password = values[2] as String,
-                        accountTouched = values[3] as Boolean,
-                        passwordTouched = values[4] as Boolean,
-                        submitAttempted = values[5] as Boolean,
-                        isSubmitting = values[6] as Boolean,
-                        submitResult = (values[7] as String).ifEmpty { null },
-                    )
-                }
-            }
-        )
-    }
-}
+) : Parcelable

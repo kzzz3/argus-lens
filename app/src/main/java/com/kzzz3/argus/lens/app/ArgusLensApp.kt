@@ -1,5 +1,6 @@
 package com.kzzz3.argus.lens.app
 
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -7,11 +8,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import com.kzzz3.argus.lens.app.navigation.AppRoute
 import com.kzzz3.argus.lens.app.session.AppSessionState
 import com.kzzz3.argus.lens.app.session.createAuthenticatedSession
 import com.kzzz3.argus.lens.data.auth.AuthRepositoryResult
 import com.kzzz3.argus.lens.data.auth.createAuthRepository
+import com.kzzz3.argus.lens.data.local.createLocalConversationCoordinator
 import com.kzzz3.argus.lens.feature.auth.AuthEntryAction
 import com.kzzz3.argus.lens.feature.auth.AuthEntryEffect
 import com.kzzz3.argus.lens.feature.auth.AuthEntryScreen
@@ -41,13 +44,13 @@ import com.kzzz3.argus.lens.feature.inbox.ChatEffect
 import com.kzzz3.argus.lens.feature.inbox.ChatMessageDeliveryStatus
 import com.kzzz3.argus.lens.feature.inbox.ChatScreen
 import com.kzzz3.argus.lens.feature.inbox.ChatState
+import com.kzzz3.argus.lens.feature.inbox.ConversationThreadsState
 import com.kzzz3.argus.lens.feature.inbox.InboxAction
 import com.kzzz3.argus.lens.feature.inbox.InboxConversationThread
 import com.kzzz3.argus.lens.feature.inbox.InboxScreen
 import com.kzzz3.argus.lens.feature.inbox.createChatUiState
 import com.kzzz3.argus.lens.feature.inbox.createInboxSampleThreads
 import com.kzzz3.argus.lens.feature.inbox.createInboxUiState
-import com.kzzz3.argus.lens.feature.inbox.inboxConversationThreadListSaver
 import com.kzzz3.argus.lens.feature.inbox.reduceChatState
 import com.kzzz3.argus.lens.feature.register.RegisterAction
 import com.kzzz3.argus.lens.feature.register.RegisterEffect
@@ -69,32 +72,36 @@ fun ArgusLensApp() {
             primaryHint = "Current module: local inbox + chat shell"
         )
     }
-    var currentRoute by rememberSaveable(stateSaver = AppRoute.Saver) { mutableStateOf(AppRoute.Home) }
-    var authFormState by rememberSaveable(stateSaver = AuthFormState.Saver) {
+    var currentRoute by rememberSaveable { mutableStateOf(AppRoute.Home) }
+    var authFormState by rememberSaveable {
         mutableStateOf(AuthFormState())
     }
-    var registerFormState by rememberSaveable(stateSaver = RegisterFormState.Saver) {
+    var registerFormState by rememberSaveable {
         mutableStateOf(RegisterFormState())
     }
-    var appSessionState by rememberSaveable(stateSaver = AppSessionState.Saver) {
+    var appSessionState by rememberSaveable {
         mutableStateOf(AppSessionState())
     }
-    var contactsStateModel by rememberSaveable(stateSaver = ContactsState.Saver) {
+    var contactsStateModel by rememberSaveable {
         mutableStateOf(ContactsState())
     }
-    var callSessionState by rememberSaveable(stateSaver = CallSessionState.Saver) {
+    var callSessionState by rememberSaveable {
         mutableStateOf(CallSessionState())
     }
     var selectedConversationId by rememberSaveable { mutableStateOf("") }
     val authRepository = remember { createAuthRepository() }
     val coroutineScope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val localConversationCoordinator = remember(context) { createLocalConversationCoordinator(context) }
     var callSessionJob by remember { mutableStateOf<Job?>(null) }
-    val initialThreads = remember {
-        createInboxSampleThreads(currentUserDisplayName = "Argus Tester")
+    var hydratedConversationAccountId by remember { mutableStateOf<String?>(null) }
+    val previewThreadsState = remember {
+        localConversationCoordinator.createPreviewState(currentUserDisplayName = "Argus Tester")
     }
-    var conversationThreads by rememberSaveable(stateSaver = inboxConversationThreadListSaver()) {
-        mutableStateOf(initialThreads)
+    var conversationThreadsState by remember {
+        mutableStateOf(previewThreadsState)
     }
+    val conversationThreads = conversationThreadsState.threads
 
     val authState = remember(authFormState) {
         createAuthEntryUiState(
@@ -144,6 +151,31 @@ fun ArgusLensApp() {
         createCallSessionUiState(callSessionState)
     }
 
+    LaunchedEffect(appSessionState.isAuthenticated, appSessionState.accountId, appSessionState.displayName) {
+        if (appSessionState.isAuthenticated) {
+            hydratedConversationAccountId = null
+            conversationThreadsState = localConversationCoordinator.loadOrCreateConversationThreads(
+                accountId = appSessionState.accountId,
+                currentUserDisplayName = appSessionState.displayName,
+            )
+            hydratedConversationAccountId = appSessionState.accountId
+        } else {
+            hydratedConversationAccountId = null
+        }
+    }
+
+    LaunchedEffect(appSessionState.isAuthenticated, appSessionState.accountId, hydratedConversationAccountId, conversationThreadsState) {
+        if (
+            appSessionState.isAuthenticated &&
+            hydratedConversationAccountId == appSessionState.accountId
+        ) {
+            localConversationCoordinator.saveConversationThreads(
+                accountId = appSessionState.accountId,
+                state = conversationThreadsState,
+            )
+        }
+    }
+
     when (currentRoute) {
         AppRoute.Home -> HomeHudScreen(
             state = homeState,
@@ -180,11 +212,14 @@ fun ArgusLensApp() {
                                         displayName = authResult.session.displayName,
                                         accessToken = authResult.session.accessToken,
                                     )
+                                    hydratedConversationAccountId = null
                                     callSessionJob?.cancel()
                                     callSessionState = CallSessionState()
-                                    conversationThreads = createInboxSampleThreads(
+                                    conversationThreadsState = localConversationCoordinator.loadOrCreateConversationThreads(
+                                        accountId = authResult.session.accountId,
                                         currentUserDisplayName = authResult.session.displayName,
                                     )
+                                    hydratedConversationAccountId = authResult.session.accountId
                                     selectedConversationId = ""
                                     currentRoute = AppRoute.Inbox
                                 }
@@ -233,11 +268,14 @@ fun ArgusLensApp() {
                                         displayName = authResult.session.displayName,
                                         accessToken = authResult.session.accessToken,
                                     )
+                                    hydratedConversationAccountId = null
                                     callSessionJob?.cancel()
                                     callSessionState = CallSessionState()
-                                    conversationThreads = createInboxSampleThreads(
+                                    conversationThreadsState = localConversationCoordinator.loadOrCreateConversationThreads(
+                                        accountId = authResult.session.accountId,
                                         currentUserDisplayName = authResult.session.displayName,
                                     )
+                                    hydratedConversationAccountId = authResult.session.accountId
                                     selectedConversationId = ""
                                     authFormState = AuthFormState(account = authResult.session.accountId)
                                     currentRoute = AppRoute.Inbox
@@ -262,9 +300,14 @@ fun ArgusLensApp() {
             onAction = { action ->
                 when (action) {
                     is InboxAction.OpenConversation -> {
-                        conversationThreads = markConversationAsRead(
-                            threads = conversationThreads,
-                            conversationId = action.conversationId,
+                        conversationThreadsState = updateConversationThreadsState(
+                            currentState = conversationThreadsState,
+                            transform = { threads ->
+                                markConversationAsRead(
+                                    threads = threads,
+                                    conversationId = action.conversationId,
+                                )
+                            }
                         )
                         selectedConversationId = action.conversationId
                         currentRoute = AppRoute.Chat
@@ -279,7 +322,8 @@ fun ArgusLensApp() {
                         contactsStateModel = ContactsState()
                         callSessionJob?.cancel()
                         callSessionState = CallSessionState()
-                        conversationThreads = initialThreads
+                        hydratedConversationAccountId = null
+                        conversationThreadsState = previewThreadsState
                         selectedConversationId = ""
                         currentRoute = AppRoute.Home
                     }
@@ -298,9 +342,14 @@ fun ArgusLensApp() {
 
                 when (val effect = result.effect) {
                     is ContactsEffect.OpenConversation -> {
-                        conversationThreads = markConversationAsRead(
-                            threads = conversationThreads,
-                            conversationId = effect.conversationId,
+                        conversationThreadsState = updateConversationThreadsState(
+                            currentState = conversationThreadsState,
+                            transform = { threads ->
+                                markConversationAsRead(
+                                    threads = threads,
+                                    conversationId = effect.conversationId,
+                                )
+                            }
                         )
                         selectedConversationId = effect.conversationId
                         currentRoute = AppRoute.Chat
@@ -312,7 +361,7 @@ fun ArgusLensApp() {
                             displayName = effect.displayName,
                             mode = effect.mode,
                         )
-                        conversationThreads = nextThreads
+                        conversationThreadsState = conversationThreadsState.copy(threads = nextThreads)
                         selectedConversationId = resolveConversationId(
                             threads = nextThreads,
                             displayName = effect.displayName,
@@ -350,11 +399,17 @@ fun ArgusLensApp() {
                     onAction = { action ->
                         when (action) {
                             is InboxAction.OpenConversation -> {
-                                conversationThreads = markConversationAsRead(
-                                    threads = conversationThreads,
-                                    conversationId = action.conversationId,
+                                conversationThreadsState = updateConversationThreadsState(
+                                    currentState = conversationThreadsState,
+                                    transform = { threads ->
+                                        markConversationAsRead(
+                                            threads = threads,
+                                            conversationId = action.conversationId,
+                                        )
+                                    }
                                 )
                                 selectedConversationId = action.conversationId
+                                currentRoute = AppRoute.Chat
                             }
 
                             InboxAction.OpenContacts -> currentRoute = AppRoute.Contacts
@@ -366,7 +421,8 @@ fun ArgusLensApp() {
                                 contactsStateModel = ContactsState()
                                 callSessionJob?.cancel()
                                 callSessionState = CallSessionState()
-                                conversationThreads = initialThreads
+                                hydratedConversationAccountId = null
+                                conversationThreadsState = previewThreadsState
                                 selectedConversationId = ""
                                 currentRoute = AppRoute.Home
                             }
@@ -381,9 +437,14 @@ fun ArgusLensApp() {
                             currentState = resolvedChatState,
                             action = action,
                         )
-                        conversationThreads = updateConversationThread(
-                            threads = conversationThreads,
-                            updatedState = result.state,
+                        conversationThreadsState = updateConversationThreadsState(
+                            currentState = conversationThreadsState,
+                            transform = { threads ->
+                                updateConversationThread(
+                                    threads = threads,
+                                    updatedState = result.state,
+                                )
+                            }
                         )
 
                         when (result.effect) {
@@ -416,16 +477,26 @@ fun ArgusLensApp() {
                             is ChatEffect.DispatchOutgoingMessages -> {
                                 coroutineScope.launch {
                                     delay(350)
-                                    conversationThreads = resolveOutgoingMessageStatuses(
-                                        threads = conversationThreads,
-                                        conversationId = result.effect.conversationId,
-                                        messageIds = result.effect.messageIds,
+                                    conversationThreadsState = updateConversationThreadsState(
+                                        currentState = conversationThreadsState,
+                                        transform = { threads ->
+                                            resolveOutgoingMessageStatuses(
+                                                threads = threads,
+                                                conversationId = result.effect.conversationId,
+                                                messageIds = result.effect.messageIds,
+                                            )
+                                        }
                                     )
                                     delay(700)
-                                    conversationThreads = resolveDeliveredMessageStatuses(
-                                        threads = conversationThreads,
-                                        conversationId = result.effect.conversationId,
-                                        messageIds = result.effect.messageIds,
+                                    conversationThreadsState = updateConversationThreadsState(
+                                        currentState = conversationThreadsState,
+                                        transform = { threads ->
+                                            resolveDeliveredMessageStatuses(
+                                                threads = threads,
+                                                conversationId = result.effect.conversationId,
+                                                messageIds = result.effect.messageIds,
+                                            )
+                                        }
                                     )
                                 }
                             }
@@ -436,6 +507,13 @@ fun ArgusLensApp() {
             }
         }
     }
+}
+
+private fun updateConversationThreadsState(
+    currentState: ConversationThreadsState,
+    transform: (List<InboxConversationThread>) -> List<InboxConversationThread>,
+): ConversationThreadsState {
+    return currentState.copy(threads = transform(currentState.threads))
 }
 
 private fun markConversationAsRead(

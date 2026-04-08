@@ -1,8 +1,10 @@
 package com.kzzz3.argus.lens.app.navigation
 
-import androidx.compose.runtime.saveable.Saver
+import android.os.Parcelable
+import kotlinx.parcelize.Parcelize
 
-enum class AppRoute {
+@Parcelize
+enum class AppRoute: Parcelable {
     Home,
     AuthEntry,
     RegisterEntry,
@@ -10,14 +12,4 @@ enum class AppRoute {
     Contacts,
     CallSession,
     Chat;
-
-    companion object {
-        val Saver: Saver<AppRoute, Any> = Saver(
-            save = { route -> route.name },
-            restore = { value ->
-                val raw = value as? String ?: return@Saver null
-                entries.firstOrNull { it.name == raw }
-            },
-        )
-    }
 }
