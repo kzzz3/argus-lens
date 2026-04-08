@@ -3,9 +3,11 @@ package com.kzzz3.argus.lens.data.local
 import android.content.Context
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
-import com.kzzz3.argus.lens.feature.inbox.ChatDraftAttachment
+import com.kzzz3.argus.lens.feature.contacts.ConversationCreationMode
 import com.kzzz3.argus.lens.feature.inbox.ChatMessageDeliveryStatus
 import com.kzzz3.argus.lens.feature.inbox.ChatMessageItem
+import com.kzzz3.argus.lens.feature.inbox.ChatState
+import com.kzzz3.argus.lens.feature.inbox.ChatDraftAttachment
 import com.kzzz3.argus.lens.feature.inbox.ConversationThreadsState
 import com.kzzz3.argus.lens.feature.inbox.InboxConversationThread
 import com.kzzz3.argus.lens.feature.inbox.createInboxSampleThreads
@@ -173,6 +175,132 @@ class LocalConversationCoordinator(
         if (accountId.isBlank()) return
         store.clearConversationThreads(accountId)
     }
+
+    fun markConversationAsRead(
+        state: ConversationThreadsState,
+        conversationId: String,
+    ): ConversationThreadsState {
+        return state.copy(
+            threads = state.threads.map { thread ->
+                if (thread.id == conversationId) {
+                    thread.copy(unreadCount = 0)
+                } else {
+                    thread
+                }
+            }
+        )
+    }
+
+    fun updateConversationFromChatState(
+        state: ConversationThreadsState,
+        updatedState: ChatState,
+    ): ConversationThreadsState {
+        return state.copy(
+            threads = state.threads.map { thread ->
+                if (thread.id == updatedState.conversationId) {
+                    thread.copy(
+                        messages = updatedState.messages,
+                        draftMessage = updatedState.draftMessage,
+                        draftAttachments = updatedState.draftAttachments,
+                        isVoiceRecording = updatedState.isVoiceRecording,
+                        voiceRecordingSeconds = updatedState.voiceRecordingSeconds,
+                    )
+                } else {
+                    thread
+                }
+            }
+        )
+    }
+
+    fun createConversation(
+        state: ConversationThreadsState,
+        displayName: String,
+        mode: ConversationCreationMode,
+    ): ConversationThreadsState {
+        val normalizedName = displayName.trim()
+        if (normalizedName.isEmpty()) return state
+
+        val existingThread = state.threads.firstOrNull { it.title.equals(normalizedName, ignoreCase = true) }
+        if (existingThread != null) return state
+
+        val nextThread = InboxConversationThread(
+            id = createConversationId(normalizedName, state.threads.size + 1),
+            title = normalizedName,
+            subtitle = if (mode == ConversationCreationMode.Group) {
+                "New local group conversation"
+            } else {
+                "New local conversation"
+            },
+            unreadCount = 0,
+            messages = emptyList(),
+        )
+        return state.copy(threads = listOf(nextThread) + state.threads)
+    }
+
+    fun resolveConversationId(
+        state: ConversationThreadsState,
+        displayName: String,
+    ): String {
+        val normalizedName = displayName.trim()
+        return state.threads.firstOrNull { it.title.equals(normalizedName, ignoreCase = true) }?.id.orEmpty()
+    }
+
+    fun resolveOutgoingMessages(
+        state: ConversationThreadsState,
+        conversationId: String,
+        messageIds: List<String>,
+    ): ConversationThreadsState {
+        return state.copy(
+            threads = state.threads.map { thread ->
+                if (thread.id == conversationId) {
+                    thread.copy(
+                        messages = thread.messages.map { message ->
+                            if (message.id in messageIds) {
+                                message.copy(
+                                    deliveryStatus = if (shouldFailOutgoingMessage(message)) {
+                                        ChatMessageDeliveryStatus.Failed
+                                    } else {
+                                        ChatMessageDeliveryStatus.Sent
+                                    }
+                                )
+                            } else {
+                                message
+                            }
+                        }
+                    )
+                } else {
+                    thread
+                }
+            }
+        )
+    }
+
+    fun resolveDeliveredMessages(
+        state: ConversationThreadsState,
+        conversationId: String,
+        messageIds: List<String>,
+    ): ConversationThreadsState {
+        return state.copy(
+            threads = state.threads.map { thread ->
+                if (thread.id == conversationId) {
+                    thread.copy(
+                        messages = thread.messages.map { message ->
+                            if (
+                                message.id in messageIds &&
+                                message.deliveryStatus == ChatMessageDeliveryStatus.Sent
+                            ) {
+                                message.copy(deliveryStatus = ChatMessageDeliveryStatus.Delivered)
+                            } else {
+                                message
+                            }
+                        }
+                    )
+                } else {
+                    thread
+                }
+            }
+        )
+    }
 }
 
 fun createLocalConversationStore(
@@ -218,4 +346,22 @@ private fun draftAttachmentStorageId(
     attachmentId: String,
 ): String {
     return "${accountId.trim()}:${conversationId.trim()}:${attachmentId.trim()}"
+}
+
+private fun shouldFailOutgoingMessage(
+    message: ChatMessageItem,
+): Boolean {
+    return message.body.startsWith("[Video]") || message.body.contains("#fail", ignoreCase = true)
+}
+
+private fun createConversationId(
+    displayName: String,
+    ordinal: Int,
+): String {
+    val slug = displayName
+        .lowercase()
+        .replace(Regex("[^a-z0-9]+"), "-")
+        .trim('-')
+        .ifEmpty { "local-contact" }
+    return "conv-$slug-$ordinal"
 }
