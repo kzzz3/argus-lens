@@ -14,7 +14,9 @@ import com.kzzz3.argus.lens.app.session.AppSessionState
 import com.kzzz3.argus.lens.app.session.createAuthenticatedSession
 import com.kzzz3.argus.lens.data.auth.AuthRepositoryResult
 import com.kzzz3.argus.lens.data.auth.createAuthRepository
+import com.kzzz3.argus.lens.data.conversation.ConversationRepository
 import com.kzzz3.argus.lens.data.local.createLocalConversationCoordinator
+import com.kzzz3.argus.lens.data.session.SessionRepository
 import com.kzzz3.argus.lens.data.session.createLocalSessionStore
 import com.kzzz3.argus.lens.feature.auth.AuthEntryAction
 import com.kzzz3.argus.lens.feature.auth.AuthEntryEffect
@@ -93,19 +95,19 @@ fun ArgusLensApp() {
     val authRepository = remember { createAuthRepository() }
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
-    val localConversationCoordinator = remember(context) { createLocalConversationCoordinator(context) }
-    val localSessionStore = remember(context) { createLocalSessionStore(context) }
-    val appShellCoordinator = remember(localConversationCoordinator, localSessionStore) {
+    val conversationRepository: ConversationRepository = remember(context) { createLocalConversationCoordinator(context) }
+    val sessionRepository: SessionRepository = remember(context) { createLocalSessionStore(context) }
+    val appShellCoordinator = remember(conversationRepository, sessionRepository) {
         AppShellCoordinator(
-            sessionRepository = localSessionStore,
-            conversationRepository = localConversationCoordinator,
+            sessionRepository = sessionRepository,
+            conversationRepository = conversationRepository,
         )
     }
     var callSessionJob by remember { mutableStateOf<Job?>(null) }
     var hydratedConversationAccountId by remember { mutableStateOf<String?>(null) }
     var hydratedSession by remember { mutableStateOf(false) }
     val previewThreadsState = remember {
-        localConversationCoordinator.createPreviewState(currentUserDisplayName = "Argus Tester")
+        conversationRepository.createPreviewState(currentUserDisplayName = "Argus Tester")
     }
     var conversationThreadsState by remember {
         mutableStateOf(previewThreadsState)
@@ -311,7 +313,7 @@ fun ArgusLensApp() {
             onAction = { action ->
                 when (action) {
                     is InboxAction.OpenConversation -> {
-                        conversationThreadsState = localConversationCoordinator.markConversationAsRead(
+                        conversationThreadsState = conversationRepository.markConversationAsRead(
                             state = conversationThreadsState,
                             conversationId = action.conversationId,
                         )
@@ -349,7 +351,7 @@ fun ArgusLensApp() {
 
                 when (val effect = result.effect) {
                     is ContactsEffect.OpenConversation -> {
-                        conversationThreadsState = localConversationCoordinator.markConversationAsRead(
+                        conversationThreadsState = conversationRepository.markConversationAsRead(
                             state = conversationThreadsState,
                             conversationId = effect.conversationId,
                         )
@@ -358,12 +360,12 @@ fun ArgusLensApp() {
                     }
 
                     is ContactsEffect.CreateConversation -> {
-                        conversationThreadsState = localConversationCoordinator.createConversation(
+                        conversationThreadsState = conversationRepository.createConversation(
                             state = conversationThreadsState,
                             displayName = effect.displayName,
                             mode = effect.mode,
                         )
-                        selectedConversationId = localConversationCoordinator.resolveConversationId(
+                        selectedConversationId = conversationRepository.resolveConversationId(
                             state = conversationThreadsState,
                             displayName = effect.displayName,
                         )
@@ -400,7 +402,7 @@ fun ArgusLensApp() {
                     onAction = { action ->
                         when (action) {
                             is InboxAction.OpenConversation -> {
-                                conversationThreadsState = localConversationCoordinator.markConversationAsRead(
+                                conversationThreadsState = conversationRepository.markConversationAsRead(
                                     state = conversationThreadsState,
                                     conversationId = action.conversationId,
                                 )
@@ -434,7 +436,7 @@ fun ArgusLensApp() {
                             currentState = resolvedChatState,
                             action = action,
                         )
-                        conversationThreadsState = localConversationCoordinator.updateConversationFromChatState(
+                        conversationThreadsState = conversationRepository.updateConversationFromChatState(
                             state = conversationThreadsState,
                             updatedState = result.state,
                         )
@@ -469,13 +471,13 @@ fun ArgusLensApp() {
                             is ChatEffect.DispatchOutgoingMessages -> {
                                 coroutineScope.launch {
                                     delay(350)
-                                    conversationThreadsState = localConversationCoordinator.resolveOutgoingMessages(
+                                    conversationThreadsState = conversationRepository.resolveOutgoingMessages(
                                         state = conversationThreadsState,
                                         conversationId = result.effect.conversationId,
                                         messageIds = result.effect.messageIds,
                                     )
                                     delay(700)
-                                    conversationThreadsState = localConversationCoordinator.resolveDeliveredMessages(
+                                    conversationThreadsState = conversationRepository.resolveDeliveredMessages(
                                         state = conversationThreadsState,
                                         conversationId = result.effect.conversationId,
                                         messageIds = result.effect.messageIds,
