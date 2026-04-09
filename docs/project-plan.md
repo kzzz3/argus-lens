@@ -214,10 +214,74 @@ Lens becomes the Android simulator of smart glasses:
 - no heavy media filtering logic implemented directly in Compose or ViewModels
 - no backend transaction settlement logic here
 
-## 12. Immediate Next Design Tasks
+## 12. Current Progress Checklist
 
-1. define Stage 1 navigation map for chat, media, call, and pay flows
-2. define Room entities for conversations, messages, sync cursors, and upload queue
-3. define WorkManager strategy for reconnect sync and failed upload retry
-4. define Stage 2 HUD state model and gesture event contract
-5. define the JNI-facing service boundary for Retina integration
+### 12.1 Completed foundation and shell work
+- [x] Android Studio-compatible Compose host app baseline is running
+- [x] Local-first auth shell with explicit `AUTH_MODE` boundary (`LOCAL` / `REMOTE`)
+- [x] Login and registration screens with reducer-driven validation and submission flow
+- [x] Inbox shell, contacts shell, chat shell, and call shell are all in place
+- [x] Single-chat and group-chat local creation entry is in place
+- [x] Chat composer supports text, image, video, and voice draft paths
+- [x] Voice draft recording shell includes timer/cancel/finish behavior
+- [x] Call shell includes local connecting/active/ended lifecycle and timer UX
+- [x] Message state model includes sending / sent / delivered / failed / recalled
+- [x] Failed messages can remain local and be retried instead of disappearing
+- [x] Recall path exists in local UI and now has a remote path as well
+- [x] Chat timeline auto-scrolls to the latest message
+
+### 12.2 Completed local persistence work
+- [x] Saveable state was migrated from handwritten `Saver` helpers to `@Parcelize`
+- [x] Session persistence moved to DataStore
+- [x] Local conversation persistence moved from saveable-only state to Room-backed storage
+- [x] Room now has structured tables for conversations, messages, and draft attachments
+- [x] Legacy snapshot storage is still bridged for migration compatibility
+- [x] Conversation persistence is account-scoped, not global
+
+### 12.3 Completed architecture cleanup
+- [x] `SessionRepository` boundary exists
+- [x] `ConversationRepository` boundary exists
+- [x] `AppShellCoordinator` now owns hydration / signed-in / signed-out coordination logic
+- [x] `ArgusLensApp.kt` is thinner than before and relies more on repository/coordinator boundaries
+- [x] Conversation mode boundary exists (`LOCAL` / `REMOTE`)
+
+### 12.4 Completed real chain integration
+- [x] Remote auth login/registration path is enabled
+- [x] Remote session restore is enabled during app startup hydration
+- [x] Offline startup keeps previously authenticated users inside the app when the network is unavailable
+- [x] Remote conversation list sync is enabled
+- [x] Remote message list sync is enabled when opening conversations
+- [x] Remote text-message send path is enabled
+- [x] Remote message recall path is enabled
+- [x] Remote conversation/message fetch now uses recent-window semantics rather than pretending to be full-history sync
+
+## 13. Next-Phase Checklist
+
+### 13.1 Near-term Stage 1 priorities
+- [ ] add explicit sync cursor / next-window semantics instead of simple recent-window pulls
+- [ ] add remote delivery receipt / ack semantics so message state is server-driven rather than mostly local simulation
+- [ ] add read-state sync so unread state is not only local
+- [ ] add media upload session negotiation for image / voice / video instead of local-only draft placeholders
+- [ ] connect remote send for richer message types beyond the current text-first path
+
+### 13.2 RTC and realtime follow-up
+- [ ] replace local call shell with real signaling contract integration
+- [ ] add call invite / accept / reject / reconnect server events
+- [ ] separate RTC state handling from `ArgusLensApp.kt` into a stronger coordinator/state holder
+
+### 13.3 Payment and scanning follow-up
+- [ ] add QR scan-pay shell beyond current IM baseline focus
+- [ ] add payment session persistence and confirmation flow
+
+### 13.4 Best-practice cleanup still worth doing
+- [ ] continue shrinking `ArgusLensApp.kt` by extracting remaining chat/call orchestration slices
+- [ ] add repository/coordinator tests around hydration, offline fallback, and sync transitions
+- [ ] decide whether conversation/message sync should move to WorkManager-driven background reconciliation
+
+## 14. Immediate Next Design Tasks
+
+1. define sync cursor / recent-window evolution so remote history acts as a bounded sync source instead of a full-history truth source
+2. define remote delivery/read receipt protocol and local reconciliation behavior
+3. define upload-session contracts for image, voice, and video payloads
+4. define WebRTC signaling schema and session lifecycle events
+5. define the Stage 2 JNI-facing service boundary for Retina integration without regressing the Stage 1 local-first IM model
