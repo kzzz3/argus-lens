@@ -95,8 +95,10 @@ fun ArgusLensApp() {
     val authRepository = remember { createAuthRepository() }
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
-    val conversationRepository: ConversationRepository = remember(context) { createConversationRepository(context) }
     val sessionRepository: SessionRepository = remember(context) { createLocalSessionStore(context) }
+    val conversationRepository: ConversationRepository = remember(context, sessionRepository) {
+        createConversationRepository(context = context, sessionRepository = sessionRepository)
+    }
     val appShellCoordinator = remember(conversationRepository, sessionRepository) {
         AppShellCoordinator(
             authRepository = authRepository,
