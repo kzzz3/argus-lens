@@ -15,7 +15,7 @@ import com.kzzz3.argus.lens.app.session.createAuthenticatedSession
 import com.kzzz3.argus.lens.data.auth.AuthRepositoryResult
 import com.kzzz3.argus.lens.data.auth.createAuthRepository
 import com.kzzz3.argus.lens.data.conversation.ConversationRepository
-import com.kzzz3.argus.lens.data.local.createLocalConversationCoordinator
+import com.kzzz3.argus.lens.data.conversation.createConversationRepository
 import com.kzzz3.argus.lens.data.session.SessionRepository
 import com.kzzz3.argus.lens.data.session.createLocalSessionStore
 import com.kzzz3.argus.lens.feature.auth.AuthEntryAction
@@ -95,7 +95,7 @@ fun ArgusLensApp() {
     val authRepository = remember { createAuthRepository() }
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
-    val conversationRepository: ConversationRepository = remember(context) { createLocalConversationCoordinator(context) }
+    val conversationRepository: ConversationRepository = remember(context) { createConversationRepository(context) }
     val sessionRepository: SessionRepository = remember(context) { createLocalSessionStore(context) }
     val appShellCoordinator = remember(conversationRepository, sessionRepository) {
         AppShellCoordinator(
