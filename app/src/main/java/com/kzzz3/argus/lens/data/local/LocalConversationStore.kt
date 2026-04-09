@@ -187,7 +187,16 @@ class LocalConversationCoordinator(
     override suspend fun sendMessage(
         state: ConversationThreadsState,
         conversationId: String,
+        localMessageId: String,
         body: String,
+    ): ConversationThreadsState {
+        return state
+    }
+
+    override suspend fun recallMessage(
+        state: ConversationThreadsState,
+        conversationId: String,
+        messageId: String,
     ): ConversationThreadsState {
         return state
     }

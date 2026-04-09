@@ -494,14 +494,18 @@ fun ArgusLensApp() {
                             }
                             is ChatEffect.DispatchOutgoingMessages -> {
                                 coroutineScope.launch {
+                                    val latestMessage = result.state.messages
+                                        .filter { it.id in result.effect.messageIds }
+                                        .lastOrNull()
                                     val latestBody = result.state.messages
                                         .filter { it.id in result.effect.messageIds }
                                         .lastOrNull()
                                         ?.body
-                                    if (result.effect.messageIds.size == 1 && latestBody != null) {
+                                    if (result.effect.messageIds.size == 1 && latestBody != null && latestMessage != null) {
                                         conversationThreadsState = conversationRepository.sendMessage(
                                             state = conversationThreadsState,
                                             conversationId = result.effect.conversationId,
+                                            localMessageId = latestMessage.id,
                                             body = latestBody,
                                         )
                                     } else {
