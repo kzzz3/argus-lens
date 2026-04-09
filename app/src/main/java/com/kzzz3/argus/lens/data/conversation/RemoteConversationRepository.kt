@@ -168,6 +168,57 @@ class RemoteConversationRepository(
         }
     }
 
+    override suspend fun recallMessage(
+        state: ConversationThreadsState,
+        conversationId: String,
+        messageId: String,
+    ): ConversationThreadsState {
+        val session = sessionRepository.loadSession()
+        if (session.accessToken.isBlank()) {
+            return state
+        }
+
+        return try {
+            val response = conversationApiService.recallMessage(
+                conversationId = conversationId,
+                messageId = messageId,
+                authorizationHeader = "Bearer ${session.accessToken}",
+            )
+            if (!response.isSuccessful) {
+                state
+            } else {
+                val message = response.body() ?: return state
+                val recalledMessage = ChatMessageItem(
+                    id = message.id,
+                    senderDisplayName = message.senderDisplayName,
+                    body = message.body,
+                    timestampLabel = message.timestampLabel,
+                    isFromCurrentUser = message.fromCurrentUser,
+                    deliveryStatus = parseRemoteDeliveryStatus(message.deliveryStatus),
+                )
+                val nextState = state.copy(
+                    threads = state.threads.map { thread ->
+                        if (thread.id == conversationId) {
+                            thread.copy(
+                                messages = thread.messages.map { existingMessage ->
+                                    if (existingMessage.id == messageId) recalledMessage else existingMessage
+                                }
+                            )
+                        } else {
+                            thread
+                        }
+                    }
+                )
+                if (session.accountId.isNotBlank()) {
+                    localRepository.saveConversationThreads(session.accountId, nextState)
+                }
+                nextState
+            }
+        } catch (_: IOException) {
+            state
+        }
+    }
+
     private fun markMessageFailed(
         state: ConversationThreadsState,
         conversationId: String,

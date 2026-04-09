@@ -526,6 +526,16 @@ fun ArgusLensApp() {
                             }
                             null -> Unit
                         }
+
+                        if (action is ChatAction.RecallMessage) {
+                            coroutineScope.launch {
+                                conversationThreadsState = conversationRepository.recallMessage(
+                                    state = conversationThreadsState,
+                                    conversationId = resolvedChatState.conversationId,
+                                    messageId = action.messageId,
+                                )
+                            }
+                        }
                     }
                 )
             }
