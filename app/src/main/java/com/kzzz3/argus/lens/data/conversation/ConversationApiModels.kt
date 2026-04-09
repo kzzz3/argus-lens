@@ -8,3 +8,12 @@ data class RemoteConversationSummary(
     val timestampLabel: String,
     val unreadCount: Int,
 )
+
+data class RemoteConversationMessage(
+    val id: String,
+    val senderDisplayName: String,
+    val body: String,
+    val timestampLabel: String,
+    val fromCurrentUser: Boolean,
+    val deliveryStatus: String,
+)

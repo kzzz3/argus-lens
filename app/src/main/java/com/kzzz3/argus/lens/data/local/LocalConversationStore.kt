@@ -177,6 +177,13 @@ class LocalConversationCoordinator(
         store.clearConversationThreads(accountId)
     }
 
+    override suspend fun refreshConversationMessages(
+        state: ConversationThreadsState,
+        conversationId: String,
+    ): ConversationThreadsState {
+        return state
+    }
+
     override fun markConversationAsRead(
         state: ConversationThreadsState,
         conversationId: String,

@@ -325,6 +325,12 @@ fun ArgusLensApp() {
                         )
                         selectedConversationId = action.conversationId
                         currentRoute = AppRoute.Chat
+                        coroutineScope.launch {
+                            conversationThreadsState = conversationRepository.refreshConversationMessages(
+                                state = conversationThreadsState,
+                                conversationId = action.conversationId,
+                            )
+                        }
                     }
 
                     InboxAction.OpenContacts -> currentRoute = AppRoute.Contacts
@@ -363,6 +369,12 @@ fun ArgusLensApp() {
                         )
                         selectedConversationId = effect.conversationId
                         currentRoute = AppRoute.Chat
+                        coroutineScope.launch {
+                            conversationThreadsState = conversationRepository.refreshConversationMessages(
+                                state = conversationThreadsState,
+                                conversationId = effect.conversationId,
+                            )
+                        }
                     }
 
                     is ContactsEffect.CreateConversation -> {
@@ -414,6 +426,12 @@ fun ArgusLensApp() {
                                 )
                                 selectedConversationId = action.conversationId
                                 currentRoute = AppRoute.Chat
+                                coroutineScope.launch {
+                                    conversationThreadsState = conversationRepository.refreshConversationMessages(
+                                        state = conversationThreadsState,
+                                        conversationId = action.conversationId,
+                                    )
+                                }
                             }
 
                             InboxAction.OpenContacts -> currentRoute = AppRoute.Contacts

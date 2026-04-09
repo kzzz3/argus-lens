@@ -9,6 +9,7 @@ interface ConversationRepository {
     suspend fun loadOrCreateConversationThreads(accountId: String, currentUserDisplayName: String): ConversationThreadsState
     suspend fun saveConversationThreads(accountId: String, state: ConversationThreadsState)
     suspend fun clearConversationThreads(accountId: String)
+    suspend fun refreshConversationMessages(state: ConversationThreadsState, conversationId: String): ConversationThreadsState
     fun markConversationAsRead(state: ConversationThreadsState, conversationId: String): ConversationThreadsState
     fun updateConversationFromChatState(state: ConversationThreadsState, updatedState: ChatState): ConversationThreadsState
     fun createConversation(state: ConversationThreadsState, displayName: String, mode: ConversationCreationMode): ConversationThreadsState

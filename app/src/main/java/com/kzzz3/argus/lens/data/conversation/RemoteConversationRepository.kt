@@ -1,6 +1,7 @@
 package com.kzzz3.argus.lens.data.conversation
 
 import com.kzzz3.argus.lens.data.session.SessionRepository
+import com.kzzz3.argus.lens.feature.inbox.ChatMessageDeliveryStatus
 import com.kzzz3.argus.lens.feature.inbox.ChatMessageItem
 import com.kzzz3.argus.lens.feature.inbox.ConversationThreadsState
 import com.kzzz3.argus.lens.feature.inbox.InboxConversationThread
@@ -50,6 +51,67 @@ class RemoteConversationRepository(
             }
         } catch (_: IOException) {
             localState
+        }
+    }
+
+    override suspend fun refreshConversationMessages(
+        state: ConversationThreadsState,
+        conversationId: String,
+    ): ConversationThreadsState {
+        val accessToken = sessionRepository.loadSession().accessToken
+        if (accessToken.isBlank()) {
+            return state
+        }
+
+        return try {
+            val response = conversationApiService.listMessages(
+                conversationId = conversationId,
+                authorizationHeader = "Bearer $accessToken",
+            )
+            if (!response.isSuccessful) {
+                state
+            } else {
+                val remoteMessages = response.body().orEmpty().map { message ->
+                    ChatMessageItem(
+                        id = message.id,
+                        senderDisplayName = message.senderDisplayName,
+                        body = message.body,
+                        timestampLabel = message.timestampLabel,
+                        isFromCurrentUser = message.fromCurrentUser,
+                        deliveryStatus = parseRemoteDeliveryStatus(message.deliveryStatus),
+                    )
+                }
+
+                val nextState = state.copy(
+                    threads = state.threads.map { thread ->
+                        if (thread.id == conversationId) {
+                            thread.copy(messages = remoteMessages)
+                        } else {
+                            thread
+                        }
+                    }
+                )
+                val accountId = sessionRepository.loadSession().accountId
+                if (accountId.isNotBlank()) {
+                    localRepository.saveConversationThreads(accountId, nextState)
+                }
+                nextState
+            }
+        } catch (_: IOException) {
+            state
+        }
+    }
+
+    private fun parseRemoteDeliveryStatus(
+        value: String,
+    ): ChatMessageDeliveryStatus {
+        return when (value.uppercase()) {
+            "SENDING" -> ChatMessageDeliveryStatus.Sending
+            "SENT" -> ChatMessageDeliveryStatus.Sent
+            "DELIVERED" -> ChatMessageDeliveryStatus.Delivered
+            "FAILED" -> ChatMessageDeliveryStatus.Failed
+            "RECALLED" -> ChatMessageDeliveryStatus.Recalled
+            else -> ChatMessageDeliveryStatus.Delivered
         }
     }
 }

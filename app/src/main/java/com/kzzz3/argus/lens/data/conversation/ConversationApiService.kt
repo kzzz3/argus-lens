@@ -9,4 +9,10 @@ interface ConversationApiService {
     suspend fun listConversations(
         @Header("Authorization") authorizationHeader: String,
     ): Response<List<RemoteConversationSummary>>
+
+    @GET("api/v1/conversations/{conversationId}/messages")
+    suspend fun listMessages(
+        @retrofit2.http.Path("conversationId") conversationId: String,
+        @Header("Authorization") authorizationHeader: String,
+    ): Response<List<RemoteConversationMessage>>
 }
