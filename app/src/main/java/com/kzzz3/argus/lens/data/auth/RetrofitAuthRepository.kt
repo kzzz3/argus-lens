@@ -54,6 +54,7 @@ class RetrofitAuthRepository(
                     )
                 } else {
                     AuthRepositoryResult.Failure(
+                        code = "EMPTY_AUTH_RESPONSE",
                         message = "Server returned an empty auth response.",
                         kind = AuthFailureKind.SERVER,
                     )
@@ -63,6 +64,7 @@ class RetrofitAuthRepository(
             }
         } catch (_: IOException) {
             AuthRepositoryResult.Failure(
+                code = "NETWORK_UNAVAILABLE",
                 message = "Cannot reach argus-cortex. Start the server locally and keep AUTH_BASE_URL pointed at 10.0.2.2:8080 for the Android emulator.",
                 kind = AuthFailureKind.NETWORK,
             )
@@ -71,11 +73,15 @@ class RetrofitAuthRepository(
 
     private fun parseErrorMessage(response: Response<AuthSuccessResponse>): AuthRepositoryResult.Failure {
         val errorBody = response.errorBody()?.string().orEmpty()
+        val parsedError = runCatching {
+            gson.fromJson(errorBody, ApiErrorResponse::class.java)
+        }.getOrNull()
         val message = runCatching {
-            gson.fromJson(errorBody, ApiErrorResponse::class.java)?.message
+            parsedError?.message
         }.getOrNull()
             ?.takeIf { it.isNotBlank() }
             ?: "Auth request failed with HTTP ${response.code()}."
+        val code = parsedError?.code?.takeIf { it.isNotBlank() }
 
         val kind = if (response.code() == 401) {
             AuthFailureKind.UNAUTHORIZED
@@ -84,6 +90,7 @@ class RetrofitAuthRepository(
         }
 
         return AuthRepositoryResult.Failure(
+            code = code,
             message = message,
             kind = kind,
         )

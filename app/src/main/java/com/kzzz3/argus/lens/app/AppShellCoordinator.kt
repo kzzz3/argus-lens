@@ -69,7 +69,10 @@ class AppShellCoordinator(
             }
 
             is AuthRepositoryResult.Failure -> {
-                if (restoredSession.kind == AuthFailureKind.UNAUTHORIZED) {
+                if (
+                    restoredSession.kind == AuthFailureKind.UNAUTHORIZED ||
+                    restoredSession.code == "INVALID_CREDENTIALS"
+                ) {
                     sessionRepository.clearSession()
                     AppHydrationState(
                         session = AppSessionState(),
