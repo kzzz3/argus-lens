@@ -1,8 +1,10 @@
 package com.kzzz3.argus.lens.data.conversation
 
 import retrofit2.Response
+import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.Header
+import retrofit2.http.POST
 
 interface ConversationApiService {
     @GET("api/v1/conversations")
@@ -15,4 +17,11 @@ interface ConversationApiService {
         @retrofit2.http.Path("conversationId") conversationId: String,
         @Header("Authorization") authorizationHeader: String,
     ): Response<List<RemoteConversationMessage>>
+
+    @POST("api/v1/conversations/{conversationId}/messages")
+    suspend fun sendMessage(
+        @retrofit2.http.Path("conversationId") conversationId: String,
+        @Header("Authorization") authorizationHeader: String,
+        @Body request: SendRemoteMessageRequest,
+    ): Response<RemoteConversationMessage>
 }

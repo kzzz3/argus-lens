@@ -102,6 +102,53 @@ class RemoteConversationRepository(
         }
     }
 
+    override suspend fun sendMessage(
+        state: ConversationThreadsState,
+        conversationId: String,
+        body: String,
+    ): ConversationThreadsState {
+        val session = sessionRepository.loadSession()
+        if (session.accessToken.isBlank()) {
+            return state
+        }
+
+        return try {
+            val response = conversationApiService.sendMessage(
+                conversationId = conversationId,
+                authorizationHeader = "Bearer ${session.accessToken}",
+                request = SendRemoteMessageRequest(body = body),
+            )
+            if (!response.isSuccessful) {
+                state
+            } else {
+                val message = response.body() ?: return state
+                val remoteMessage = ChatMessageItem(
+                    id = message.id,
+                    senderDisplayName = message.senderDisplayName,
+                    body = message.body,
+                    timestampLabel = message.timestampLabel,
+                    isFromCurrentUser = message.fromCurrentUser,
+                    deliveryStatus = parseRemoteDeliveryStatus(message.deliveryStatus),
+                )
+                val nextState = state.copy(
+                    threads = state.threads.map { thread ->
+                        if (thread.id == conversationId) {
+                            thread.copy(messages = thread.messages + remoteMessage)
+                        } else {
+                            thread
+                        }
+                    }
+                )
+                if (session.accountId.isNotBlank()) {
+                    localRepository.saveConversationThreads(session.accountId, nextState)
+                }
+                nextState
+            }
+        } catch (_: IOException) {
+            state
+        }
+    }
+
     private fun parseRemoteDeliveryStatus(
         value: String,
     ): ChatMessageDeliveryStatus {

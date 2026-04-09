@@ -494,18 +494,30 @@ fun ArgusLensApp() {
                             }
                             is ChatEffect.DispatchOutgoingMessages -> {
                                 coroutineScope.launch {
-                                    delay(350)
-                                    conversationThreadsState = conversationRepository.resolveOutgoingMessages(
-                                        state = conversationThreadsState,
-                                        conversationId = result.effect.conversationId,
-                                        messageIds = result.effect.messageIds,
-                                    )
-                                    delay(700)
-                                    conversationThreadsState = conversationRepository.resolveDeliveredMessages(
-                                        state = conversationThreadsState,
-                                        conversationId = result.effect.conversationId,
-                                        messageIds = result.effect.messageIds,
-                                    )
+                                    val latestBody = result.state.messages
+                                        .filter { it.id in result.effect.messageIds }
+                                        .lastOrNull()
+                                        ?.body
+                                    if (result.effect.messageIds.size == 1 && latestBody != null) {
+                                        conversationThreadsState = conversationRepository.sendMessage(
+                                            state = conversationThreadsState,
+                                            conversationId = result.effect.conversationId,
+                                            body = latestBody,
+                                        )
+                                    } else {
+                                        delay(350)
+                                        conversationThreadsState = conversationRepository.resolveOutgoingMessages(
+                                            state = conversationThreadsState,
+                                            conversationId = result.effect.conversationId,
+                                            messageIds = result.effect.messageIds,
+                                        )
+                                        delay(700)
+                                        conversationThreadsState = conversationRepository.resolveDeliveredMessages(
+                                            state = conversationThreadsState,
+                                            conversationId = result.effect.conversationId,
+                                            messageIds = result.effect.messageIds,
+                                        )
+                                    }
                                 }
                             }
                             null -> Unit

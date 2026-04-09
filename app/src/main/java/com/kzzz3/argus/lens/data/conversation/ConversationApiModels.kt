@@ -11,9 +11,14 @@ data class RemoteConversationSummary(
 
 data class RemoteConversationMessage(
     val id: String,
+    val conversationId: String,
     val senderDisplayName: String,
     val body: String,
     val timestampLabel: String,
     val fromCurrentUser: Boolean,
     val deliveryStatus: String,
+)
+
+data class SendRemoteMessageRequest(
+    val body: String,
 )

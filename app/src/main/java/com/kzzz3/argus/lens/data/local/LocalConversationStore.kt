@@ -184,6 +184,14 @@ class LocalConversationCoordinator(
         return state
     }
 
+    override suspend fun sendMessage(
+        state: ConversationThreadsState,
+        conversationId: String,
+        body: String,
+    ): ConversationThreadsState {
+        return state
+    }
+
     override fun markConversationAsRead(
         state: ConversationThreadsState,
         conversationId: String,
