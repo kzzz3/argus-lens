@@ -5,16 +5,20 @@ import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.Header
 import retrofit2.http.POST
+import retrofit2.http.Query
 
 interface ConversationApiService {
     @GET("api/v1/conversations")
     suspend fun listConversations(
+        @Query("recentWindowDays") recentWindowDays: Int,
         @Header("Authorization") authorizationHeader: String,
     ): Response<List<RemoteConversationSummary>>
 
     @GET("api/v1/conversations/{conversationId}/messages")
     suspend fun listMessages(
         @retrofit2.http.Path("conversationId") conversationId: String,
+        @Query("recentWindowDays") recentWindowDays: Int,
+        @Query("limit") limit: Int,
         @Header("Authorization") authorizationHeader: String,
     ): Response<List<RemoteConversationMessage>>
 

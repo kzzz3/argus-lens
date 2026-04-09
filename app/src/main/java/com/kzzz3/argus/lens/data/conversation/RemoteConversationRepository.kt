@@ -13,6 +13,11 @@ class RemoteConversationRepository(
     private val conversationApiService: ConversationApiService,
 ) : ConversationRepository by localRepository {
 
+    private companion object {
+        const val RECENT_WINDOW_DAYS = 7
+        const val MESSAGE_PAGE_LIMIT = 50
+    }
+
     override suspend fun loadOrCreateConversationThreads(
         accountId: String,
         currentUserDisplayName: String,
@@ -24,7 +29,10 @@ class RemoteConversationRepository(
         }
 
         return try {
-            val response = conversationApiService.listConversations("Bearer $accessToken")
+            val response = conversationApiService.listConversations(
+                recentWindowDays = RECENT_WINDOW_DAYS,
+                authorizationHeader = "Bearer $accessToken",
+            )
             if (!response.isSuccessful) {
                 localState
             } else {
@@ -66,6 +74,8 @@ class RemoteConversationRepository(
         return try {
             val response = conversationApiService.listMessages(
                 conversationId = conversationId,
+                recentWindowDays = RECENT_WINDOW_DAYS,
+                limit = MESSAGE_PAGE_LIMIT,
                 authorizationHeader = "Bearer $accessToken",
             )
             if (!response.isSuccessful) {
@@ -105,11 +115,12 @@ class RemoteConversationRepository(
     override suspend fun sendMessage(
         state: ConversationThreadsState,
         conversationId: String,
+        localMessageId: String,
         body: String,
     ): ConversationThreadsState {
         val session = sessionRepository.loadSession()
         if (session.accessToken.isBlank()) {
-            return state
+            return markMessageFailed(state, conversationId, localMessageId)
         }
 
         return try {
@@ -119,7 +130,7 @@ class RemoteConversationRepository(
                 request = SendRemoteMessageRequest(body = body),
             )
             if (!response.isSuccessful) {
-                state
+                markMessageFailed(state, conversationId, localMessageId)
             } else {
                 val message = response.body() ?: return state
                 val remoteMessage = ChatMessageItem(
@@ -133,7 +144,15 @@ class RemoteConversationRepository(
                 val nextState = state.copy(
                     threads = state.threads.map { thread ->
                         if (thread.id == conversationId) {
-                            thread.copy(messages = thread.messages + remoteMessage)
+                            thread.copy(
+                                messages = thread.messages.map { existingMessage ->
+                                    if (existingMessage.id == localMessageId) {
+                                        remoteMessage
+                                    } else {
+                                        existingMessage
+                                    }
+                                }
+                            )
                         } else {
                             thread
                         }
@@ -145,8 +164,32 @@ class RemoteConversationRepository(
                 nextState
             }
         } catch (_: IOException) {
-            state
+            markMessageFailed(state, conversationId, localMessageId)
         }
+    }
+
+    private fun markMessageFailed(
+        state: ConversationThreadsState,
+        conversationId: String,
+        localMessageId: String,
+    ): ConversationThreadsState {
+        return state.copy(
+            threads = state.threads.map { thread ->
+                if (thread.id == conversationId) {
+                    thread.copy(
+                        messages = thread.messages.map { message ->
+                            if (message.id == localMessageId) {
+                                message.copy(deliveryStatus = ChatMessageDeliveryStatus.Failed)
+                            } else {
+                                message
+                            }
+                        }
+                    )
+                } else {
+                    thread
+                }
+            }
+        )
     }
 
     private fun parseRemoteDeliveryStatus(
