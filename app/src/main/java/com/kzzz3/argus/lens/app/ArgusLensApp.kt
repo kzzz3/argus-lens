@@ -99,6 +99,7 @@ fun ArgusLensApp() {
     val sessionRepository: SessionRepository = remember(context) { createLocalSessionStore(context) }
     val appShellCoordinator = remember(conversationRepository, sessionRepository) {
         AppShellCoordinator(
+            authRepository = authRepository,
             sessionRepository = sessionRepository,
             conversationRepository = conversationRepository,
         )
@@ -167,6 +168,9 @@ fun ArgusLensApp() {
         appSessionState = hydratedState.session
         conversationThreadsState = hydratedState.conversationThreadsState
         hydratedConversationAccountId = hydratedState.hydratedConversationAccountId
+        if (hydratedState.session.isAuthenticated) {
+            currentRoute = AppRoute.Inbox
+        }
         hydratedSession = true
     }
 

@@ -1,6 +1,18 @@
 package com.kzzz3.argus.lens.data.auth
 
 class LocalAuthRepository : AuthRepository {
+    override suspend fun restoreSession(accessToken: String): AuthRepositoryResult {
+        val normalizedAccountId = accessToken.removePrefix("local-token-").ifBlank { "argus-user" }
+        return AuthRepositoryResult.Success(
+            session = AuthSession(
+                accountId = normalizedAccountId,
+                displayName = normalizedAccountId,
+                accessToken = accessToken,
+                message = "Local session restored.",
+            )
+        )
+    }
+
     override suspend fun login(account: String, password: String): AuthRepositoryResult {
         val trimmedAccount = account.trim()
         val resolvedDisplayName = trimmedAccount.ifEmpty { "Argus User" }

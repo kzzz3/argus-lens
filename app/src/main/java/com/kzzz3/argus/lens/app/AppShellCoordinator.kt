@@ -1,10 +1,14 @@
 package com.kzzz3.argus.lens.app
 
 import com.kzzz3.argus.lens.app.session.AppSessionState
+import com.kzzz3.argus.lens.data.auth.AuthRepository
+import com.kzzz3.argus.lens.data.auth.AuthFailureKind
+import com.kzzz3.argus.lens.data.auth.AuthRepositoryResult
 import com.kzzz3.argus.lens.data.conversation.ConversationRepository
 import com.kzzz3.argus.lens.data.session.SessionRepository
 import com.kzzz3.argus.lens.feature.call.CallSessionState
 import com.kzzz3.argus.lens.feature.contacts.ContactsState
+import com.kzzz3.argus.lens.app.session.createAuthenticatedSession
 import com.kzzz3.argus.lens.feature.inbox.ConversationThreadsState
 
 data class AppHydrationState(
@@ -30,30 +34,61 @@ data class AppSignedOutState(
 )
 
 class AppShellCoordinator(
+    private val authRepository: AuthRepository,
     private val sessionRepository: SessionRepository,
     private val conversationRepository: ConversationRepository,
 ) {
     suspend fun hydrateAppState(
         previewThreadsState: ConversationThreadsState,
     ): AppHydrationState {
-        val session = sessionRepository.loadSession()
-        if (!session.isAuthenticated) {
+        val persistedSession = sessionRepository.loadSession()
+        if (!persistedSession.isAuthenticated || persistedSession.accessToken.isBlank()) {
             return AppHydrationState(
-                session = session,
+                session = AppSessionState(),
                 conversationThreadsState = previewThreadsState,
                 hydratedConversationAccountId = null,
             )
         }
 
-        val threads = conversationRepository.loadOrCreateConversationThreads(
-            accountId = session.accountId,
-            currentUserDisplayName = session.displayName,
-        )
-        return AppHydrationState(
-            session = session,
-            conversationThreadsState = threads,
-            hydratedConversationAccountId = session.accountId,
-        )
+        return when (val restoredSession = authRepository.restoreSession(persistedSession.accessToken)) {
+            is AuthRepositoryResult.Success -> {
+                val session = createAuthenticatedSession(
+                    accountId = restoredSession.session.accountId,
+                    displayName = restoredSession.session.displayName,
+                    accessToken = restoredSession.session.accessToken,
+                )
+                val threads = conversationRepository.loadOrCreateConversationThreads(
+                    accountId = session.accountId,
+                    currentUserDisplayName = session.displayName,
+                )
+                AppHydrationState(
+                    session = session,
+                    conversationThreadsState = threads,
+                    hydratedConversationAccountId = session.accountId,
+                )
+            }
+
+            is AuthRepositoryResult.Failure -> {
+                if (restoredSession.kind == AuthFailureKind.UNAUTHORIZED) {
+                    sessionRepository.clearSession()
+                    AppHydrationState(
+                        session = AppSessionState(),
+                        conversationThreadsState = previewThreadsState,
+                        hydratedConversationAccountId = null,
+                    )
+                } else {
+                    val threads = conversationRepository.loadOrCreateConversationThreads(
+                        accountId = persistedSession.accountId,
+                        currentUserDisplayName = persistedSession.displayName,
+                    )
+                    AppHydrationState(
+                        session = persistedSession,
+                        conversationThreadsState = threads,
+                        hydratedConversationAccountId = persistedSession.accountId,
+                    )
+                }
+            }
+        }
     }
 
     suspend fun persistSession(
