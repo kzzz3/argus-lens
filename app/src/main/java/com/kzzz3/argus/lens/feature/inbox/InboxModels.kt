@@ -10,6 +10,7 @@ data class InboxConversationThread(
     val subtitle: String,
     val unreadCount: Int,
     val messages: List<ChatMessageItem>,
+    val syncCursor: String = "",
     val draftMessage: String = "",
     val draftAttachments: List<ChatDraftAttachment> = emptyList(),
     val isVoiceRecording: Boolean = false,
@@ -41,6 +42,7 @@ data class ChatMessageItem(
     val timestampLabel: String,
     val isFromCurrentUser: Boolean,
     val deliveryStatus: ChatMessageDeliveryStatus = ChatMessageDeliveryStatus.Sent,
+    val statusUpdatedAt: String = "",
 ) : Parcelable
 
 enum class ChatMessageDeliveryStatus {

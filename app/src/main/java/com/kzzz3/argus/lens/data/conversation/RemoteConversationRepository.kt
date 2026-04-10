@@ -47,6 +47,7 @@ class RemoteConversationRepository(
                         title = summary.title,
                         subtitle = summary.subtitle,
                         unreadCount = summary.unreadCount,
+                        syncCursor = summary.syncCursor,
                         messages = listOf(
                             ChatMessageItem(
                                 id = "${summary.id}-remote-preview",
@@ -54,6 +55,7 @@ class RemoteConversationRepository(
                                 body = summary.preview,
                                 timestampLabel = summary.timestampLabel,
                                 isFromCurrentUser = false,
+                                statusUpdatedAt = summary.timestampLabel,
                             )
                         ),
                     )
@@ -81,6 +83,7 @@ class RemoteConversationRepository(
                 conversationId = conversationId,
                 recentWindowDays = RECENT_WINDOW_DAYS,
                 limit = MESSAGE_PAGE_LIMIT,
+                sinceCursor = state.threads.firstOrNull { it.id == conversationId }?.syncCursor?.ifBlank { null },
                 authorizationHeader = "Bearer $accessToken",
             )
             if (!response.isSuccessful) {
@@ -89,7 +92,8 @@ class RemoteConversationRepository(
                     else -> state
                 }
             } else {
-                val remoteMessages = response.body().orEmpty().map { message ->
+                val page = response.body() ?: return state
+                val remoteMessages = page.messages.map { message ->
                     ChatMessageItem(
                         id = message.id,
                         senderDisplayName = message.senderDisplayName,
@@ -97,13 +101,17 @@ class RemoteConversationRepository(
                         timestampLabel = message.timestampLabel,
                         isFromCurrentUser = message.fromCurrentUser,
                         deliveryStatus = parseRemoteDeliveryStatus(message.deliveryStatus),
+                        statusUpdatedAt = message.statusUpdatedAt,
                     )
                 }
 
                 val nextState = state.copy(
                     threads = state.threads.map { thread ->
                         if (thread.id == conversationId) {
-                            thread.copy(messages = remoteMessages)
+                            thread.copy(
+                                messages = remoteMessages,
+                                syncCursor = page.nextSyncCursor,
+                            )
                         } else {
                             thread
                         }
@@ -151,6 +159,7 @@ class RemoteConversationRepository(
                     timestampLabel = message.timestampLabel,
                     isFromCurrentUser = message.fromCurrentUser,
                     deliveryStatus = parseRemoteDeliveryStatus(message.deliveryStatus),
+                    statusUpdatedAt = message.statusUpdatedAt,
                 )
                 val nextState = state.copy(
                     threads = state.threads.map { thread ->
@@ -210,6 +219,7 @@ class RemoteConversationRepository(
                     timestampLabel = message.timestampLabel,
                     isFromCurrentUser = message.fromCurrentUser,
                     deliveryStatus = parseRemoteDeliveryStatus(message.deliveryStatus),
+                    statusUpdatedAt = message.statusUpdatedAt,
                 )
                 val nextState = state.copy(
                     threads = state.threads.map { thread ->

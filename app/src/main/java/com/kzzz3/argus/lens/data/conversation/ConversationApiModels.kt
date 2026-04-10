@@ -7,6 +7,7 @@ data class RemoteConversationSummary(
     val preview: String,
     val timestampLabel: String,
     val unreadCount: Int,
+    val syncCursor: String,
 )
 
 data class RemoteConversationMessage(
@@ -17,6 +18,14 @@ data class RemoteConversationMessage(
     val timestampLabel: String,
     val fromCurrentUser: Boolean,
     val deliveryStatus: String,
+    val statusUpdatedAt: String,
+)
+
+data class RemoteConversationMessagePage(
+    val messages: List<RemoteConversationMessage>,
+    val nextSyncCursor: String,
+    val recentWindowDays: Int,
+    val limit: Int,
 )
 
 data class SendRemoteMessageRequest(

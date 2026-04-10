@@ -19,8 +19,9 @@ interface ConversationApiService {
         @retrofit2.http.Path("conversationId") conversationId: String,
         @Query("recentWindowDays") recentWindowDays: Int,
         @Query("limit") limit: Int,
+        @Query("sinceCursor") sinceCursor: String?,
         @Header("Authorization") authorizationHeader: String,
-    ): Response<List<RemoteConversationMessage>>
+    ): Response<RemoteConversationMessagePage>
 
     @POST("api/v1/conversations/{conversationId}/messages")
     suspend fun sendMessage(

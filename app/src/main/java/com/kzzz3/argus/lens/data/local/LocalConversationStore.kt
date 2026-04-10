@@ -80,6 +80,7 @@ class LocalConversationStore(
                 title = thread.title,
                 subtitle = thread.subtitle,
                 unreadCount = thread.unreadCount,
+                syncCursor = thread.syncCursor,
                 draftMessage = thread.draftMessage,
                 draftAttachmentsJson = "",
                 isVoiceRecording = thread.isVoiceRecording,
@@ -101,6 +102,7 @@ class LocalConversationStore(
                     timestampLabel = message.timestampLabel,
                     isFromCurrentUser = message.isFromCurrentUser,
                     deliveryStatus = message.deliveryStatus.name,
+                    statusUpdatedAt = message.statusUpdatedAt,
                     sortOrder = index,
                 )
             }

@@ -14,7 +14,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         LocalMessageEntity::class,
         LocalDraftAttachmentEntity::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = false,
 )
 abstract class ArgusLensDatabase : RoomDatabase() {
@@ -107,13 +107,24 @@ abstract class ArgusLensDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "ALTER TABLE `local_conversation` ADD COLUMN `syncCursor` TEXT NOT NULL DEFAULT ''"
+                )
+                db.execSQL(
+                    "ALTER TABLE `local_message` ADD COLUMN `statusUpdatedAt` TEXT NOT NULL DEFAULT ''"
+                )
+            }
+        }
+
         fun getInstance(context: Context): ArgusLensDatabase {
             return INSTANCE ?: synchronized(this) {
                 INSTANCE ?: Room.databaseBuilder(
                     context = context.applicationContext,
                     klass = ArgusLensDatabase::class.java,
                     name = "argus-lens.db",
-                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3).build().also { INSTANCE = it }
+                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4).build().also { INSTANCE = it }
             }
         }
     }

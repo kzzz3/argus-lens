@@ -16,6 +16,7 @@ data class LocalConversationEntity(
     val title: String,
     val subtitle: String,
     val unreadCount: Int,
+    val syncCursor: String,
     val draftMessage: String,
     val draftAttachmentsJson: String,
     val isVoiceRecording: Boolean,

@@ -33,5 +33,6 @@ data class LocalMessageEntity(
     val timestampLabel: String,
     val isFromCurrentUser: Boolean,
     val deliveryStatus: String,
+    val statusUpdatedAt: String,
     val sortOrder: Int,
 )
