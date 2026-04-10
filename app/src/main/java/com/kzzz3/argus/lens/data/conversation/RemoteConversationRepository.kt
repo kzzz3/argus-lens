@@ -1,5 +1,6 @@
 package com.kzzz3.argus.lens.data.conversation
 
+import com.google.gson.Gson
 import com.kzzz3.argus.lens.data.session.SessionRepository
 import com.kzzz3.argus.lens.feature.inbox.ChatMessageDeliveryStatus
 import com.kzzz3.argus.lens.feature.inbox.ChatMessageItem
@@ -11,6 +12,7 @@ class RemoteConversationRepository(
     private val localRepository: ConversationRepository,
     private val sessionRepository: SessionRepository,
     private val conversationApiService: ConversationApiService,
+    private val gson: Gson = Gson(),
 ) : ConversationRepository by localRepository {
 
     private companion object {
@@ -34,7 +36,10 @@ class RemoteConversationRepository(
                 authorizationHeader = "Bearer $accessToken",
             )
             if (!response.isSuccessful) {
-                localState
+                when (parseApiError(response.code(), response.errorBody()?.string().orEmpty())?.code) {
+                    "INVALID_CREDENTIALS" -> localState
+                    else -> localState
+                }
             } else {
                 val remoteThreads = response.body().orEmpty().map { summary ->
                     InboxConversationThread(
@@ -79,7 +84,10 @@ class RemoteConversationRepository(
                 authorizationHeader = "Bearer $accessToken",
             )
             if (!response.isSuccessful) {
-                state
+                when (parseApiError(response.code(), response.errorBody()?.string().orEmpty())?.code) {
+                    "CONVERSATION_NOT_FOUND" -> state
+                    else -> state
+                }
             } else {
                 val remoteMessages = response.body().orEmpty().map { message ->
                     ChatMessageItem(
@@ -130,7 +138,10 @@ class RemoteConversationRepository(
                 request = SendRemoteMessageRequest(body = body),
             )
             if (!response.isSuccessful) {
-                markMessageFailed(state, conversationId, localMessageId)
+                when (parseApiError(response.code(), response.errorBody()?.string().orEmpty())?.code) {
+                    "CONVERSATION_NOT_FOUND" -> markMessageFailed(state, conversationId, localMessageId)
+                    else -> markMessageFailed(state, conversationId, localMessageId)
+                }
             } else {
                 val message = response.body() ?: return state
                 val remoteMessage = ChatMessageItem(
@@ -185,7 +196,11 @@ class RemoteConversationRepository(
                 authorizationHeader = "Bearer ${session.accessToken}",
             )
             if (!response.isSuccessful) {
-                state
+                when (parseApiError(response.code(), response.errorBody()?.string().orEmpty())?.code) {
+                    "MESSAGE_NOT_FOUND" -> state
+                    "CONVERSATION_NOT_FOUND" -> state
+                    else -> state
+                }
             } else {
                 val message = response.body() ?: return state
                 val recalledMessage = ChatMessageItem(
@@ -234,7 +249,10 @@ class RemoteConversationRepository(
                 authorizationHeader = "Bearer ${session.accessToken}",
             )
             if (!response.isSuccessful) {
-                state
+                when (parseApiError(response.code(), response.errorBody()?.string().orEmpty())?.code) {
+                    "CONVERSATION_NOT_FOUND" -> state
+                    else -> state
+                }
             } else {
                 val summary = response.body() ?: return state
                 val nextState = state.copy(
@@ -294,6 +312,25 @@ class RemoteConversationRepository(
             "FAILED" -> ChatMessageDeliveryStatus.Failed
             "RECALLED" -> ChatMessageDeliveryStatus.Recalled
             else -> ChatMessageDeliveryStatus.Delivered
+        }
+    }
+
+    private fun parseApiError(
+        httpCode: Int,
+        rawBody: String,
+    ): ConversationApiErrorResponse? {
+        val parsed = runCatching {
+            gson.fromJson(rawBody, ConversationApiErrorResponse::class.java)
+        }.getOrNull()
+
+        return if (parsed?.code?.isNotBlank() == true) {
+            parsed
+        } else {
+            when (httpCode) {
+                401 -> ConversationApiErrorResponse("INVALID_CREDENTIALS", "Unauthorized")
+                404 -> ConversationApiErrorResponse("NOT_FOUND", "Resource not found")
+                else -> null
+            }
         }
     }
 }
