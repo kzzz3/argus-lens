@@ -27,6 +27,7 @@ class LocalConversationStore(
                     title = row.conversation.title,
                     subtitle = row.conversation.subtitle,
                     unreadCount = row.conversation.unreadCount,
+                    syncCursor = row.conversation.syncCursor,
                     messages = row.messages
                         .sortedBy { it.sortOrder }
                         .map { message ->
@@ -36,7 +37,8 @@ class LocalConversationStore(
                                 body = message.body,
                                 timestampLabel = message.timestampLabel,
                                 isFromCurrentUser = message.isFromCurrentUser,
-                            deliveryStatus = ChatMessageDeliveryStatus.valueOf(message.deliveryStatus),
+                                deliveryStatus = ChatMessageDeliveryStatus.valueOf(message.deliveryStatus),
+                                statusUpdatedAt = message.statusUpdatedAt,
                             )
                         },
                     draftMessage = row.conversation.draftMessage,
