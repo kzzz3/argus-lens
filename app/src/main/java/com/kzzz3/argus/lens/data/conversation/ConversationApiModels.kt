@@ -32,6 +32,10 @@ data class SendRemoteMessageRequest(
     val body: String,
 )
 
+data class MessageReceiptRequest(
+    val receiptType: String,
+)
+
 data class ConversationApiErrorResponse(
     val code: String,
     val message: String,

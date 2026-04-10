@@ -30,6 +30,14 @@ interface ConversationApiService {
         @Body request: SendRemoteMessageRequest,
     ): Response<RemoteConversationMessage>
 
+    @POST("api/v1/conversations/{conversationId}/messages/{messageId}/receipt")
+    suspend fun applyReceipt(
+        @retrofit2.http.Path("conversationId") conversationId: String,
+        @retrofit2.http.Path("messageId") messageId: String,
+        @Header("Authorization") authorizationHeader: String,
+        @Body request: MessageReceiptRequest,
+    ): Response<RemoteConversationMessage>
+
     @POST("api/v1/conversations/{conversationId}/messages/{messageId}/recall")
     suspend fun recallMessage(
         @retrofit2.http.Path("conversationId") conversationId: String,

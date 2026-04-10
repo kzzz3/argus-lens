@@ -124,7 +124,11 @@ class RemoteConversationRepository(
                 if (accountId.isNotBlank()) {
                     localRepository.saveConversationThreads(accountId, nextState)
                 }
-                nextState
+                remoteMessages
+                    .filter { !it.isFromCurrentUser && it.deliveryStatus != ChatMessageDeliveryStatus.Delivered }
+                    .fold(nextState) { currentState, message ->
+                        acknowledgeMessageDelivery(currentState, conversationId, message.id)
+                    }
             }
         } catch (_: IOException) {
             state
@@ -188,6 +192,59 @@ class RemoteConversationRepository(
             }
         } catch (_: IOException) {
             markMessageFailed(state, conversationId, localMessageId)
+        }
+    }
+
+    override suspend fun acknowledgeMessageDelivery(
+        state: ConversationThreadsState,
+        conversationId: String,
+        messageId: String,
+    ): ConversationThreadsState {
+        val session = sessionRepository.loadSession()
+        if (session.accessToken.isBlank()) {
+            return state
+        }
+
+        return try {
+            val response = conversationApiService.applyReceipt(
+                conversationId = conversationId,
+                messageId = messageId,
+                authorizationHeader = "Bearer ${session.accessToken}",
+                request = MessageReceiptRequest(receiptType = "DELIVERED"),
+            )
+            if (!response.isSuccessful) {
+                state
+            } else {
+                val message = response.body() ?: return state
+                val deliveredMessage = ChatMessageItem(
+                    id = message.id,
+                    senderDisplayName = message.senderDisplayName,
+                    body = message.body,
+                    timestampLabel = message.timestampLabel,
+                    isFromCurrentUser = message.fromCurrentUser,
+                    deliveryStatus = parseRemoteDeliveryStatus(message.deliveryStatus),
+                    statusUpdatedAt = message.statusUpdatedAt,
+                )
+                val nextState = state.copy(
+                    threads = state.threads.map { thread ->
+                        if (thread.id == conversationId) {
+                            thread.copy(
+                                messages = thread.messages.map { existingMessage ->
+                                    if (existingMessage.id == messageId) deliveredMessage else existingMessage
+                                }
+                            )
+                        } else {
+                            thread
+                        }
+                    }
+                )
+                if (session.accountId.isNotBlank()) {
+                    localRepository.saveConversationThreads(session.accountId, nextState)
+                }
+                nextState
+            }
+        } catch (_: IOException) {
+            state
         }
     }
 
