@@ -109,7 +109,10 @@ class RemoteConversationRepository(
                     threads = state.threads.map { thread ->
                         if (thread.id == conversationId) {
                             thread.copy(
-                                messages = remoteMessages,
+                                messages = mergeMessages(
+                                    existingMessages = thread.messages,
+                                    incomingMessages = remoteMessages,
+                                ),
                                 syncCursor = page.nextSyncCursor,
                             )
                         } else {
@@ -342,5 +345,19 @@ class RemoteConversationRepository(
                 else -> null
             }
         }
+    }
+
+    private fun mergeMessages(
+        existingMessages: List<ChatMessageItem>,
+        incomingMessages: List<ChatMessageItem>,
+    ): List<ChatMessageItem> {
+        val messageById = LinkedHashMap<String, ChatMessageItem>()
+        existingMessages.forEach { message ->
+            messageById[message.id] = message
+        }
+        incomingMessages.forEach { message ->
+            messageById[message.id] = message
+        }
+        return messageById.values.toList()
     }
 }
