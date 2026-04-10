@@ -219,6 +219,47 @@ class RemoteConversationRepository(
         }
     }
 
+    override suspend fun markConversationReadRemote(
+        state: ConversationThreadsState,
+        conversationId: String,
+    ): ConversationThreadsState {
+        val session = sessionRepository.loadSession()
+        if (session.accessToken.isBlank()) {
+            return state
+        }
+
+        return try {
+            val response = conversationApiService.markConversationRead(
+                conversationId = conversationId,
+                authorizationHeader = "Bearer ${session.accessToken}",
+            )
+            if (!response.isSuccessful) {
+                state
+            } else {
+                val summary = response.body() ?: return state
+                val nextState = state.copy(
+                    threads = state.threads.map { thread ->
+                        if (thread.id == conversationId) {
+                            thread.copy(
+                                title = summary.title,
+                                subtitle = summary.subtitle,
+                                unreadCount = summary.unreadCount,
+                            )
+                        } else {
+                            thread
+                        }
+                    }
+                )
+                if (session.accountId.isNotBlank()) {
+                    localRepository.saveConversationThreads(session.accountId, nextState)
+                }
+                nextState
+            }
+        } catch (_: IOException) {
+            state
+        }
+    }
+
     private fun markMessageFailed(
         state: ConversationThreadsState,
         conversationId: String,

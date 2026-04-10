@@ -326,6 +326,10 @@ fun ArgusLensApp() {
                         selectedConversationId = action.conversationId
                         currentRoute = AppRoute.Chat
                         coroutineScope.launch {
+                            conversationThreadsState = conversationRepository.markConversationReadRemote(
+                                state = conversationThreadsState,
+                                conversationId = action.conversationId,
+                            )
                             conversationThreadsState = conversationRepository.refreshConversationMessages(
                                 state = conversationThreadsState,
                                 conversationId = action.conversationId,
@@ -370,6 +374,10 @@ fun ArgusLensApp() {
                         selectedConversationId = effect.conversationId
                         currentRoute = AppRoute.Chat
                         coroutineScope.launch {
+                            conversationThreadsState = conversationRepository.markConversationReadRemote(
+                                state = conversationThreadsState,
+                                conversationId = effect.conversationId,
+                            )
                             conversationThreadsState = conversationRepository.refreshConversationMessages(
                                 state = conversationThreadsState,
                                 conversationId = effect.conversationId,
@@ -427,6 +435,10 @@ fun ArgusLensApp() {
                                 selectedConversationId = action.conversationId
                                 currentRoute = AppRoute.Chat
                                 coroutineScope.launch {
+                                    conversationThreadsState = conversationRepository.markConversationReadRemote(
+                                        state = conversationThreadsState,
+                                        conversationId = action.conversationId,
+                                    )
                                     conversationThreadsState = conversationRepository.refreshConversationMessages(
                                         state = conversationThreadsState,
                                         conversationId = action.conversationId,

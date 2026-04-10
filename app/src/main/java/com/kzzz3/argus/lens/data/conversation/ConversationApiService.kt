@@ -36,4 +36,11 @@ interface ConversationApiService {
         @Header("Authorization") authorizationHeader: String,
         @Body request: Map<String, String> = emptyMap(),
     ): Response<RemoteConversationMessage>
+
+    @POST("api/v1/conversations/{conversationId}/read")
+    suspend fun markConversationRead(
+        @retrofit2.http.Path("conversationId") conversationId: String,
+        @Header("Authorization") authorizationHeader: String,
+        @Body request: Map<String, String> = emptyMap(),
+    ): Response<RemoteConversationSummary>
 }
