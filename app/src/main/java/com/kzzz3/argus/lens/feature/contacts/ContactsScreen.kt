@@ -70,6 +70,21 @@ fun ContactsScreen(
             }
         }
 
+        state.statusMessage?.let { message ->
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = if (state.isStatusError) Color(0x33FF6F61) else Color(0x297AF5C9),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = message,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.White,
+                )
+            }
+        }
+
         Surface(
             shape = RoundedCornerShape(20.dp),
             color = Color(0x142D4258),
@@ -213,6 +228,8 @@ private fun ContactsScreenPreview() {
             state = ContactsUiState(
                 title = "Contacts",
                 subtitle = "Manage friends, then open or create chats from the local-first IM shell.",
+                statusMessage = "Friend added successfully.",
+                isStatusError = false,
                 draftConversationName = "",
                 draftFriendAccountId = "",
                 addFriendLabel = "Add remote friend",

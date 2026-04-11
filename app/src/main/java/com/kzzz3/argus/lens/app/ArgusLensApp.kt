@@ -465,6 +465,14 @@ fun ArgusLensApp() {
                                 state = conversationThreadsState,
                                 displayName = effect.displayName,
                             )
+                            contactsStateModel = contactsStateModel.copy(
+                                statusMessage = if (effect.mode == ConversationCreationMode.Group) {
+                                    "Group created successfully."
+                                } else {
+                                    "Conversation created successfully."
+                                },
+                                isStatusError = false,
+                            )
                             currentRoute = AppRoute.Chat
                         }
                     }
@@ -474,6 +482,10 @@ fun ArgusLensApp() {
                             when (val friendResult = friendRepository.addFriend(effect.friendAccountId)) {
                                 is FriendRepositoryResult.Success -> {
                                     val refreshed = friendRepository.listFriends()
+                                    contactsStateModel = contactsStateModel.copy(
+                                        statusMessage = friendResult.message ?: "Friend added.",
+                                        isStatusError = false,
+                                    )
                                     if (refreshed is FriendRepositoryResult.Success) {
                                         friends = refreshed.friends
                                     } else {
@@ -487,7 +499,12 @@ fun ArgusLensApp() {
                                     }
                                 }
 
-                                is FriendRepositoryResult.Failure -> Unit
+                                is FriendRepositoryResult.Failure -> {
+                                    contactsStateModel = contactsStateModel.copy(
+                                        statusMessage = friendResult.message,
+                                        isStatusError = true,
+                                    )
+                                }
                             }
                         }
                     }

@@ -11,6 +11,8 @@ fun createContactsUiState(
     return ContactsUiState(
         title = "Contacts",
         subtitle = "Manage friends, then open or create chats from the local-first IM shell.",
+        statusMessage = state.statusMessage,
+        isStatusError = state.isStatusError,
         draftConversationName = state.draftConversationName,
         draftFriendAccountId = state.draftFriendAccountId,
         addFriendLabel = "Add remote friend",

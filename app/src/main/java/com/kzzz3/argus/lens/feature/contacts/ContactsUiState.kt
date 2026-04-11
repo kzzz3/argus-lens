@@ -3,6 +3,8 @@ package com.kzzz3.argus.lens.feature.contacts
 data class ContactsUiState(
     val title: String,
     val subtitle: String,
+    val statusMessage: String?,
+    val isStatusError: Boolean,
     val draftConversationName: String,
     val draftFriendAccountId: String,
     val addFriendLabel: String,
