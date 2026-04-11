@@ -16,6 +16,10 @@ import com.kzzz3.argus.lens.data.auth.AuthRepositoryResult
 import com.kzzz3.argus.lens.data.auth.createAuthRepository
 import com.kzzz3.argus.lens.data.conversation.ConversationRepository
 import com.kzzz3.argus.lens.data.conversation.createConversationRepository
+import com.kzzz3.argus.lens.data.friend.FriendEntry
+import com.kzzz3.argus.lens.data.friend.FriendRepository
+import com.kzzz3.argus.lens.data.friend.FriendRepositoryResult
+import com.kzzz3.argus.lens.data.friend.createFriendRepository
 import com.kzzz3.argus.lens.data.session.SessionRepository
 import com.kzzz3.argus.lens.data.session.createLocalSessionStore
 import com.kzzz3.argus.lens.feature.auth.AuthEntryAction
@@ -99,6 +103,9 @@ fun ArgusLensApp() {
     val conversationRepository: ConversationRepository = remember(context, sessionRepository) {
         createConversationRepository(context = context, sessionRepository = sessionRepository)
     }
+    val friendRepository: FriendRepository = remember(sessionRepository) {
+        createFriendRepository(sessionRepository)
+    }
     val appShellCoordinator = remember(conversationRepository, sessionRepository) {
         AppShellCoordinator(
             authRepository = authRepository,
@@ -109,6 +116,7 @@ fun ArgusLensApp() {
     var callSessionJob by remember { mutableStateOf<Job?>(null) }
     var hydratedConversationAccountId by remember { mutableStateOf<String?>(null) }
     var hydratedSession by remember { mutableStateOf(false) }
+    var friends by remember { mutableStateOf<List<FriendEntry>>(emptyList()) }
     val previewThreadsState = remember {
         conversationRepository.createPreviewState(currentUserDisplayName = "Argus Tester")
     }
@@ -134,9 +142,10 @@ fun ArgusLensApp() {
             threads = conversationThreads,
         )
     }
-    val contactsState = remember(contactsStateModel, conversationThreads) {
+    val contactsState = remember(contactsStateModel, friends, conversationThreads) {
         createContactsUiState(
             state = contactsStateModel,
+            friends = friends,
             threads = conversationThreads,
         )
     }
@@ -197,6 +206,15 @@ fun ArgusLensApp() {
             hydratedConversationAccountId = hydratedConversationAccountId,
             state = conversationThreadsState,
         )
+    }
+
+    LaunchedEffect(currentRoute, appSessionState.isAuthenticated) {
+        if (currentRoute == AppRoute.Contacts && appSessionState.isAuthenticated) {
+            when (val friendResult = friendRepository.listFriends()) {
+                is FriendRepositoryResult.Success -> friends = friendResult.friends
+                is FriendRepositoryResult.Failure -> Unit
+            }
+        }
     }
 
     when (currentRoute) {
@@ -367,20 +385,36 @@ fun ArgusLensApp() {
 
                 when (val effect = result.effect) {
                     is ContactsEffect.OpenConversation -> {
-                        conversationThreadsState = conversationRepository.markConversationAsRead(
-                            state = conversationThreadsState,
-                            conversationId = effect.conversationId,
-                        )
-                        selectedConversationId = effect.conversationId
+                        val existingThread = conversationThreads.firstOrNull { it.id == effect.conversationId }
+                        val resolvedConversationId = if (existingThread != null) {
+                            conversationThreadsState = conversationRepository.markConversationAsRead(
+                                state = conversationThreadsState,
+                                conversationId = effect.conversationId,
+                            )
+                            effect.conversationId
+                        } else {
+                            val matchingFriend = friends.firstOrNull { it.accountId == effect.conversationId }
+                            val displayName = matchingFriend?.displayName ?: effect.conversationId
+                            conversationThreadsState = conversationRepository.createConversation(
+                                state = conversationThreadsState,
+                                displayName = displayName,
+                                mode = ConversationCreationMode.Direct,
+                            )
+                            conversationRepository.resolveConversationId(
+                                state = conversationThreadsState,
+                                displayName = displayName,
+                            )
+                        }
+                        selectedConversationId = resolvedConversationId
                         currentRoute = AppRoute.Chat
                         coroutineScope.launch {
                             conversationThreadsState = conversationRepository.markConversationReadRemote(
                                 state = conversationThreadsState,
-                                conversationId = effect.conversationId,
+                                conversationId = resolvedConversationId,
                             )
                             conversationThreadsState = conversationRepository.refreshConversationMessages(
                                 state = conversationThreadsState,
-                                conversationId = effect.conversationId,
+                                conversationId = resolvedConversationId,
                             )
                         }
                     }
@@ -396,6 +430,23 @@ fun ArgusLensApp() {
                             displayName = effect.displayName,
                         )
                         currentRoute = AppRoute.Chat
+                    }
+
+                    is ContactsEffect.AddFriend -> {
+                        coroutineScope.launch {
+                            when (val friendResult = friendRepository.addFriend(effect.friendAccountId)) {
+                                is FriendRepositoryResult.Success -> {
+                                    val refreshed = friendRepository.listFriends()
+                                    if (refreshed is FriendRepositoryResult.Success) {
+                                        friends = refreshed.friends
+                                    } else {
+                                        friends = friends + friendResult.friends
+                                    }
+                                }
+
+                                is FriendRepositoryResult.Failure -> Unit
+                            }
+                        }
                     }
 
                     ContactsEffect.NavigateBackToInbox -> currentRoute = AppRoute.Inbox

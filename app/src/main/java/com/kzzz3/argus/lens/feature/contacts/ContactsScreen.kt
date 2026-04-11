@@ -82,6 +82,21 @@ fun ContactsScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 OutlinedTextField(
+                    value = state.draftFriendAccountId,
+                    onValueChange = { onAction(ContactsAction.UpdateDraftFriendAccountId(it)) },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text(text = state.addFriendLabel) },
+                    placeholder = { Text(text = state.addFriendPlaceholder) },
+                    maxLines = 1,
+                )
+                Button(
+                    onClick = { onAction(ContactsAction.SubmitAddFriend) },
+                    enabled = state.isAddFriendEnabled,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(text = state.addFriendActionLabel)
+                }
+                OutlinedTextField(
                     value = state.draftConversationName,
                     onValueChange = { onAction(ContactsAction.UpdateDraftConversationName(it)) },
                     modifier = Modifier.fillMaxWidth(),
@@ -197,8 +212,13 @@ private fun ContactsScreenPreview() {
         ContactsScreen(
             state = ContactsUiState(
                 title = "Contacts",
-                subtitle = "Start a conversation from your current local thread roster.",
+                subtitle = "Manage friends, then open or create chats from the local-first IM shell.",
                 draftConversationName = "",
+                draftFriendAccountId = "",
+                addFriendLabel = "Add remote friend",
+                addFriendPlaceholder = "Type a friend account ID",
+                addFriendActionLabel = "Add friend",
+                isAddFriendEnabled = false,
                 draftLabel = "New local conversation",
                 draftPlaceholder = "Type a contact or chat title",
                 creationModeLabel = "Direct mode",
@@ -208,15 +228,17 @@ private fun ContactsScreenPreview() {
                 contacts = listOf(
                     ContactEntryUiState(
                         conversationId = "conv-1",
+                        accountId = "zhangsan",
                         displayName = "Zhang San",
-                        supportingLabel = "1:1 direct chat",
+                        supportingLabel = "Default remote contact",
                         lastSeenPreview = "Let me know when the stage-1 IM shell is ready.",
                     ),
                     ContactEntryUiState(
                         conversationId = "conv-2",
-                        displayName = "Project Group",
-                        supportingLabel = "3 members",
-                        lastSeenPreview = "We can wire real sync later.",
+                        accountId = "lisi",
+                        displayName = "Li Si",
+                        supportingLabel = "Remote friend",
+                        lastSeenPreview = "No local messages yet.",
                     )
                 ),
                 backActionLabel = "Back to inbox",

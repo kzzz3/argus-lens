@@ -5,6 +5,7 @@ sealed interface ContactsEffect {
         val displayName: String,
         val mode: ConversationCreationMode,
     ) : ContactsEffect
+    data class AddFriend(val friendAccountId: String) : ContactsEffect
     data object NavigateBackToInbox : ContactsEffect
     data class OpenConversation(val conversationId: String) : ContactsEffect
 }

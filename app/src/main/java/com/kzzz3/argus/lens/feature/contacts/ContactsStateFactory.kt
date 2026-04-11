@@ -1,15 +1,22 @@
 package com.kzzz3.argus.lens.feature.contacts
 
 import com.kzzz3.argus.lens.feature.inbox.InboxConversationThread
+import com.kzzz3.argus.lens.data.friend.FriendEntry
 
 fun createContactsUiState(
     state: ContactsState,
+    friends: List<FriendEntry>,
     threads: List<InboxConversationThread>,
 ): ContactsUiState {
     return ContactsUiState(
         title = "Contacts",
-        subtitle = "Start a conversation from your current local thread roster.",
+        subtitle = "Manage friends, then open or create chats from the local-first IM shell.",
         draftConversationName = state.draftConversationName,
+        draftFriendAccountId = state.draftFriendAccountId,
+        addFriendLabel = "Add remote friend",
+        addFriendPlaceholder = "Type a friend account ID",
+        addFriendActionLabel = "Add friend",
+        isAddFriendEnabled = state.draftFriendAccountId.trim().isNotEmpty(),
         draftLabel = if (state.creationMode == ConversationCreationMode.Group) {
             "New local group"
         } else {
@@ -36,12 +43,17 @@ fun createContactsUiState(
             "Create chat"
         },
         isCreateConversationEnabled = state.draftConversationName.trim().isNotEmpty(),
-        contacts = threads.map { thread ->
+        contacts = friends.map { friend ->
+            val matchingThread = threads.firstOrNull {
+                it.title.equals(friend.displayName, ignoreCase = true) ||
+                    it.id.equals(friend.accountId, ignoreCase = true)
+            }
             ContactEntryUiState(
-                conversationId = thread.id,
-                displayName = thread.title,
-                supportingLabel = thread.subtitle,
-                lastSeenPreview = thread.messages.lastOrNull()?.body ?: "No local messages yet",
+                conversationId = matchingThread?.id ?: friend.accountId,
+                accountId = friend.accountId,
+                displayName = friend.displayName,
+                supportingLabel = friend.note.ifBlank { "Remote friend" },
+                lastSeenPreview = matchingThread?.messages?.lastOrNull()?.body ?: "No local messages yet",
             )
         },
         backActionLabel = "Back to inbox",

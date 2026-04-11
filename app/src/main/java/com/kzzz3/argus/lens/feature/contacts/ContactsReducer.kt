@@ -25,6 +25,11 @@ fun reduceContactsState(
             effect = null,
         )
 
+        is ContactsAction.UpdateDraftFriendAccountId -> ContactsReducerResult(
+            state = currentState.copy(draftFriendAccountId = action.value),
+            effect = null,
+        )
+
         ContactsAction.ToggleCreationMode -> ContactsReducerResult(
             state = currentState.copy(
                 creationMode = if (currentState.creationMode == ConversationCreationMode.Direct) {
@@ -50,6 +55,21 @@ fun reduceContactsState(
                         displayName = trimmedName,
                         mode = currentState.creationMode,
                     ),
+                )
+            }
+        }
+
+        ContactsAction.SubmitAddFriend -> {
+            val trimmedFriendAccountId = currentState.draftFriendAccountId.trim()
+            if (trimmedFriendAccountId.isEmpty()) {
+                ContactsReducerResult(
+                    state = currentState,
+                    effect = null,
+                )
+            } else {
+                ContactsReducerResult(
+                    state = currentState.copy(draftFriendAccountId = ""),
+                    effect = ContactsEffect.AddFriend(trimmedFriendAccountId),
                 )
             }
         }

@@ -4,6 +4,11 @@ data class ContactsUiState(
     val title: String,
     val subtitle: String,
     val draftConversationName: String,
+    val draftFriendAccountId: String,
+    val addFriendLabel: String,
+    val addFriendPlaceholder: String,
+    val addFriendActionLabel: String,
+    val isAddFriendEnabled: Boolean,
     val draftLabel: String,
     val draftPlaceholder: String,
     val creationModeLabel: String,
@@ -16,6 +21,7 @@ data class ContactsUiState(
 
 data class ContactEntryUiState(
     val conversationId: String,
+    val accountId: String,
     val displayName: String,
     val supportingLabel: String,
     val lastSeenPreview: String,
