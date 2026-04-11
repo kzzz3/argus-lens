@@ -468,6 +468,12 @@ fun ArgusLensApp() {
                                     } else {
                                         friends = friends + friendResult.friends
                                     }
+                                    if (appSessionState.isAuthenticated) {
+                                        conversationThreadsState = conversationRepository.loadOrCreateConversationThreads(
+                                            accountId = appSessionState.accountId,
+                                            currentUserDisplayName = appSessionState.displayName,
+                                        )
+                                    }
                                 }
 
                                 is FriendRepositoryResult.Failure -> Unit
