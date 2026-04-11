@@ -25,6 +25,7 @@ fun createInboxUiState(
                 ChatMessageDeliveryStatus.Sending -> "Sending"
                 ChatMessageDeliveryStatus.Sent -> if (latestMessage.isFromCurrentUser) "Sent" else null
                 ChatMessageDeliveryStatus.Delivered -> if (latestMessage.isFromCurrentUser) "Delivered" else null
+                ChatMessageDeliveryStatus.Read -> if (latestMessage.isFromCurrentUser) "Read" else null
                 ChatMessageDeliveryStatus.Failed -> "Failed"
                 ChatMessageDeliveryStatus.Recalled -> "Recalled"
                 null -> null
@@ -32,7 +33,8 @@ fun createInboxUiState(
             val statusColorToken = when (latestMessage?.deliveryStatus) {
                 ChatMessageDeliveryStatus.Failed -> InboxStatusColorToken.Warning
                 ChatMessageDeliveryStatus.Sent,
-                ChatMessageDeliveryStatus.Delivered -> InboxStatusColorToken.Success
+                ChatMessageDeliveryStatus.Delivered,
+                ChatMessageDeliveryStatus.Read -> InboxStatusColorToken.Success
                 ChatMessageDeliveryStatus.Recalled -> InboxStatusColorToken.Neutral
                 else -> InboxStatusColorToken.Neutral
             }

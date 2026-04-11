@@ -135,6 +135,59 @@ class RemoteConversationRepository(
         }
     }
 
+    override suspend fun acknowledgeMessageRead(
+        state: ConversationThreadsState,
+        conversationId: String,
+        messageId: String,
+    ): ConversationThreadsState {
+        val session = sessionRepository.loadSession()
+        if (session.accessToken.isBlank()) {
+            return state
+        }
+
+        return try {
+            val response = conversationApiService.applyReceipt(
+                conversationId = conversationId,
+                messageId = messageId,
+                authorizationHeader = "Bearer ${session.accessToken}",
+                request = MessageReceiptRequest(receiptType = "READ"),
+            )
+            if (!response.isSuccessful) {
+                state
+            } else {
+                val message = response.body() ?: return state
+                val readMessage = ChatMessageItem(
+                    id = message.id,
+                    senderDisplayName = message.senderDisplayName,
+                    body = message.body,
+                    timestampLabel = message.timestampLabel,
+                    isFromCurrentUser = message.fromCurrentUser,
+                    deliveryStatus = parseRemoteDeliveryStatus(message.deliveryStatus),
+                    statusUpdatedAt = message.statusUpdatedAt,
+                )
+                val nextState = state.copy(
+                    threads = state.threads.map { thread ->
+                        if (thread.id == conversationId) {
+                            thread.copy(
+                                messages = thread.messages.map { existingMessage ->
+                                    if (existingMessage.id == messageId) readMessage else existingMessage
+                                }
+                            )
+                        } else {
+                            thread
+                        }
+                    }
+                )
+                if (session.accountId.isNotBlank()) {
+                    localRepository.saveConversationThreads(session.accountId, nextState)
+                }
+                nextState
+            }
+        } catch (_: IOException) {
+            state
+        }
+    }
+
     override suspend fun sendMessage(
         state: ConversationThreadsState,
         conversationId: String,
@@ -379,6 +432,7 @@ class RemoteConversationRepository(
             "SENDING" -> ChatMessageDeliveryStatus.Sending
             "SENT" -> ChatMessageDeliveryStatus.Sent
             "DELIVERED" -> ChatMessageDeliveryStatus.Delivered
+            "READ" -> ChatMessageDeliveryStatus.Read
             "FAILED" -> ChatMessageDeliveryStatus.Failed
             "RECALLED" -> ChatMessageDeliveryStatus.Recalled
             else -> ChatMessageDeliveryStatus.Delivered

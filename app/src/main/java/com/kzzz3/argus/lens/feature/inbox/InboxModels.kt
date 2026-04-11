@@ -49,6 +49,7 @@ enum class ChatMessageDeliveryStatus {
     Sending,
     Sent,
     Delivered,
+    Read,
     Failed,
     Recalled,
 }

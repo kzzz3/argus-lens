@@ -205,6 +205,14 @@ class LocalConversationCoordinator(
         return state
     }
 
+    override suspend fun acknowledgeMessageRead(
+        state: ConversationThreadsState,
+        conversationId: String,
+        messageId: String,
+    ): ConversationThreadsState {
+        return state
+    }
+
     override suspend fun recallMessage(
         state: ConversationThreadsState,
         conversationId: String,

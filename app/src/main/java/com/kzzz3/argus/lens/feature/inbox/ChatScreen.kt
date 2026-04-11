@@ -383,6 +383,7 @@ private fun OutgoingStatusRow(
         ChatMessageDeliveryStatus.Sending -> "Sending" to Color(0xFFAEC7DC)
         ChatMessageDeliveryStatus.Sent -> "Sent" to Color(0xFF7AF5C9)
         ChatMessageDeliveryStatus.Delivered -> "Delivered" to Color(0xFF7AF5C9)
+        ChatMessageDeliveryStatus.Read -> "Read" to Color(0xFF7AF5C9)
         ChatMessageDeliveryStatus.Failed -> "Failed · Tap to retry" to Color(0xFFFF9A8B)
         ChatMessageDeliveryStatus.Recalled -> "Recalled" to Color(0xFFAAC9E3)
     }
@@ -405,7 +406,8 @@ private fun OutgoingStatusRow(
 
         if (
             message.deliveryStatus == ChatMessageDeliveryStatus.Sent ||
-            message.deliveryStatus == ChatMessageDeliveryStatus.Delivered
+            message.deliveryStatus == ChatMessageDeliveryStatus.Delivered ||
+            message.deliveryStatus == ChatMessageDeliveryStatus.Read
         ) {
             Text(
                 text = "Recall",

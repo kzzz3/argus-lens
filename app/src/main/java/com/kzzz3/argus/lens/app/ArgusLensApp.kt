@@ -352,6 +352,19 @@ fun ArgusLensApp() {
                                 state = conversationThreadsState,
                                 conversationId = action.conversationId,
                             )
+                            val visibleRemoteMessageIds = conversationThreadsState.threads
+                                .firstOrNull { it.id == action.conversationId }
+                                ?.messages
+                                ?.filter { !it.isFromCurrentUser && it.deliveryStatus != ChatMessageDeliveryStatus.Read }
+                                ?.map { it.id }
+                                .orEmpty()
+                            visibleRemoteMessageIds.forEach { messageId ->
+                                conversationThreadsState = conversationRepository.acknowledgeMessageRead(
+                                    state = conversationThreadsState,
+                                    conversationId = action.conversationId,
+                                    messageId = messageId,
+                                )
+                            }
                         }
                     }
 
@@ -416,6 +429,19 @@ fun ArgusLensApp() {
                                 state = conversationThreadsState,
                                 conversationId = resolvedConversationId,
                             )
+                            val visibleRemoteMessageIds = conversationThreadsState.threads
+                                .firstOrNull { it.id == resolvedConversationId }
+                                ?.messages
+                                ?.filter { !it.isFromCurrentUser && it.deliveryStatus != ChatMessageDeliveryStatus.Read }
+                                ?.map { it.id }
+                                .orEmpty()
+                            visibleRemoteMessageIds.forEach { messageId ->
+                                conversationThreadsState = conversationRepository.acknowledgeMessageRead(
+                                    state = conversationThreadsState,
+                                    conversationId = resolvedConversationId,
+                                    messageId = messageId,
+                                )
+                            }
                         }
                     }
 
@@ -494,6 +520,19 @@ fun ArgusLensApp() {
                                         state = conversationThreadsState,
                                         conversationId = action.conversationId,
                                     )
+                                    val visibleRemoteMessageIds = conversationThreadsState.threads
+                                        .firstOrNull { it.id == action.conversationId }
+                                        ?.messages
+                                        ?.filter { !it.isFromCurrentUser && it.deliveryStatus != ChatMessageDeliveryStatus.Read }
+                                        ?.map { it.id }
+                                        .orEmpty()
+                                    visibleRemoteMessageIds.forEach { messageId ->
+                                        conversationThreadsState = conversationRepository.acknowledgeMessageRead(
+                                            state = conversationThreadsState,
+                                            conversationId = action.conversationId,
+                                            messageId = messageId,
+                                        )
+                                    }
                                 }
                             }
 
