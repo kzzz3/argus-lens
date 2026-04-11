@@ -2,6 +2,7 @@ package com.kzzz3.argus.lens.data.conversation
 
 import com.google.gson.Gson
 import com.kzzz3.argus.lens.data.session.SessionRepository
+import com.kzzz3.argus.lens.feature.contacts.ConversationCreationMode
 import com.kzzz3.argus.lens.feature.inbox.ChatMessageDeliveryStatus
 import com.kzzz3.argus.lens.feature.inbox.ChatMessageItem
 import com.kzzz3.argus.lens.feature.inbox.ConversationThreadsState
@@ -390,6 +391,58 @@ class RemoteConversationRepository(
                             thread
                         }
                     }
+                )
+                if (session.accountId.isNotBlank()) {
+                    localRepository.saveConversationThreads(session.accountId, nextState)
+                }
+                nextState
+            }
+        } catch (_: IOException) {
+            state
+        }
+    }
+
+    override suspend fun createConversationRemote(
+        state: ConversationThreadsState,
+        displayName: String,
+        mode: ConversationCreationMode,
+    ): ConversationThreadsState {
+        val session = sessionRepository.loadSession()
+        if (session.accessToken.isBlank()) {
+            return state
+        }
+
+        return try {
+            val response = conversationApiService.createConversation(
+                authorizationHeader = "Bearer ${session.accessToken}",
+                request = CreateConversationRequest(
+                    type = mode.name,
+                    title = displayName,
+                )
+            )
+            if (!response.isSuccessful) {
+                state
+            } else {
+                val summary = response.body() ?: return state
+                val nextThread = InboxConversationThread(
+                    id = summary.id,
+                    title = summary.title,
+                    subtitle = summary.subtitle,
+                    unreadCount = summary.unreadCount,
+                    syncCursor = summary.syncCursor,
+                    messages = listOf(
+                        ChatMessageItem(
+                            id = "${summary.id}-remote-preview",
+                            senderDisplayName = summary.title,
+                            body = summary.preview,
+                            timestampLabel = summary.timestampLabel,
+                            isFromCurrentUser = false,
+                            statusUpdatedAt = summary.timestampLabel,
+                        )
+                    )
+                )
+                val nextState = state.copy(
+                    threads = listOf(nextThread) + state.threads.filterNot { it.id == nextThread.id }
                 )
                 if (session.accountId.isNotBlank()) {
                     localRepository.saveConversationThreads(session.accountId, nextState)

@@ -33,6 +33,11 @@ data class SendRemoteMessageRequest(
     val body: String,
 )
 
+data class CreateConversationRequest(
+    val type: String,
+    val title: String,
+)
+
 data class MessageReceiptRequest(
     val receiptType: String,
 )

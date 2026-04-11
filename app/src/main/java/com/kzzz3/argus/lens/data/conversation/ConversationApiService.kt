@@ -14,6 +14,12 @@ interface ConversationApiService {
         @Header("Authorization") authorizationHeader: String,
     ): Response<List<RemoteConversationSummary>>
 
+    @POST("api/v1/conversations")
+    suspend fun createConversation(
+        @Header("Authorization") authorizationHeader: String,
+        @Body request: CreateConversationRequest,
+    ): Response<RemoteConversationSummary>
+
     @GET("api/v1/conversations/{conversationId}/messages")
     suspend fun listMessages(
         @retrofit2.http.Path("conversationId") conversationId: String,

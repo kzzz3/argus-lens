@@ -228,6 +228,14 @@ class LocalConversationCoordinator(
         return state
     }
 
+    override suspend fun createConversationRemote(
+        state: ConversationThreadsState,
+        displayName: String,
+        mode: ConversationCreationMode,
+    ): ConversationThreadsState {
+        return createConversation(state, displayName, mode)
+    }
+
     override fun markConversationAsRead(
         state: ConversationThreadsState,
         conversationId: String,

@@ -446,16 +446,18 @@ fun ArgusLensApp() {
                     }
 
                     is ContactsEffect.CreateConversation -> {
-                        conversationThreadsState = conversationRepository.createConversation(
-                            state = conversationThreadsState,
-                            displayName = effect.displayName,
-                            mode = effect.mode,
-                        )
-                        selectedConversationId = conversationRepository.resolveConversationId(
-                            state = conversationThreadsState,
-                            displayName = effect.displayName,
-                        )
-                        currentRoute = AppRoute.Chat
+                        coroutineScope.launch {
+                            conversationThreadsState = conversationRepository.createConversationRemote(
+                                state = conversationThreadsState,
+                                displayName = effect.displayName,
+                                mode = effect.mode,
+                            )
+                            selectedConversationId = conversationRepository.resolveConversationId(
+                                state = conversationThreadsState,
+                                displayName = effect.displayName,
+                            )
+                            currentRoute = AppRoute.Chat
+                        }
                     }
 
                     is ContactsEffect.AddFriend -> {
