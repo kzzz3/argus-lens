@@ -6,6 +6,7 @@ fun createChatUiState(
     return ChatUiState(
         conversationTitle = state.conversationTitle,
         conversationSubtitle = state.conversationSubtitle,
+        memberSummary = state.memberSummary,
         messages = state.messages,
         draftMessage = state.draftMessage,
         draftAttachments = state.draftAttachments,

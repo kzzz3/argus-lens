@@ -11,6 +11,7 @@ interface ConversationRepository {
     suspend fun saveConversationThreads(accountId: String, state: ConversationThreadsState)
     suspend fun clearConversationThreads(accountId: String)
     suspend fun refreshConversationMessages(state: ConversationThreadsState, conversationId: String): ConversationThreadsState
+    suspend fun refreshConversationDetail(state: ConversationThreadsState, conversationId: String): ConversationThreadsState
     suspend fun sendMessage(state: ConversationThreadsState, conversationId: String, localMessageId: String, body: String): ConversationThreadsState
     suspend fun acknowledgeMessageDelivery(state: ConversationThreadsState, conversationId: String, messageId: String): ConversationThreadsState
     suspend fun acknowledgeMessageRead(state: ConversationThreadsState, conversationId: String, messageId: String): ConversationThreadsState

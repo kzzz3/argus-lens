@@ -158,6 +158,7 @@ fun ArgusLensApp() {
                 conversationId = conversation.id,
                 conversationTitle = conversation.title,
                 conversationSubtitle = conversation.subtitle,
+                memberSummary = if (conversation.subtitle.contains("members")) conversation.subtitle else "",
                 currentUserDisplayName = sessionDisplayName,
                 messages = conversation.messages,
                 draftMessage = conversation.draftMessage,
@@ -344,6 +345,10 @@ fun ArgusLensApp() {
                         selectedConversationId = action.conversationId
                         currentRoute = AppRoute.Chat
                         coroutineScope.launch {
+                            conversationThreadsState = conversationRepository.refreshConversationDetail(
+                                state = conversationThreadsState,
+                                conversationId = action.conversationId,
+                            )
                             conversationThreadsState = conversationRepository.markConversationReadRemote(
                                 state = conversationThreadsState,
                                 conversationId = action.conversationId,
@@ -421,6 +426,10 @@ fun ArgusLensApp() {
                         selectedConversationId = resolvedConversationId
                         currentRoute = AppRoute.Chat
                         coroutineScope.launch {
+                            conversationThreadsState = conversationRepository.refreshConversationDetail(
+                                state = conversationThreadsState,
+                                conversationId = resolvedConversationId,
+                            )
                             conversationThreadsState = conversationRepository.markConversationReadRemote(
                                 state = conversationThreadsState,
                                 conversationId = resolvedConversationId,
@@ -520,6 +529,10 @@ fun ArgusLensApp() {
                                 selectedConversationId = action.conversationId
                                 currentRoute = AppRoute.Chat
                                 coroutineScope.launch {
+                                    conversationThreadsState = conversationRepository.refreshConversationDetail(
+                                        state = conversationThreadsState,
+                                        conversationId = action.conversationId,
+                                    )
                                     conversationThreadsState = conversationRepository.markConversationReadRemote(
                                         state = conversationThreadsState,
                                         conversationId = action.conversationId,

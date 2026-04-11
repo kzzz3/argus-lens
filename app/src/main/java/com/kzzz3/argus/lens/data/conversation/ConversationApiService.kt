@@ -20,6 +20,12 @@ interface ConversationApiService {
         @Body request: CreateConversationRequest,
     ): Response<RemoteConversationSummary>
 
+    @GET("api/v1/conversations/{conversationId}")
+    suspend fun getConversationDetail(
+        @retrofit2.http.Path("conversationId") conversationId: String,
+        @Header("Authorization") authorizationHeader: String,
+    ): Response<RemoteConversationDetail>
+
     @GET("api/v1/conversations/{conversationId}/messages")
     suspend fun listMessages(
         @retrofit2.http.Path("conversationId") conversationId: String,

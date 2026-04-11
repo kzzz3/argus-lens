@@ -188,6 +188,13 @@ class LocalConversationCoordinator(
         return state
     }
 
+    override suspend fun refreshConversationDetail(
+        state: ConversationThreadsState,
+        conversationId: String,
+    ): ConversationThreadsState {
+        return state
+    }
+
     override suspend fun sendMessage(
         state: ConversationThreadsState,
         conversationId: String,

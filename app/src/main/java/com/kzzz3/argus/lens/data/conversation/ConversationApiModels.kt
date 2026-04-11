@@ -10,6 +10,14 @@ data class RemoteConversationSummary(
     val syncCursor: String,
 )
 
+data class RemoteConversationDetail(
+    val id: String,
+    val title: String,
+    val subtitle: String,
+    val memberCount: Int,
+    val memberDisplayNames: List<String>,
+)
+
 data class RemoteConversationMessage(
     val id: String,
     val conversationId: String,

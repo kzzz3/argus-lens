@@ -85,6 +85,13 @@ fun ChatScreen(
                     style = MaterialTheme.typography.bodyLarge,
                     color = Color(0xFFD8EBFB)
                 )
+                if (state.memberSummary.isNotBlank()) {
+                    Text(
+                        text = state.memberSummary,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color(0xFFAAC9E3)
+                    )
+                }
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -495,6 +502,7 @@ private fun ChatScreenPreview() {
             state = ChatUiState(
                 conversationTitle = "Zhang San",
                 conversationSubtitle = "1:1 direct chat",
+                memberSummary = "Argus Tester, Zhang San",
                 messages = listOf(
                     ChatMessageItem(
                         id = "1",

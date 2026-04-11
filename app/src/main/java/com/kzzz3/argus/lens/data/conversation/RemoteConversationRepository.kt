@@ -136,6 +136,54 @@ class RemoteConversationRepository(
         }
     }
 
+    override suspend fun refreshConversationDetail(
+        state: ConversationThreadsState,
+        conversationId: String,
+    ): ConversationThreadsState {
+        val accessToken = sessionRepository.loadSession().accessToken
+        if (accessToken.isBlank()) {
+            return state
+        }
+
+        return try {
+            val response = conversationApiService.getConversationDetail(
+                conversationId = conversationId,
+                authorizationHeader = "Bearer $accessToken",
+            )
+            if (!response.isSuccessful) {
+                state
+            } else {
+                val detail = response.body() ?: return state
+                val nextState = state.copy(
+                    threads = state.threads.map { thread ->
+                        if (thread.id == conversationId) {
+                            thread.copy(
+                                title = detail.title,
+                                subtitle = buildString {
+                                    append(detail.subtitle)
+                                    if (detail.memberCount > 0) {
+                                        append(" · ")
+                                        append(detail.memberCount)
+                                        append(" members")
+                                    }
+                                }
+                            )
+                        } else {
+                            thread
+                        }
+                    }
+                )
+                val accountId = sessionRepository.loadSession().accountId
+                if (accountId.isNotBlank()) {
+                    localRepository.saveConversationThreads(accountId, nextState)
+                }
+                nextState
+            }
+        } catch (_: IOException) {
+            state
+        }
+    }
+
     override suspend fun acknowledgeMessageRead(
         state: ConversationThreadsState,
         conversationId: String,
