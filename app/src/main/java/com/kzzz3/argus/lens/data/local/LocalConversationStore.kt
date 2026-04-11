@@ -195,6 +195,14 @@ class LocalConversationCoordinator(
         return state
     }
 
+    override suspend fun addConversationMember(
+        state: ConversationThreadsState,
+        conversationId: String,
+        memberAccountId: String,
+    ): ConversationThreadsState {
+        return state
+    }
+
     override suspend fun sendMessage(
         state: ConversationThreadsState,
         conversationId: String,

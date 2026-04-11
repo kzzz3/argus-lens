@@ -15,6 +15,29 @@ fun reduceChatState(
             effect = ChatEffect.NavigateBackToInbox,
         )
 
+        is ChatAction.UpdateDraftMemberAccountId -> ChatReducerResult(
+            state = currentState.copy(draftMemberAccountId = action.value),
+            effect = null,
+        )
+
+        ChatAction.SubmitAddMember -> {
+            val memberAccountId = currentState.draftMemberAccountId.trim()
+            if (memberAccountId.isEmpty()) {
+                ChatReducerResult(
+                    state = currentState,
+                    effect = null,
+                )
+            } else {
+                ChatReducerResult(
+                    state = currentState.copy(draftMemberAccountId = ""),
+                    effect = ChatEffect.AddMember(
+                        conversationId = currentState.conversationId,
+                        memberAccountId = memberAccountId,
+                    ),
+                )
+            }
+        }
+
         ChatAction.StartAudioCall -> ChatReducerResult(
             state = currentState,
             effect = ChatEffect.StartCall(

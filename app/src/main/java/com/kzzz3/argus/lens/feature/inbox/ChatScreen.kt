@@ -92,6 +92,23 @@ fun ChatScreen(
                         color = Color(0xFFAAC9E3)
                     )
                 }
+                if (state.isGroupConversation) {
+                    OutlinedTextField(
+                        value = state.draftMemberAccountId,
+                        onValueChange = { onAction(ChatAction.UpdateDraftMemberAccountId(it)) },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text(text = state.addMemberLabel) },
+                        placeholder = { Text(text = state.addMemberPlaceholder) },
+                        maxLines = 1,
+                    )
+                    Button(
+                        onClick = { onAction(ChatAction.SubmitAddMember) },
+                        enabled = state.isAddMemberEnabled,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(text = state.addMemberActionLabel)
+                    }
+                }
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -503,6 +520,12 @@ private fun ChatScreenPreview() {
                 conversationTitle = "Zhang San",
                 conversationSubtitle = "1:1 direct chat",
                 memberSummary = "Argus Tester, Zhang San",
+                draftMemberAccountId = "",
+                addMemberLabel = "Add group member",
+                addMemberPlaceholder = "Type a friend account ID",
+                addMemberActionLabel = "Invite member",
+                isAddMemberEnabled = false,
+                isGroupConversation = false,
                 messages = listOf(
                     ChatMessageItem(
                         id = "1",

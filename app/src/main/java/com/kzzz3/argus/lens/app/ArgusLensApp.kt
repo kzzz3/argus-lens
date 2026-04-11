@@ -159,6 +159,7 @@ fun ArgusLensApp() {
                 conversationTitle = conversation.title,
                 conversationSubtitle = conversation.subtitle,
                 memberSummary = if (conversation.subtitle.contains("members")) conversation.subtitle else "",
+                draftMemberAccountId = "",
                 currentUserDisplayName = sessionDisplayName,
                 messages = conversation.messages,
                 draftMessage = conversation.draftMessage,
@@ -262,7 +263,7 @@ fun ArgusLensApp() {
                                     hydratedConversationAccountId = signedInState.hydratedConversationAccountId
                                     selectedConversationId = signedInState.selectedConversationId
                                     currentRoute = AppRoute.Inbox
-                                }
+                                }   
 
                                 is AuthRepositoryResult.Failure -> {
                                     authFormState = authFormState.copy(
@@ -607,6 +608,19 @@ fun ArgusLensApp() {
 
                         when (result.effect) {
                             ChatEffect.NavigateBackToInbox -> currentRoute = AppRoute.Inbox
+                            is ChatEffect.AddMember -> {
+                                coroutineScope.launch {
+                                    conversationThreadsState = conversationRepository.addConversationMember(
+                                        state = conversationThreadsState,
+                                        conversationId = result.effect.conversationId,
+                                        memberAccountId = result.effect.memberAccountId,
+                                    )
+                                    conversationThreadsState = conversationRepository.refreshConversationDetail(
+                                        state = conversationThreadsState,
+                                        conversationId = result.effect.conversationId,
+                                    )
+                                }
+                            }
                             is ChatEffect.StartCall -> {
                                 callSessionState = createInitialCallSessionState(
                                     conversationId = result.effect.conversationId,

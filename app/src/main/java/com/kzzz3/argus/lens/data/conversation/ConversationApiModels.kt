@@ -46,6 +46,10 @@ data class CreateConversationRequest(
     val title: String,
 )
 
+data class AddConversationMemberRequest(
+    val memberAccountId: String,
+)
+
 data class MessageReceiptRequest(
     val receiptType: String,
 )
