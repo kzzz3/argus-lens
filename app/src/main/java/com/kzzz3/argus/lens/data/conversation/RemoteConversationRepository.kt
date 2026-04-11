@@ -203,7 +203,7 @@ class RemoteConversationRepository(
             val response = conversationApiService.sendMessage(
                 conversationId = conversationId,
                 authorizationHeader = "Bearer ${session.accessToken}",
-                request = SendRemoteMessageRequest(body = body),
+                request = SendRemoteMessageRequest(clientMessageId = localMessageId, body = body),
             )
             if (!response.isSuccessful) {
                 when (parseApiError(response.code(), response.errorBody()?.string().orEmpty())?.code) {

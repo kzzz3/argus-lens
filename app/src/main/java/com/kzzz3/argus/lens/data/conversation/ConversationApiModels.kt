@@ -29,6 +29,7 @@ data class RemoteConversationMessagePage(
 )
 
 data class SendRemoteMessageRequest(
+    val clientMessageId: String,
     val body: String,
 )
 
