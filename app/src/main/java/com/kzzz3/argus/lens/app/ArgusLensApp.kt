@@ -1,11 +1,13 @@
 package com.kzzz3.argus.lens.app
 
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
@@ -24,6 +26,9 @@ import com.kzzz3.argus.lens.data.media.MediaRepository
 import com.kzzz3.argus.lens.data.media.MediaRepositoryResult
 import com.kzzz3.argus.lens.data.media.FinalizedAttachmentMetadata
 import com.kzzz3.argus.lens.data.media.createMediaRepository
+import com.kzzz3.argus.lens.data.realtime.ConversationRealtimeEvent
+import com.kzzz3.argus.lens.data.realtime.ConversationRealtimeSubscription
+import com.kzzz3.argus.lens.data.realtime.createConversationRealtimeClient
 import com.kzzz3.argus.lens.data.session.SessionRepository
 import com.kzzz3.argus.lens.data.session.createLocalSessionStore
 import com.kzzz3.argus.lens.feature.auth.AuthEntryAction
@@ -115,6 +120,7 @@ fun ArgusLensApp() {
     val mediaRepository: MediaRepository = remember(sessionRepository, context) {
         createMediaRepository(sessionRepository, context)
     }
+    val realtimeClient = remember { createConversationRealtimeClient() }
     val appShellCoordinator = remember(conversationRepository, sessionRepository) {
         AppShellCoordinator(
             authRepository = authRepository,
@@ -125,6 +131,7 @@ fun ArgusLensApp() {
     var callSessionJob by remember { mutableStateOf<Job?>(null) }
     var hydratedConversationAccountId by remember { mutableStateOf<String?>(null) }
     var hydratedSession by remember { mutableStateOf(false) }
+    var realtimeSubscription by remember { mutableStateOf<ConversationRealtimeSubscription?>(null) }
     var friends by remember { mutableStateOf<List<FriendEntry>>(emptyList()) }
     val previewThreadsState = remember {
         conversationRepository.createPreviewState(currentUserDisplayName = "Argus Tester")
@@ -161,6 +168,9 @@ fun ArgusLensApp() {
     val selectedConversation = remember(selectedConversationId, conversationThreads) {
         conversationThreads.firstOrNull { it.id == selectedConversationId }
     }
+    val latestConversationThreadsState by rememberUpdatedState(conversationThreadsState)
+    val latestSelectedConversationId by rememberUpdatedState(selectedConversationId)
+    val latestAppSessionState by rememberUpdatedState(appSessionState)
     val chatState = remember(selectedConversation, sessionDisplayName) {
         selectedConversation?.let { conversation ->
             ChatState(
@@ -208,6 +218,36 @@ fun ArgusLensApp() {
             hydratedConversationAccountId = signedInState.hydratedConversationAccountId
         } else {
             hydratedConversationAccountId = null
+        }
+    }
+
+    LaunchedEffect(hydratedSession, appSessionState.isAuthenticated, appSessionState.accessToken) {
+        realtimeSubscription?.close()
+        realtimeSubscription = null
+
+        if (hydratedSession && appSessionState.isAuthenticated && appSessionState.accessToken.isNotBlank()) {
+            realtimeSubscription = realtimeClient.connect(
+                accessToken = appSessionState.accessToken,
+                onEvent = { event ->
+                    coroutineScope.launch {
+                        conversationThreadsState = handleConversationRealtimeEvent(
+                            event = event,
+                            conversationRepository = conversationRepository,
+                            session = latestAppSessionState,
+                            currentState = latestConversationThreadsState,
+                            selectedConversationId = latestSelectedConversationId,
+                        )
+                    }
+                },
+                onError = { },
+            )
+        }
+    }
+
+    DisposableEffect(realtimeClient) {
+        onDispose {
+            realtimeSubscription?.close()
+            realtimeSubscription = null
         }
     }
 
@@ -799,6 +839,53 @@ private fun mediaContentTypeFor(kind: ChatDraftAttachmentKind): String {
         ChatDraftAttachmentKind.Voice -> "audio/mpeg"
     }
 }
+
+private suspend fun handleConversationRealtimeEvent(
+    event: ConversationRealtimeEvent,
+    conversationRepository: ConversationRepository,
+    session: com.kzzz3.argus.lens.app.session.AppSessionState,
+    currentState: com.kzzz3.argus.lens.feature.inbox.ConversationThreadsState,
+    selectedConversationId: String,
+): com.kzzz3.argus.lens.feature.inbox.ConversationThreadsState {
+    if (session.accountId.isBlank()) return currentState
+
+    return when (event.eventType) {
+        REALTIME_EVENT_MESSAGE_CREATED,
+        REALTIME_EVENT_MESSAGE_STATUS_UPDATED,
+        REALTIME_EVENT_MESSAGE_RECALLED -> {
+            conversationRepository.refreshConversationMessages(
+                state = currentState,
+                conversationId = event.conversationId,
+            )
+        }
+
+        REALTIME_EVENT_CONVERSATION_READ,
+        REALTIME_EVENT_CONVERSATION_CREATED,
+        REALTIME_EVENT_CONVERSATION_UPDATED -> {
+            val refreshedState = conversationRepository.loadOrCreateConversationThreads(
+                accountId = session.accountId,
+                currentUserDisplayName = session.displayName,
+            )
+            if (selectedConversationId == event.conversationId) {
+                conversationRepository.refreshConversationDetail(
+                    state = refreshedState,
+                    conversationId = event.conversationId,
+                )
+            } else {
+                refreshedState
+            }
+        }
+
+        else -> currentState
+    }
+}
+
+private const val REALTIME_EVENT_MESSAGE_CREATED = "MESSAGE_CREATED"
+private const val REALTIME_EVENT_MESSAGE_STATUS_UPDATED = "MESSAGE_STATUS_UPDATED"
+private const val REALTIME_EVENT_MESSAGE_RECALLED = "MESSAGE_RECALLED"
+private const val REALTIME_EVENT_CONVERSATION_READ = "CONVERSATION_READ"
+private const val REALTIME_EVENT_CONVERSATION_CREATED = "CONVERSATION_CREATED"
+private const val REALTIME_EVENT_CONVERSATION_UPDATED = "CONVERSATION_UPDATED"
 
 private fun buildMediaPlaceholderBytes(fileName: String, kind: ChatDraftAttachmentKind): ByteArray {
     return "$fileName|${kind.name}".toByteArray(Charsets.UTF_8)
