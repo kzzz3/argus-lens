@@ -129,21 +129,31 @@ fun reduceChatState(
         )
 
         is ChatAction.RetryFailedMessage -> {
-            val retriedMessages = currentState.messages.map { message ->
-                if (message.id == action.messageId) {
-                    message.copy(deliveryStatus = ChatMessageDeliveryStatus.Sending)
-                } else {
-                    message
-                }
+            val retryableMessage = currentState.messages.firstOrNull { message ->
+                message.id == action.messageId && message.deliveryStatus == ChatMessageDeliveryStatus.Failed
             }
+            if (retryableMessage == null) {
+                ChatReducerResult(
+                    state = currentState,
+                    effect = null,
+                )
+            } else {
+                val retriedMessages = currentState.messages.map { message ->
+                    if (message.id == action.messageId) {
+                        message.copy(deliveryStatus = ChatMessageDeliveryStatus.Sending)
+                    } else {
+                        message
+                    }
+                }
 
-            ChatReducerResult(
-                state = currentState.copy(messages = retriedMessages),
-                effect = ChatEffect.DispatchOutgoingMessages(
-                    conversationId = currentState.conversationId,
-                    messageIds = listOf(action.messageId),
-                ),
-            )
+                ChatReducerResult(
+                    state = currentState.copy(messages = retriedMessages),
+                    effect = ChatEffect.DispatchOutgoingMessages(
+                        conversationId = currentState.conversationId,
+                        messageIds = listOf(action.messageId),
+                    ),
+                )
+            }
         }
 
         is ChatAction.RecallMessage -> {

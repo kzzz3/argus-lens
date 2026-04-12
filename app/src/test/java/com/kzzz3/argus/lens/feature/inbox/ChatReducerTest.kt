@@ -200,6 +200,80 @@ class ChatReducerTest {
     }
 
     @Test
+    fun sendMessage_withTextAndAttachment_dispatchesBothOutgoingIds() {
+        val state = ChatState(
+            conversationId = "conv-1",
+            conversationTitle = "Zhang San",
+            conversationSubtitle = "1:1 direct chat",
+            currentUserDisplayName = "Argus Tester",
+            messages = emptyList(),
+            draftMessage = "Text payload",
+            draftAttachments = listOf(
+                ChatDraftAttachment(
+                    id = "draft-image-1",
+                    kind = ChatDraftAttachmentKind.Image,
+                    title = "Image draft 1",
+                    summary = "Local gallery placeholder ready to send",
+                )
+            ),
+        )
+
+        val result = reduceChatState(state, ChatAction.SendMessage)
+
+        assertEquals(2, result.state.messages.size)
+        assertEquals("Text payload", result.state.messages.first().body)
+        assertTrue(result.state.messages.last().body.startsWith("[Image]"))
+        assertEquals(
+            ChatEffect.DispatchOutgoingMessages(
+                conversationId = "conv-1",
+                messageIds = result.state.messages.map { it.id },
+            ),
+            result.effect
+        )
+    }
+
+    @Test
+    fun retryFailedMessage_forMissingMessage_keepsStateUnchanged() {
+        val state = ChatState(
+            conversationId = "conv-1",
+            conversationTitle = "Zhang San",
+            conversationSubtitle = "1:1 direct chat",
+            currentUserDisplayName = "Argus Tester",
+            messages = emptyList(),
+        )
+
+        val result = reduceChatState(state, ChatAction.RetryFailedMessage("missing"))
+
+        assertEquals(state, result.state)
+        assertEquals(null, result.effect)
+    }
+
+    @Test
+    fun recallMessage_forIncomingMessage_keepsStateUnchanged() {
+        val state = ChatState(
+            conversationId = "conv-1",
+            conversationTitle = "Zhang San",
+            conversationSubtitle = "1:1 direct chat",
+            currentUserDisplayName = "Argus Tester",
+            messages = listOf(
+                ChatMessageItem(
+                    id = "m-inbound",
+                    senderDisplayName = "Zhang San",
+                    body = "Do not recall this",
+                    timestampLabel = "Now",
+                    isFromCurrentUser = false,
+                    deliveryStatus = ChatMessageDeliveryStatus.Delivered,
+                )
+            ),
+        )
+
+        val result = reduceChatState(state, ChatAction.RecallMessage("m-inbound"))
+
+        assertEquals(state, result.state)
+        assertEquals(null, result.effect)
+    }
+
+    @Test
     fun navigateBack_requestsInboxNavigation() {
         val state = ChatState(
             conversationId = "conv-1",
