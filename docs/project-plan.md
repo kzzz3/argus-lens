@@ -253,16 +253,22 @@ Lens becomes the Android simulator of smart glasses:
 - [x] Remote message list sync is enabled when opening conversations
 - [x] Remote text-message send path is enabled
 - [x] Remote message recall path is enabled
+- [x] Remote delivery receipt and read-state sync are enabled
+- [x] Opening an active chat now clears local unread state and auto-applies visible read receipts during realtime refresh
+- [x] Conversation summary hydration now preserves richer local thread history and drafts instead of flattening everything to preview-only state
+- [x] Generic file-message upload/finalize/send path is enabled for image/video-as-file behavior
+- [x] Attachment download/save-as path is enabled with in-chat success/failure feedback
+- [x] SSE realtime conversation updates are enabled
 - [x] Remote conversation/message fetch now uses recent-window semantics rather than pretending to be full-history sync
 
 ## 13. Next-Phase Checklist
 
 ### 13.1 Near-term Stage 1 priorities
 - [ ] add explicit sync cursor / next-window semantics instead of simple recent-window pulls
-- [ ] add remote delivery receipt / ack semantics so message state is server-driven rather than mostly local simulation
-- [ ] add read-state sync so unread state is not only local
-- [ ] add media upload session negotiation for image / voice / video instead of local-only draft placeholders
-- [ ] connect remote send for richer message types beyond the current text-first path
+- [ ] persist and restore selected conversation/session-entry context across process death if we want chat re-entry to survive full app recreation
+- [ ] broaden receipt reconciliation beyond foreground chat so background/inbox refresh paths stay fully monotonic under delayed events
+- [ ] harden file-message metadata presentation and download management beyond the current basic save-as UX
+- [ ] connect remote send for richer message types beyond the current text-first plus generic-file path
 
 ### 13.2 RTC and realtime follow-up
 - [ ] replace local call shell with real signaling contract integration
@@ -275,13 +281,13 @@ Lens becomes the Android simulator of smart glasses:
 
 ### 13.4 Best-practice cleanup still worth doing
 - [ ] continue shrinking `ArgusLensApp.kt` by extracting remaining chat/call orchestration slices
-- [ ] add repository/coordinator tests around hydration, offline fallback, and sync transitions
+- [ ] keep expanding repository/coordinator tests around hydration, offline fallback, receipt reconciliation, and sync transitions
 - [ ] decide whether conversation/message sync should move to WorkManager-driven background reconciliation
 
 ## 14. Immediate Next Design Tasks
 
 1. define sync cursor / recent-window evolution so remote history acts as a bounded sync source instead of a full-history truth source
-2. define remote delivery/read receipt protocol and local reconciliation behavior
-3. define upload-session contracts for image, voice, and video payloads
+2. extend delivery/read receipt reconciliation from the active-chat path into stronger background and restore-time convergence rules
+3. refine generic file-message contracts so metadata, retention, and download UX remain predictable under retries
 4. define WebRTC signaling schema and session lifecycle events
 5. define the Stage 2 JNI-facing service boundary for Retina integration without regressing the Stage 1 local-first IM model
