@@ -18,6 +18,41 @@ data class UploadSessionResponse(
     val expiresAt: String,
 )
 
+data class FinalizeUploadSessionRequest(
+    val fileName: String,
+    val contentType: String,
+    val contentLength: Long,
+    val objectKey: String,
+    val conversationId: String?,
+)
+
+data class FinalizeUploadSessionResponse(
+    val attachmentId: String,
+    val sessionId: String,
+    val accountId: String,
+    val conversationId: String?,
+    val attachmentType: String,
+    val fileName: String,
+    val contentType: String,
+    val contentLength: Long,
+    val objectKey: String,
+    val uploadUrl: String,
+    val createdAt: String,
+)
+
+data class FinalizedAttachmentMetadata(
+    val attachmentId: String,
+    val sessionId: String,
+    val conversationId: String?,
+    val attachmentType: String,
+    val fileName: String,
+    val contentType: String,
+    val contentLength: Long,
+    val objectKey: String,
+    val uploadUrl: String,
+    val createdAt: String,
+)
+
 enum class MediaAttachmentType(
     val draftKind: ChatDraftAttachmentKind,
     val backendValue: String,

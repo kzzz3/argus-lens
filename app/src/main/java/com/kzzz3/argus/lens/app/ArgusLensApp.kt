@@ -22,7 +22,7 @@ import com.kzzz3.argus.lens.data.friend.FriendRepositoryResult
 import com.kzzz3.argus.lens.data.friend.createFriendRepository
 import com.kzzz3.argus.lens.data.media.MediaRepository
 import com.kzzz3.argus.lens.data.media.MediaRepositoryResult
-import com.kzzz3.argus.lens.data.media.MediaUploadSession
+import com.kzzz3.argus.lens.data.media.FinalizedAttachmentMetadata
 import com.kzzz3.argus.lens.data.media.createMediaRepository
 import com.kzzz3.argus.lens.data.session.SessionRepository
 import com.kzzz3.argus.lens.data.session.createLocalSessionStore
@@ -677,17 +677,27 @@ fun ArgusLensApp() {
                                                     durationSeconds = null,
                                                 )
                                                 if (uploadSessionResult is MediaRepositoryResult.Success) {
-                                                    conversationThreadsState = conversationRepository.sendMessage(
-                                                        state = conversationThreadsState,
+                                                    val session = uploadSessionResult.session
+                                                    val finalizeResult = mediaRepository.finalizeUploadSession(
+                                                        sessionId = session.uploadSessionId,
                                                         conversationId = conversationId,
-                                                        localMessageId = latestMessage.id,
-                                                        body = buildFileMessageBodyWithUploadSession(
-                                                            kind = attachmentKind,
-                                                            fileName = fileName,
-                                                            session = uploadSessionResult.session,
-                                                        ),
+                                                        fileName = fileName,
+                                                        contentType = session.contentType,
+                                                        contentLength = session.contentLength,
+                                                        objectKey = session.uploadSessionId,
                                                     )
-                                                    messageHandled = true
+                                                    if (finalizeResult is MediaRepositoryResult.FinalizeSuccess) {
+                                                        conversationThreadsState = conversationRepository.sendMessage(
+                                                            state = conversationThreadsState,
+                                                            conversationId = conversationId,
+                                                            localMessageId = latestMessage.id,
+                                                            body = buildFileMessageBodyWithFinalizedAttachment(
+                                                                kind = attachmentKind,
+                                                                metadata = finalizeResult.metadata,
+                                                            ),
+                                                        )
+                                                        messageHandled = true
+                                                    }
                                                 }
                                             }
                                         } else {
@@ -779,22 +789,21 @@ private fun buildMediaPlaceholderFileName(conversationId: String, localMessageId
     return "$conversationId-${kind.name.lowercase()}-$localMessageId.$extension"
 }
 
-private fun buildFileMessageBodyWithUploadSession(
+private fun buildFileMessageBodyWithFinalizedAttachment(
     kind: ChatDraftAttachmentKind,
-    fileName: String,
-    session: MediaUploadSession,
+    metadata: FinalizedAttachmentMetadata,
 ): String {
     return buildString {
         append("[File] ")
         append(kind.name)
         append(" · ")
-        append(fileName)
+        append(metadata.fileName)
         append(" · Download or Save As")
-        append(" · sessionId=")
-        append(session.uploadSessionId)
         append(" · attachmentId=")
-        append(session.attachmentId)
+        append(metadata.attachmentId)
+        append(" · objectKey=")
+        append(metadata.objectKey)
         append(" · uploadUrl=")
-        append(session.uploadUrl)
+        append(metadata.uploadUrl)
     }
 }

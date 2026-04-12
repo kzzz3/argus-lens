@@ -15,6 +15,7 @@ data class MediaUploadSession(
 
 sealed interface MediaRepositoryResult {
     data class Success(val session: MediaUploadSession) : MediaRepositoryResult
+    data class FinalizeSuccess(val metadata: FinalizedAttachmentMetadata) : MediaRepositoryResult
     data class Failure(
         val code: String?,
         val message: String,
@@ -29,5 +30,14 @@ interface MediaRepository {
         contentType: String,
         contentLength: Long,
         durationSeconds: Int? = null,
+    ): MediaRepositoryResult
+
+    suspend fun finalizeUploadSession(
+        sessionId: String,
+        conversationId: String,
+        fileName: String,
+        contentType: String,
+        contentLength: Long,
+        objectKey: String,
     ): MediaRepositoryResult
 }

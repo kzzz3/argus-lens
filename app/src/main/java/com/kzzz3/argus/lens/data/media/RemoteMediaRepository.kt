@@ -67,6 +67,55 @@ class RemoteMediaRepository(
         }
     }
 
+    override suspend fun finalizeUploadSession(
+        sessionId: String,
+        conversationId: String,
+        fileName: String,
+        contentType: String,
+        contentLength: Long,
+        objectKey: String,
+    ): MediaRepositoryResult {
+        val session = sessionRepository.loadSession()
+        val accessToken = session.accessToken
+        if (accessToken.isBlank()) {
+            return MediaRepositoryResult.Failure(
+                code = "INVALID_CREDENTIALS",
+                message = "No active session token.",
+            )
+        }
+
+        val request = FinalizeUploadSessionRequest(
+            fileName = fileName,
+            contentType = contentType,
+            contentLength = contentLength,
+            objectKey = objectKey,
+            conversationId = conversationId.ifBlank { null },
+        )
+
+        return try {
+            val response = mediaApiService.finalizeUploadSession(
+                authorizationHeader = "Bearer $accessToken",
+                sessionId = sessionId,
+                request = request,
+            )
+
+            if (!response.isSuccessful) {
+                parseFailure(response.code(), response.errorBody()?.string().orEmpty())
+            } else {
+                val body = response.body() ?: return MediaRepositoryResult.Failure(
+                    code = "EMPTY_FINALIZATION_RESPONSE",
+                    message = "Media service returned an empty finalize response.",
+                )
+                MediaRepositoryResult.FinalizeSuccess(body.toFinalizedAttachmentMetadata())
+            }
+        } catch (_: IOException) {
+            MediaRepositoryResult.Failure(
+                code = "NETWORK_UNAVAILABLE",
+                message = "Cannot reach media service.",
+            )
+        }
+    }
+
     private fun UploadSessionResponse.toMediaUploadSession(
         conversationId: String,
         attachmentKind: ChatDraftAttachmentKind,
@@ -82,6 +131,21 @@ class RemoteMediaRepository(
             expiresAt = expiresAt,
             contentType = contentType,
             contentLength = contentLength,
+        )
+    }
+
+    private fun FinalizeUploadSessionResponse.toFinalizedAttachmentMetadata(): FinalizedAttachmentMetadata {
+        return FinalizedAttachmentMetadata(
+            attachmentId = attachmentId,
+            sessionId = sessionId,
+            conversationId = conversationId,
+            attachmentType = attachmentType,
+            fileName = fileName,
+            contentType = contentType,
+            contentLength = contentLength,
+            objectKey = objectKey,
+            uploadUrl = uploadUrl,
+            createdAt = createdAt,
         )
     }
 
