@@ -5,6 +5,9 @@ import com.kzzz3.argus.lens.data.auth.ApiErrorResponse
 import com.kzzz3.argus.lens.data.session.SessionRepository
 import com.kzzz3.argus.lens.feature.inbox.ChatDraftAttachmentKind
 import java.io.IOException
+import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+
 
 class RemoteMediaRepository(
     private val sessionRepository: SessionRepository,
@@ -116,6 +119,55 @@ class RemoteMediaRepository(
         }
     }
 
+
+    override suspend fun uploadContent(
+        uploadSession: MediaUploadSession,
+        contentBytes: ByteArray,
+    ): MediaRepositoryResult {
+        val currentSession = sessionRepository.loadSession()
+        val accessToken = currentSession.accessToken
+        if (accessToken.isBlank()) {
+            return MediaRepositoryResult.Failure(
+                code = "INVALID_CREDENTIALS",
+                message = "No active session token.",
+            )
+        }
+
+        if (uploadSession.uploaded) {
+            return MediaRepositoryResult.UploadSuccess(
+                sessionId = uploadSession.uploadSessionId,
+                objectKey = uploadSession.objectKey,
+            )
+        }
+
+        val mediaType = uploadSession.contentType.toMediaTypeOrNull()
+        val requestBody = contentBytes.toRequestBody(mediaType)
+
+        return try {
+            val response = mediaApiService.uploadContent(
+                authorizationHeader = "Bearer $accessToken",
+                sessionId = uploadSession.uploadSessionId,
+                uploadHeaders = uploadSession.uploadHeaders,
+                body = requestBody,
+            )
+
+            if (!response.isSuccessful) {
+                parseFailure(response.code(), response.errorBody()?.string().orEmpty())
+            } else {
+                MediaRepositoryResult.UploadSuccess(
+                    sessionId = uploadSession.uploadSessionId,
+                    objectKey = uploadSession.objectKey,
+                )
+            }
+        } catch (_: IOException) {
+            MediaRepositoryResult.Failure(
+                code = "NETWORK_UNAVAILABLE",
+                message = "Cannot reach media service.",
+            )
+        }
+    }
+
+
     private fun UploadSessionResponse.toMediaUploadSession(
         conversationId: String,
         attachmentKind: ChatDraftAttachmentKind,
@@ -128,9 +180,12 @@ class RemoteMediaRepository(
             uploadSessionId = uploadSessionId,
             attachmentId = attachmentId,
             uploadUrl = uploadUrl,
-            expiresAt = expiresAt,
+            objectKey = objectKey,
+            uploadHeaders = uploadHeaders,
+            uploaded = uploaded,
             contentType = contentType,
             contentLength = contentLength,
+            expiresAt = expiresAt,
         )
     }
 

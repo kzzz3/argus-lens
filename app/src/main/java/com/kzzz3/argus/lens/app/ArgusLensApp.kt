@@ -73,6 +73,7 @@ import com.kzzz3.argus.lens.feature.register.reduceRegisterFormState
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.text.Charsets
 
 @Composable
 fun ArgusLensApp() {
@@ -676,29 +677,39 @@ fun ArgusLensApp() {
                                                     contentLength = 0L,
                                                     durationSeconds = null,
                                                 )
+
                                                 if (uploadSessionResult is MediaRepositoryResult.Success) {
                                                     val session = uploadSessionResult.session
-                                                    val finalizeResult = mediaRepository.finalizeUploadSession(
-                                                        sessionId = session.uploadSessionId,
-                                                        conversationId = conversationId,
-                                                        fileName = fileName,
-                                                        contentType = session.contentType,
-                                                        contentLength = session.contentLength,
-                                                        objectKey = session.uploadSessionId,
+                                                    val placeholderBytes = buildMediaPlaceholderBytes(fileName, attachmentKind)
+                                                    val uploadResult = mediaRepository.uploadContent(
+                                                        session,
+                                                        placeholderBytes,
                                                     )
-                                                    if (finalizeResult is MediaRepositoryResult.FinalizeSuccess) {
-                                                        conversationThreadsState = conversationRepository.sendMessage(
-                                                            state = conversationThreadsState,
+                                                    if (uploadResult is MediaRepositoryResult.UploadSuccess) {
+                                                        val finalizeResult = mediaRepository.finalizeUploadSession(
+                                                            sessionId = session.uploadSessionId,
                                                             conversationId = conversationId,
-                                                            localMessageId = latestMessage.id,
-                                                            body = buildFileMessageBodyWithFinalizedAttachment(
-                                                                kind = attachmentKind,
-                                                                metadata = finalizeResult.metadata,
-                                                            ),
+                                                            fileName = fileName,
+                                                            contentType = session.contentType,
+                                                            contentLength = placeholderBytes.size.toLong(),
+                                                            objectKey = session.objectKey,
                                                         )
-                                                        messageHandled = true
+                                                        if (finalizeResult is MediaRepositoryResult.FinalizeSuccess) {
+                                                            conversationThreadsState = conversationRepository.sendMessage(
+                                                                state = conversationThreadsState,
+                                                                conversationId = conversationId,
+                                                                localMessageId = latestMessage.id,
+                                                                body = buildFileMessageBodyWithFinalizedAttachment(
+                                                                    kind = attachmentKind,
+                                                                    metadata = finalizeResult.metadata,
+                                                                ),
+                                                            )
+                                                            messageHandled = true
+                                                        }
                                                     }
                                                 }
+
+
                                             }
                                         } else {
                                             conversationThreadsState = conversationRepository.sendMessage(
@@ -778,6 +789,10 @@ private fun mediaContentTypeFor(kind: ChatDraftAttachmentKind): String {
         ChatDraftAttachmentKind.Video -> "video/mp4"
         ChatDraftAttachmentKind.Voice -> "audio/mpeg"
     }
+}
+
+private fun buildMediaPlaceholderBytes(fileName: String, kind: ChatDraftAttachmentKind): ByteArray {
+    return "$fileName|${kind.name}".toByteArray(Charsets.UTF_8)
 }
 
 private fun buildMediaPlaceholderFileName(conversationId: String, localMessageId: String, kind: ChatDraftAttachmentKind): String {

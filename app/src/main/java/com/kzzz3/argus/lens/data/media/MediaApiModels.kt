@@ -16,6 +16,9 @@ data class UploadSessionResponse(
     val attachmentId: String,
     val uploadUrl: String,
     val expiresAt: String,
+    val objectKey: String,
+    val uploadHeaders: Map<String, String>,
+    val uploaded: Boolean,
 )
 
 data class FinalizeUploadSessionRequest(

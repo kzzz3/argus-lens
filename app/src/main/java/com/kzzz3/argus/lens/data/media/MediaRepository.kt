@@ -8,6 +8,9 @@ data class MediaUploadSession(
     val uploadSessionId: String,
     val attachmentId: String,
     val uploadUrl: String,
+    val objectKey: String,
+    val uploadHeaders: Map<String, String>,
+    val uploaded: Boolean,
     val contentType: String,
     val contentLength: Long,
     val expiresAt: String,
@@ -16,6 +19,10 @@ data class MediaUploadSession(
 sealed interface MediaRepositoryResult {
     data class Success(val session: MediaUploadSession) : MediaRepositoryResult
     data class FinalizeSuccess(val metadata: FinalizedAttachmentMetadata) : MediaRepositoryResult
+    data class UploadSuccess(
+        val sessionId: String,
+        val objectKey: String,
+    ) : MediaRepositoryResult
     data class Failure(
         val code: String?,
         val message: String,
@@ -39,5 +46,10 @@ interface MediaRepository {
         contentType: String,
         contentLength: Long,
         objectKey: String,
+    ): MediaRepositoryResult
+
+    suspend fun uploadContent(
+        uploadSession: MediaUploadSession,
+        contentBytes: ByteArray,
     ): MediaRepositoryResult
 }
