@@ -667,24 +667,25 @@ fun ArgusLensApp() {
                                         if (isMediaPlaceholderBody(latestBody)) {
                                             val attachmentKind = mediaAttachmentKindFromPlaceholder(latestBody)
                                             if (attachmentKind != null) {
+                                                val fileName = buildMediaPlaceholderFileName(conversationId, latestMessage.id, attachmentKind)
                                                 val uploadSessionResult = mediaRepository.createUploadSession(
                                                     conversationId = conversationId,
                                                     attachmentKind = attachmentKind,
-                                                    fileName = buildMediaPlaceholderFileName(conversationId, latestMessage.id, attachmentKind),
+                                                    fileName = fileName,
                                                     contentType = mediaContentTypeFor(attachmentKind),
                                                     contentLength = 0L,
-                                                    durationSeconds = if (attachmentKind == ChatDraftAttachmentKind.Voice) {
-                                                        parseVoiceDurationSecondsFromPlaceholder(latestBody)
-                                                    } else {
-                                                        null
-                                                    },
+                                                    durationSeconds = null,
                                                 )
                                                 if (uploadSessionResult is MediaRepositoryResult.Success) {
                                                     conversationThreadsState = conversationRepository.sendMessage(
                                                         state = conversationThreadsState,
                                                         conversationId = conversationId,
                                                         localMessageId = latestMessage.id,
-                                                        body = buildMediaMessageBodyWithUploadSession(latestBody, uploadSessionResult.session),
+                                                        body = buildFileMessageBodyWithUploadSession(
+                                                            kind = attachmentKind,
+                                                            fileName = fileName,
+                                                            session = uploadSessionResult.session,
+                                                        ),
                                                     )
                                                     messageHandled = true
                                                 }
@@ -750,14 +751,13 @@ private fun incrementCallDurationLabel(
 }
 
 private fun isMediaPlaceholderBody(body: String): Boolean {
-    return body.startsWith("[Image]") || body.startsWith("[Video]") || body.startsWith("[Voice]")
+    return body.startsWith("[Image]") || body.startsWith("[Video]")
 }
 
 private fun mediaAttachmentKindFromPlaceholder(body: String): ChatDraftAttachmentKind? {
     return when {
         body.startsWith("[Image]") -> ChatDraftAttachmentKind.Image
         body.startsWith("[Video]") -> ChatDraftAttachmentKind.Video
-        body.startsWith("[Voice]") -> ChatDraftAttachmentKind.Voice
         else -> null
     }
 }
@@ -770,28 +770,31 @@ private fun mediaContentTypeFor(kind: ChatDraftAttachmentKind): String {
     }
 }
 
-private fun parseVoiceDurationSecondsFromPlaceholder(body: String): Int? {
-    val match = Regex("(\\d{1,2}):(\\d{2})").find(body) ?: return null
-    val (minutes, seconds) = match.destructured
-    val minutesValue = minutes.toIntOrNull() ?: 0
-    val secondsValue = seconds.toIntOrNull() ?: 0
-    return minutesValue * 60 + secondsValue
-}
-
 private fun buildMediaPlaceholderFileName(conversationId: String, localMessageId: String, kind: ChatDraftAttachmentKind): String {
-    return "$conversationId-${kind.name.lowercase()}-$localMessageId-placeholder"
+    val extension = when (kind) {
+        ChatDraftAttachmentKind.Image -> "jpg"
+        ChatDraftAttachmentKind.Video -> "mp4"
+        else -> "bin"
+    }
+    return "$conversationId-${kind.name.lowercase()}-$localMessageId.$extension"
 }
 
-private fun buildMediaMessageBodyWithUploadSession(originalBody: String, session: MediaUploadSession): String {
+private fun buildFileMessageBodyWithUploadSession(
+    kind: ChatDraftAttachmentKind,
+    fileName: String,
+    session: MediaUploadSession,
+): String {
     return buildString {
-        append(originalBody)
-        append(" [MediaSession: sessionId=")
+        append("[File] ")
+        append(kind.name)
+        append(" · ")
+        append(fileName)
+        append(" · Download or Save As")
+        append(" · sessionId=")
         append(session.uploadSessionId)
-        append(", attachmentId=")
+        append(" · attachmentId=")
         append(session.attachmentId)
-        append(", uploadUrl=")
+        append(" · uploadUrl=")
         append(session.uploadUrl)
-        append("]")
     }
 }
-

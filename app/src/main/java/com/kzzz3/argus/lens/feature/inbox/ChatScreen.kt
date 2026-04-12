@@ -24,7 +24,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.kzzz3.argus.lens.ui.theme.ArguslensTheme
-import kotlinx.coroutines.delay
 
 @Composable
 fun ChatScreen(
@@ -38,15 +37,6 @@ fun ChatScreen(
         val lastMessageIndex = state.messages.lastIndex
         if (lastMessageIndex >= 0) {
             messageListState.animateScrollToItem(lastMessageIndex)
-        }
-    }
-
-    LaunchedEffect(state.isCancelVoiceVisible) {
-        if (state.isCancelVoiceVisible) {
-            while (true) {
-                delay(1000)
-                onAction(ChatAction.TickVoiceRecording)
-            }
         }
     }
 
@@ -181,13 +171,6 @@ fun ChatScreen(
                     style = MaterialTheme.typography.bodyMedium,
                     color = Color(0xFFAEC7DC)
                 )
-                Text(
-                    text = state.voiceRecordingLabel,
-                    style = MaterialTheme.typography.labelLarge,
-                    color = if (state.isCancelVoiceVisible) Color(0xFF7AF5C9) else Color(0xFFAAC9E3),
-                    fontWeight = FontWeight.Medium
-                )
-
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -202,12 +185,6 @@ fun ChatScreen(
                         label = state.videoActionLabel,
                         accentColor = Color(0xFFB59BFF),
                         onClick = { onAction(ChatAction.AddVideoAttachment) },
-                        modifier = Modifier.weight(1f)
-                    )
-                    ComposerActionChip(
-                        label = state.voiceActionLabel,
-                        accentColor = Color(0xFF7AF5C9),
-                        onClick = { onAction(ChatAction.ToggleVoiceDraft) },
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -225,15 +202,6 @@ fun ChatScreen(
                     }
                 }
 
-                if (state.isCancelVoiceVisible) {
-                    Text(
-                        text = state.cancelVoiceActionLabel,
-                        modifier = Modifier.clickable(onClick = { onAction(ChatAction.CancelVoiceRecording) }),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = Color(0xFFFF9A8B),
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
             }
         }
 
@@ -453,7 +421,6 @@ private fun RichMediaBubble(
     val accentColor = when (media.type) {
         "Image" -> Color(0xFF83C9FF)
         "Video" -> Color(0xFFB59BFF)
-        "Voice" -> Color(0xFF7AF5C9)
         else -> contentColor
     }
 
@@ -501,15 +468,25 @@ private data class RichMediaMessage(
 private fun parseRichMediaMessage(
     body: String,
 ): RichMediaMessage? {
-    val match = Regex("^\\[(Image|Video|Voice)]\\s+(.+?)\\s+·\\s+(.+)$").matchEntire(body)
+    val fileMatch = Regex("""^\[File] (Image|Video) · (.+?) · (.+?) · sessionId=(\S+) · attachmentId=(\S+) · uploadUrl=(.+)$""").matchEntire(body)
+    if (fileMatch != null) {
+        return RichMediaMessage(
+            type = fileMatch.groupValues[1],
+            title = fileMatch.groupValues[2],
+            summary = fileMatch.groupValues[3],
+        )
+    }
+
+    val legacyMatch = Regex("""^\[(Image|Video|Voice)]\s+(.+?)\s+·\s+(.+)$""").matchEntire(body)
         ?: return null
 
     return RichMediaMessage(
-        type = match.groupValues[1],
-        title = match.groupValues[2],
-        summary = match.groupValues[3],
+        type = legacyMatch.groupValues[1],
+        title = legacyMatch.groupValues[2],
+        summary = legacyMatch.groupValues[3],
     )
 }
+
 
 @Preview(showBackground = true)
 @Composable
@@ -552,12 +529,12 @@ private fun ChatScreenPreview() {
                     )
                 ),
                 composerTitle = "Stage-1 media composer",
-                composerHint = "Build a local draft with text, image, video, or voice.",
+                composerHint = "Build a local draft with text or file attachments (image, video) before wiring the real media stack.",
                 imageActionLabel = "Add image",
                 videoActionLabel = "Add video",
-                voiceActionLabel = "Start voice",
-                voiceRecordingLabel = "Ready for local voice note",
-                cancelVoiceActionLabel = "Cancel voice",
+                voiceActionLabel = "",
+                voiceRecordingLabel = "",
+                cancelVoiceActionLabel = "",
                 isCancelVoiceVisible = false,
                 audioCallActionLabel = "Audio call",
                 videoCallActionLabel = "Video call",
