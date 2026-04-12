@@ -20,6 +20,10 @@ import com.kzzz3.argus.lens.data.friend.FriendEntry
 import com.kzzz3.argus.lens.data.friend.FriendRepository
 import com.kzzz3.argus.lens.data.friend.FriendRepositoryResult
 import com.kzzz3.argus.lens.data.friend.createFriendRepository
+import com.kzzz3.argus.lens.data.media.MediaRepository
+import com.kzzz3.argus.lens.data.media.MediaRepositoryResult
+import com.kzzz3.argus.lens.data.media.MediaUploadSession
+import com.kzzz3.argus.lens.data.media.createMediaRepository
 import com.kzzz3.argus.lens.data.session.SessionRepository
 import com.kzzz3.argus.lens.data.session.createLocalSessionStore
 import com.kzzz3.argus.lens.feature.auth.AuthEntryAction
@@ -51,6 +55,7 @@ import com.kzzz3.argus.lens.feature.inbox.ChatEffect
 import com.kzzz3.argus.lens.feature.inbox.ChatMessageDeliveryStatus
 import com.kzzz3.argus.lens.feature.inbox.ChatScreen
 import com.kzzz3.argus.lens.feature.inbox.ChatState
+import com.kzzz3.argus.lens.feature.inbox.ChatDraftAttachmentKind
 import com.kzzz3.argus.lens.feature.inbox.ConversationThreadsState
 import com.kzzz3.argus.lens.feature.inbox.InboxAction
 import com.kzzz3.argus.lens.feature.inbox.InboxConversationThread
@@ -105,6 +110,9 @@ fun ArgusLensApp() {
     }
     val friendRepository: FriendRepository = remember(sessionRepository) {
         createFriendRepository(sessionRepository)
+    }
+    val mediaRepository: MediaRepository = remember(sessionRepository) {
+        createMediaRepository(sessionRepository)
     }
     val appShellCoordinator = remember(conversationRepository, sessionRepository) {
         AppShellCoordinator(
@@ -648,31 +656,61 @@ fun ArgusLensApp() {
                             }
                             is ChatEffect.DispatchOutgoingMessages -> {
                                 coroutineScope.launch {
-                                    val latestMessage = result.state.messages
+                                    val outgoingMessages = result.state.messages
                                         .filter { it.id in result.effect.messageIds }
-                                        .lastOrNull()
-                                    val latestBody = result.state.messages
-                                        .filter { it.id in result.effect.messageIds }
-                                        .lastOrNull()
-                                        ?.body
-                                    if (result.effect.messageIds.size == 1 && latestBody != null && latestMessage != null) {
-                                        conversationThreadsState = conversationRepository.sendMessage(
-                                            state = conversationThreadsState,
-                                            conversationId = result.effect.conversationId,
-                                            localMessageId = latestMessage.id,
-                                            body = latestBody,
-                                        )
-                                    } else {
+                                    val latestMessage = outgoingMessages.lastOrNull()
+                                    val latestBody = latestMessage?.body
+                                    val conversationId = result.effect.conversationId
+                                    var messageHandled = false
+
+                                    if (result.effect.messageIds.size == 1 && latestMessage != null && latestBody != null) {
+                                        if (isMediaPlaceholderBody(latestBody)) {
+                                            val attachmentKind = mediaAttachmentKindFromPlaceholder(latestBody)
+                                            if (attachmentKind != null) {
+                                                val uploadSessionResult = mediaRepository.createUploadSession(
+                                                    conversationId = conversationId,
+                                                    attachmentKind = attachmentKind,
+                                                    fileName = buildMediaPlaceholderFileName(conversationId, latestMessage.id, attachmentKind),
+                                                    contentType = mediaContentTypeFor(attachmentKind),
+                                                    contentLength = 0L,
+                                                    durationSeconds = if (attachmentKind == ChatDraftAttachmentKind.Voice) {
+                                                        parseVoiceDurationSecondsFromPlaceholder(latestBody)
+                                                    } else {
+                                                        null
+                                                    },
+                                                )
+                                                if (uploadSessionResult is MediaRepositoryResult.Success) {
+                                                    conversationThreadsState = conversationRepository.sendMessage(
+                                                        state = conversationThreadsState,
+                                                        conversationId = conversationId,
+                                                        localMessageId = latestMessage.id,
+                                                        body = buildMediaMessageBodyWithUploadSession(latestBody, uploadSessionResult.session),
+                                                    )
+                                                    messageHandled = true
+                                                }
+                                            }
+                                        } else {
+                                            conversationThreadsState = conversationRepository.sendMessage(
+                                                state = conversationThreadsState,
+                                                conversationId = conversationId,
+                                                localMessageId = latestMessage.id,
+                                                body = latestBody,
+                                            )
+                                            messageHandled = true
+                                        }
+                                    }
+
+                                    if (!messageHandled) {
                                         delay(350)
                                         conversationThreadsState = conversationRepository.resolveOutgoingMessages(
                                             state = conversationThreadsState,
-                                            conversationId = result.effect.conversationId,
+                                            conversationId = conversationId,
                                             messageIds = result.effect.messageIds,
                                         )
                                         delay(700)
                                         conversationThreadsState = conversationRepository.resolveDeliveredMessages(
                                             state = conversationThreadsState,
-                                            conversationId = result.effect.conversationId,
+                                            conversationId = conversationId,
                                             messageIds = result.effect.messageIds,
                                         )
                                     }
@@ -710,3 +748,50 @@ private fun incrementCallDurationLabel(
     val nextSeconds = totalSeconds % 60
     return "%02d:%02d".format(nextMinutes, nextSeconds)
 }
+
+private fun isMediaPlaceholderBody(body: String): Boolean {
+    return body.startsWith("[Image]") || body.startsWith("[Video]") || body.startsWith("[Voice]")
+}
+
+private fun mediaAttachmentKindFromPlaceholder(body: String): ChatDraftAttachmentKind? {
+    return when {
+        body.startsWith("[Image]") -> ChatDraftAttachmentKind.Image
+        body.startsWith("[Video]") -> ChatDraftAttachmentKind.Video
+        body.startsWith("[Voice]") -> ChatDraftAttachmentKind.Voice
+        else -> null
+    }
+}
+
+private fun mediaContentTypeFor(kind: ChatDraftAttachmentKind): String {
+    return when (kind) {
+        ChatDraftAttachmentKind.Image -> "image/jpeg"
+        ChatDraftAttachmentKind.Video -> "video/mp4"
+        ChatDraftAttachmentKind.Voice -> "audio/mpeg"
+    }
+}
+
+private fun parseVoiceDurationSecondsFromPlaceholder(body: String): Int? {
+    val match = Regex("(\\d{1,2}):(\\d{2})").find(body) ?: return null
+    val (minutes, seconds) = match.destructured
+    val minutesValue = minutes.toIntOrNull() ?: 0
+    val secondsValue = seconds.toIntOrNull() ?: 0
+    return minutesValue * 60 + secondsValue
+}
+
+private fun buildMediaPlaceholderFileName(conversationId: String, localMessageId: String, kind: ChatDraftAttachmentKind): String {
+    return "$conversationId-${kind.name.lowercase()}-$localMessageId-placeholder"
+}
+
+private fun buildMediaMessageBodyWithUploadSession(originalBody: String, session: MediaUploadSession): String {
+    return buildString {
+        append(originalBody)
+        append(" [MediaSession: sessionId=")
+        append(session.uploadSessionId)
+        append(", attachmentId=")
+        append(session.attachmentId)
+        append(", uploadUrl=")
+        append(session.uploadUrl)
+        append("]")
+    }
+}
+
