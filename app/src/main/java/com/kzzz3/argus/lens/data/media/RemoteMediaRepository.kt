@@ -1,15 +1,19 @@
 package com.kzzz3.argus.lens.data.media
 
+import android.content.Context
+import android.os.Environment
 import com.google.gson.Gson
 import com.kzzz3.argus.lens.data.auth.ApiErrorResponse
 import com.kzzz3.argus.lens.data.session.SessionRepository
 import com.kzzz3.argus.lens.feature.inbox.ChatDraftAttachmentKind
+import java.io.File
+import java.io.FileOutputStream
 import java.io.IOException
-import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
-
+import okhttp3.RequestBody.Companion.toRequestBody
 
 class RemoteMediaRepository(
+    private val context: Context,
     private val sessionRepository: SessionRepository,
     private val mediaApiService: MediaApiService,
     private val gson: Gson = Gson(),
@@ -119,7 +123,6 @@ class RemoteMediaRepository(
         }
     }
 
-
     override suspend fun uploadContent(
         uploadSession: MediaUploadSession,
         contentBytes: ByteArray,
@@ -167,6 +170,55 @@ class RemoteMediaRepository(
         }
     }
 
+    override suspend fun downloadAttachment(
+        attachmentId: String,
+        fileName: String,
+    ): MediaRepositoryResult {
+        val session = sessionRepository.loadSession()
+        val accessToken = session.accessToken
+        if (accessToken.isBlank()) {
+            return MediaRepositoryResult.Failure(
+                code = "INVALID_CREDENTIALS",
+                message = "No active session token.",
+            )
+        }
+
+        return try {
+            val response = mediaApiService.downloadAttachment(
+                authorizationHeader = "Bearer $accessToken",
+                attachmentId = attachmentId,
+            )
+
+            if (!response.isSuccessful) {
+                parseFailure(response.code(), response.errorBody()?.string().orEmpty())
+            } else {
+                val responseBody = response.body() ?: return MediaRepositoryResult.Failure(
+                    code = "EMPTY_DOWNLOAD_RESPONSE",
+                    message = "Media service returned an empty download response.",
+                )
+                val downloadsDir = (context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS) ?: context.filesDir).also {
+                    if (!it.exists()) {
+                        it.mkdirs()
+                    }
+                }
+                val safeFileName = fileName.takeIf { it.isNotBlank() } ?: "attachment-$attachmentId"
+                val targetFile = File(downloadsDir, safeFileName)
+
+                responseBody.byteStream().use { input ->
+                    FileOutputStream(targetFile).use { output ->
+                        input.copyTo(output)
+                    }
+                }
+
+                MediaRepositoryResult.DownloadSuccess(savedPath = targetFile.absolutePath)
+            }
+        } catch (_: IOException) {
+            MediaRepositoryResult.Failure(
+                code = "NETWORK_UNAVAILABLE",
+                message = "Cannot reach media service.",
+            )
+        }
+    }
 
     private fun UploadSessionResponse.toMediaUploadSession(
         conversationId: String,

@@ -1,8 +1,10 @@
 package com.kzzz3.argus.lens.data.media
 
 import okhttp3.RequestBody
+import okhttp3.ResponseBody
 import retrofit2.Response
 import retrofit2.http.Body
+import retrofit2.http.GET
 import retrofit2.http.Header
 import retrofit2.http.HeaderMap
 import retrofit2.http.POST
@@ -30,4 +32,10 @@ interface MediaApiService {
         @HeaderMap uploadHeaders: Map<String, String>,
         @Body body: RequestBody,
     ): Response<Unit>
+
+    @GET("api/v1/media/attachments/{attachmentId}/download")
+    suspend fun downloadAttachment(
+        @Header("Authorization") authorizationHeader: String,
+        @Path("attachmentId") attachmentId: String,
+    ): Response<ResponseBody>
 }

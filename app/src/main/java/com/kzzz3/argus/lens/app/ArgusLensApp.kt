@@ -112,8 +112,8 @@ fun ArgusLensApp() {
     val friendRepository: FriendRepository = remember(sessionRepository) {
         createFriendRepository(sessionRepository)
     }
-    val mediaRepository: MediaRepository = remember(sessionRepository) {
-        createMediaRepository(sessionRepository)
+    val mediaRepository: MediaRepository = remember(sessionRepository, context) {
+        createMediaRepository(sessionRepository, context)
     }
     val appShellCoordinator = remember(conversationRepository, sessionRepository) {
         AppShellCoordinator(
@@ -739,6 +739,15 @@ fun ArgusLensApp() {
                                 }
                             }
                             null -> Unit
+                        }
+
+                        if (action is ChatAction.DownloadAttachment) {
+                            coroutineScope.launch {
+                                mediaRepository.downloadAttachment(
+                                    action.attachmentId,
+                                    action.fileName,
+                                )
+                            }
                         }
 
                         if (action is ChatAction.RecallMessage) {

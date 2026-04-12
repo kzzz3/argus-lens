@@ -324,6 +324,16 @@ private fun MessageBubble(
     val contentColor = if (message.isFromCurrentUser) Color.White else Color(0xFFEAF6FF)
     val horizontalAlignment = if (message.isFromCurrentUser) Alignment.End else Alignment.Start
     val richMediaMessage = parseRichMediaMessage(message.body)
+    val downloadAction = richMediaMessage?.attachmentId?.let { attachmentId ->
+        {
+            onAction(
+                ChatAction.DownloadAttachment(
+                    attachmentId = attachmentId,
+                    fileName = richMediaMessage.title,
+                )
+            )
+        }
+    }
 
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -350,7 +360,8 @@ private fun MessageBubble(
                 RichMediaBubble(
                     media = richMediaMessage,
                     contentColor = contentColor,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                    onDownloadAttachment = downloadAction,
                 )
             }
         }
@@ -417,6 +428,7 @@ private fun RichMediaBubble(
     media: RichMediaMessage,
     contentColor: Color,
     modifier: Modifier = Modifier,
+    onDownloadAttachment: (() -> Unit)? = null,
 ) {
     val accentColor = when (media.type) {
         "Image" -> Color(0xFF83C9FF)
@@ -445,6 +457,17 @@ private fun RichMediaBubble(
             style = MaterialTheme.typography.bodyMedium,
             color = contentColor.copy(alpha = 0.88f)
         )
+        if (onDownloadAttachment != null) {
+            Text(
+                text = "Download / Save As",
+                modifier = Modifier
+                    .clickable(onClick = onDownloadAttachment)
+                    .padding(vertical = 4.dp),
+                style = MaterialTheme.typography.labelMedium,
+                color = accentColor,
+                fontWeight = FontWeight.SemiBold,
+            )
+        }
         Surface(
             shape = RoundedCornerShape(16.dp),
             color = accentColor.copy(alpha = 0.18f)
@@ -463,17 +486,19 @@ private data class RichMediaMessage(
     val type: String,
     val title: String,
     val summary: String,
+    val attachmentId: String? = null,
 )
 
 private fun parseRichMediaMessage(
     body: String,
 ): RichMediaMessage? {
-    val fileMatch = Regex("""^\[File] (Image|Video) · (.+?) · (.+?) · sessionId=(\S+) · attachmentId=(\S+) · uploadUrl=(.+)$""").matchEntire(body)
+    val fileMatch = Regex("""^\[File] (Image|Video) · (.+?) · (.+?) · attachmentId=(\S+) · objectKey=(\S+) · uploadUrl=(.+)$""").matchEntire(body)
     if (fileMatch != null) {
         return RichMediaMessage(
             type = fileMatch.groupValues[1],
             title = fileMatch.groupValues[2],
             summary = fileMatch.groupValues[3],
+            attachmentId = fileMatch.groupValues[4],
         )
     }
 

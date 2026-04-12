@@ -169,6 +169,11 @@ fun reduceChatState(
             )
         }
 
+        is ChatAction.DownloadAttachment -> ChatReducerResult(
+            state = currentState,
+            effect = null,
+        )
+
         ChatAction.SendMessage -> {
             val trimmedDraft = currentState.draftMessage.trim()
             val sentMessages = buildList {

@@ -1,5 +1,6 @@
 package com.kzzz3.argus.lens.data.media
 
+import android.content.Context
 import com.google.gson.Gson
 import com.kzzz3.argus.lens.BuildConfig
 import com.kzzz3.argus.lens.data.session.SessionRepository
@@ -10,12 +11,14 @@ import retrofit2.converter.gson.GsonConverterFactory
 
 fun createMediaRepository(
     sessionRepository: SessionRepository,
+    context: Context,
 ): MediaRepository {
-    return createRemoteMediaRepository(sessionRepository)
+    return createRemoteMediaRepository(sessionRepository, context)
 }
 
 private fun createRemoteMediaRepository(
     sessionRepository: SessionRepository,
+    context: Context,
 ): MediaRepository {
     val gson = Gson()
     val loggingInterceptor = HttpLoggingInterceptor().apply {
@@ -32,6 +35,7 @@ private fun createRemoteMediaRepository(
         .build()
 
     return RemoteMediaRepository(
+        context = context,
         sessionRepository = sessionRepository,
         mediaApiService = retrofit.create(MediaApiService::class.java),
         gson = gson,

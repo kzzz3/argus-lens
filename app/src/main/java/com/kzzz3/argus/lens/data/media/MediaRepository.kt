@@ -23,6 +23,7 @@ sealed interface MediaRepositoryResult {
         val sessionId: String,
         val objectKey: String,
     ) : MediaRepositoryResult
+    data class DownloadSuccess(val savedPath: String) : MediaRepositoryResult
     data class Failure(
         val code: String?,
         val message: String,
@@ -51,5 +52,10 @@ interface MediaRepository {
     suspend fun uploadContent(
         uploadSession: MediaUploadSession,
         contentBytes: ByteArray,
+    ): MediaRepositoryResult
+
+    suspend fun downloadAttachment(
+        attachmentId: String,
+        fileName: String,
     ): MediaRepositoryResult
 }

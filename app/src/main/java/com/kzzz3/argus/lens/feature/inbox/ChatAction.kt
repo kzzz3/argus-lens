@@ -14,6 +14,7 @@ sealed interface ChatAction {
     data class RemoveDraftAttachment(val attachmentId: String) : ChatAction
     data class RetryFailedMessage(val messageId: String) : ChatAction
     data class RecallMessage(val messageId: String) : ChatAction
+    data class DownloadAttachment(val attachmentId: String, val fileName: String) : ChatAction
     data object SendMessage : ChatAction
     data object NavigateBackToInbox : ChatAction
 }
