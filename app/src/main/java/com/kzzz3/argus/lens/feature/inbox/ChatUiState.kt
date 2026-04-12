@@ -10,6 +10,8 @@ data class ChatUiState(
     val addMemberActionLabel: String,
     val isAddMemberEnabled: Boolean,
     val isGroupConversation: Boolean,
+    val statusMessage: String?,
+    val isStatusError: Boolean,
     val messages: List<ChatMessageItem>,
     val draftMessage: String,
     val draftAttachments: List<ChatDraftAttachment>,

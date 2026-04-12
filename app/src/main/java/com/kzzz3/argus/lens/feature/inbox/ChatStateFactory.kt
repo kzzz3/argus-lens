@@ -2,6 +2,8 @@ package com.kzzz3.argus.lens.feature.inbox
 
 fun createChatUiState(
     state: ChatState,
+    statusMessage: String? = null,
+    isStatusError: Boolean = false,
 ): ChatUiState {
     return ChatUiState(
         conversationTitle = state.conversationTitle,
@@ -13,6 +15,8 @@ fun createChatUiState(
         addMemberActionLabel = "Invite member",
         isAddMemberEnabled = state.draftMemberAccountId.trim().isNotEmpty(),
         isGroupConversation = state.conversationId.startsWith("conv-group-"),
+        statusMessage = statusMessage,
+        isStatusError = isStatusError,
         messages = state.messages,
         draftMessage = state.draftMessage,
         draftAttachments = state.draftAttachments,

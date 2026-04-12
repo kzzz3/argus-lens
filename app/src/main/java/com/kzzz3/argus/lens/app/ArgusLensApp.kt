@@ -107,6 +107,8 @@ fun ArgusLensApp() {
         mutableStateOf(CallSessionState())
     }
     var selectedConversationId by rememberSaveable { mutableStateOf("") }
+    var chatStatusMessage by rememberSaveable { mutableStateOf<String?>(null) }
+    var chatStatusError by rememberSaveable { mutableStateOf(false) }
     val authRepository = remember { createAuthRepository() }
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -171,6 +173,7 @@ fun ArgusLensApp() {
     val latestConversationThreadsState by rememberUpdatedState(conversationThreadsState)
     val latestSelectedConversationId by rememberUpdatedState(selectedConversationId)
     val latestAppSessionState by rememberUpdatedState(appSessionState)
+    val latestCurrentRoute by rememberUpdatedState(currentRoute)
     val chatState = remember(selectedConversation, sessionDisplayName) {
         selectedConversation?.let { conversation ->
             ChatState(
@@ -188,8 +191,14 @@ fun ArgusLensApp() {
             )
         }
     }
-    val chatUiState = remember(chatState) {
-        chatState?.let(::createChatUiState)
+    val chatUiState = remember(chatState, chatStatusMessage, chatStatusError) {
+        chatState?.let {
+            createChatUiState(
+                state = it,
+                statusMessage = chatStatusMessage,
+                isStatusError = chatStatusError,
+            )
+        }
     }
     val callSessionUiState = remember(callSessionState) {
         createCallSessionUiState(callSessionState)
@@ -208,6 +217,11 @@ fun ArgusLensApp() {
 
     LaunchedEffect(hydratedSession, appSessionState) {
         appShellCoordinator.persistSession(hydratedSession, appSessionState)
+    }
+
+    LaunchedEffect(selectedConversationId) {
+        chatStatusMessage = null
+        chatStatusError = false
     }
 
     LaunchedEffect(appSessionState.isAuthenticated, appSessionState.accountId, appSessionState.displayName) {
@@ -236,6 +250,7 @@ fun ArgusLensApp() {
                             session = latestAppSessionState,
                             currentState = latestConversationThreadsState,
                             selectedConversationId = latestSelectedConversationId,
+                            isChatRouteActive = latestCurrentRoute == AppRoute.Chat,
                         )
                     }
                 },
@@ -395,31 +410,11 @@ fun ArgusLensApp() {
                         selectedConversationId = action.conversationId
                         currentRoute = AppRoute.Chat
                         coroutineScope.launch {
-                            conversationThreadsState = conversationRepository.refreshConversationDetail(
+                            conversationThreadsState = synchronizeActiveConversation(
                                 state = conversationThreadsState,
                                 conversationId = action.conversationId,
+                                conversationRepository = conversationRepository,
                             )
-                            conversationThreadsState = conversationRepository.markConversationReadRemote(
-                                state = conversationThreadsState,
-                                conversationId = action.conversationId,
-                            )
-                            conversationThreadsState = conversationRepository.refreshConversationMessages(
-                                state = conversationThreadsState,
-                                conversationId = action.conversationId,
-                            )
-                            val visibleRemoteMessageIds = conversationThreadsState.threads
-                                .firstOrNull { it.id == action.conversationId }
-                                ?.messages
-                                ?.filter { !it.isFromCurrentUser && it.deliveryStatus != ChatMessageDeliveryStatus.Read }
-                                ?.map { it.id }
-                                .orEmpty()
-                            visibleRemoteMessageIds.forEach { messageId ->
-                                conversationThreadsState = conversationRepository.acknowledgeMessageRead(
-                                    state = conversationThreadsState,
-                                    conversationId = action.conversationId,
-                                    messageId = messageId,
-                                )
-                            }
                         }
                     }
 
@@ -476,31 +471,11 @@ fun ArgusLensApp() {
                         selectedConversationId = resolvedConversationId
                         currentRoute = AppRoute.Chat
                         coroutineScope.launch {
-                            conversationThreadsState = conversationRepository.refreshConversationDetail(
+                            conversationThreadsState = synchronizeActiveConversation(
                                 state = conversationThreadsState,
                                 conversationId = resolvedConversationId,
+                                conversationRepository = conversationRepository,
                             )
-                            conversationThreadsState = conversationRepository.markConversationReadRemote(
-                                state = conversationThreadsState,
-                                conversationId = resolvedConversationId,
-                            )
-                            conversationThreadsState = conversationRepository.refreshConversationMessages(
-                                state = conversationThreadsState,
-                                conversationId = resolvedConversationId,
-                            )
-                            val visibleRemoteMessageIds = conversationThreadsState.threads
-                                .firstOrNull { it.id == resolvedConversationId }
-                                ?.messages
-                                ?.filter { !it.isFromCurrentUser && it.deliveryStatus != ChatMessageDeliveryStatus.Read }
-                                ?.map { it.id }
-                                .orEmpty()
-                            visibleRemoteMessageIds.forEach { messageId ->
-                                conversationThreadsState = conversationRepository.acknowledgeMessageRead(
-                                    state = conversationThreadsState,
-                                    conversationId = resolvedConversationId,
-                                    messageId = messageId,
-                                )
-                            }
                         }
                     }
 
@@ -596,31 +571,11 @@ fun ArgusLensApp() {
                                 selectedConversationId = action.conversationId
                                 currentRoute = AppRoute.Chat
                                 coroutineScope.launch {
-                                    conversationThreadsState = conversationRepository.refreshConversationDetail(
+                                    conversationThreadsState = synchronizeActiveConversation(
                                         state = conversationThreadsState,
                                         conversationId = action.conversationId,
+                                        conversationRepository = conversationRepository,
                                     )
-                                    conversationThreadsState = conversationRepository.markConversationReadRemote(
-                                        state = conversationThreadsState,
-                                        conversationId = action.conversationId,
-                                    )
-                                    conversationThreadsState = conversationRepository.refreshConversationMessages(
-                                        state = conversationThreadsState,
-                                        conversationId = action.conversationId,
-                                    )
-                                    val visibleRemoteMessageIds = conversationThreadsState.threads
-                                        .firstOrNull { it.id == action.conversationId }
-                                        ?.messages
-                                        ?.filter { !it.isFromCurrentUser && it.deliveryStatus != ChatMessageDeliveryStatus.Read }
-                                        ?.map { it.id }
-                                        .orEmpty()
-                                    visibleRemoteMessageIds.forEach { messageId ->
-                                        conversationThreadsState = conversationRepository.acknowledgeMessageRead(
-                                            state = conversationThreadsState,
-                                            conversationId = action.conversationId,
-                                            messageId = messageId,
-                                        )
-                                    }
                                 }
                             }
 
@@ -703,6 +658,7 @@ fun ArgusLensApp() {
                                     val latestBody = latestMessage?.body
                                     val conversationId = result.effect.conversationId
                                     var messageHandled = false
+                                    var mediaFailureMessage: String? = null
 
                                     if (result.effect.messageIds.size == 1 && latestMessage != null && latestBody != null) {
                                         if (isMediaPlaceholderBody(latestBody)) {
@@ -745,11 +701,26 @@ fun ArgusLensApp() {
                                                                 ),
                                                             )
                                                             messageHandled = true
+                                                        } else if (finalizeResult is MediaRepositoryResult.Failure) {
+                                                            mediaFailureMessage = finalizeResult.message
                                                         }
+                                                    } else if (uploadResult is MediaRepositoryResult.Failure) {
+                                                        mediaFailureMessage = uploadResult.message
                                                     }
+                                                } else if (uploadSessionResult is MediaRepositoryResult.Failure) {
+                                                    mediaFailureMessage = uploadSessionResult.message
                                                 }
 
 
+                                                if (!messageHandled) {
+                                                    conversationThreadsState = markOutgoingMessagesFailed(
+                                                        state = conversationThreadsState,
+                                                        conversationId = conversationId,
+                                                        messageIds = result.effect.messageIds,
+                                                    )
+                                                    chatStatusMessage = mediaFailureMessage ?: "File upload failed."
+                                                    chatStatusError = true
+                                                }
                                             }
                                         } else {
                                             conversationThreadsState = conversationRepository.sendMessage(
@@ -762,7 +733,7 @@ fun ArgusLensApp() {
                                         }
                                     }
 
-                                    if (!messageHandled) {
+                                    if (!messageHandled && mediaFailureMessage == null) {
                                         delay(350)
                                         conversationThreadsState = conversationRepository.resolveOutgoingMessages(
                                             state = conversationThreadsState,
@@ -783,20 +754,38 @@ fun ArgusLensApp() {
 
                         if (action is ChatAction.DownloadAttachment) {
                             coroutineScope.launch {
-                                mediaRepository.downloadAttachment(
+                                when (val downloadResult = mediaRepository.downloadAttachment(
                                     action.attachmentId,
                                     action.fileName,
-                                )
+                                )) {
+                                    is MediaRepositoryResult.DownloadSuccess -> {
+                                        chatStatusMessage = "Saved to ${downloadResult.savedPath}"
+                                        chatStatusError = false
+                                    }
+                                    is MediaRepositoryResult.Failure -> {
+                                        chatStatusMessage = downloadResult.message
+                                        chatStatusError = true
+                                    }
+                                    else -> Unit
+                                }
                             }
                         }
 
                         if (action is ChatAction.RecallMessage) {
-                            coroutineScope.launch {
-                                conversationThreadsState = conversationRepository.recallMessage(
-                                    state = conversationThreadsState,
-                                    conversationId = resolvedChatState.conversationId,
-                                    messageId = action.messageId,
-                                )
+                            val recallableMessage = resolvedChatState.messages.firstOrNull { message ->
+                                message.id == action.messageId &&
+                                    message.isFromCurrentUser &&
+                                    (message.deliveryStatus == ChatMessageDeliveryStatus.Sent ||
+                                        message.deliveryStatus == ChatMessageDeliveryStatus.Delivered)
+                            }
+                            if (recallableMessage != null) {
+                                coroutineScope.launch {
+                                    conversationThreadsState = conversationRepository.recallMessage(
+                                        state = conversationThreadsState,
+                                        conversationId = resolvedChatState.conversationId,
+                                        messageId = action.messageId,
+                                    )
+                                }
                             }
                         }
                     }
@@ -804,6 +793,86 @@ fun ArgusLensApp() {
             }
         }
     }
+}
+
+private suspend fun synchronizeActiveConversation(
+    state: ConversationThreadsState,
+    conversationId: String,
+    conversationRepository: ConversationRepository,
+    refreshDetail: Boolean = true,
+): ConversationThreadsState {
+    var nextState = conversationRepository.markConversationAsRead(
+        state = state,
+        conversationId = conversationId,
+    )
+    if (refreshDetail) {
+        nextState = conversationRepository.refreshConversationDetail(
+            state = nextState,
+            conversationId = conversationId,
+        )
+    }
+    nextState = conversationRepository.markConversationReadRemote(
+        state = nextState,
+        conversationId = conversationId,
+    )
+    nextState = conversationRepository.refreshConversationMessages(
+        state = nextState,
+        conversationId = conversationId,
+    )
+    return acknowledgeVisibleRemoteMessagesAsRead(
+        state = nextState,
+        conversationId = conversationId,
+        conversationRepository = conversationRepository,
+    )
+}
+
+private suspend fun acknowledgeVisibleRemoteMessagesAsRead(
+    state: ConversationThreadsState,
+    conversationId: String,
+    conversationRepository: ConversationRepository,
+): ConversationThreadsState {
+    val visibleRemoteMessageIds = state.threads
+        .firstOrNull { it.id == conversationId }
+        ?.messages
+        ?.filter { message ->
+            !message.isFromCurrentUser &&
+                message.deliveryStatus != ChatMessageDeliveryStatus.Read &&
+                message.deliveryStatus != ChatMessageDeliveryStatus.Recalled
+        }
+        ?.map { it.id }
+        .orEmpty()
+
+    return visibleRemoteMessageIds.fold(state) { currentState, messageId ->
+        conversationRepository.acknowledgeMessageRead(
+            state = currentState,
+            conversationId = conversationId,
+            messageId = messageId,
+        )
+    }
+}
+
+private fun markOutgoingMessagesFailed(
+    state: ConversationThreadsState,
+    conversationId: String,
+    messageIds: List<String>,
+): ConversationThreadsState {
+    return state.copy(
+        threads = state.threads.map { thread ->
+            if (thread.id == conversationId) {
+                thread.copy(
+                    messages = thread.messages.map { message ->
+                        if (message.id in messageIds) {
+                            message.copy(deliveryStatus = ChatMessageDeliveryStatus.Failed)
+                        } else {
+                            message
+                        }
+                    }
+                )
+            } else {
+                thread
+            }
+        }
+    )
 }
 
 private fun incrementCallDurationLabel(
@@ -846,6 +915,7 @@ private suspend fun handleConversationRealtimeEvent(
     session: com.kzzz3.argus.lens.app.session.AppSessionState,
     currentState: com.kzzz3.argus.lens.feature.inbox.ConversationThreadsState,
     selectedConversationId: String,
+    isChatRouteActive: Boolean,
 ): com.kzzz3.argus.lens.feature.inbox.ConversationThreadsState {
     if (session.accountId.isBlank()) return currentState
 
@@ -853,10 +923,19 @@ private suspend fun handleConversationRealtimeEvent(
         REALTIME_EVENT_MESSAGE_CREATED,
         REALTIME_EVENT_MESSAGE_STATUS_UPDATED,
         REALTIME_EVENT_MESSAGE_RECALLED -> {
-            conversationRepository.refreshConversationMessages(
+            val refreshedState = conversationRepository.refreshConversationMessages(
                 state = currentState,
                 conversationId = event.conversationId,
             )
+            if (isChatRouteActive && selectedConversationId == event.conversationId) {
+                acknowledgeVisibleRemoteMessagesAsRead(
+                    state = refreshedState,
+                    conversationId = event.conversationId,
+                    conversationRepository = conversationRepository,
+                )
+            } else {
+                refreshedState
+            }
         }
 
         REALTIME_EVENT_CONVERSATION_READ,
@@ -866,7 +945,13 @@ private suspend fun handleConversationRealtimeEvent(
                 accountId = session.accountId,
                 currentUserDisplayName = session.displayName,
             )
-            if (selectedConversationId == event.conversationId) {
+            if (isChatRouteActive && selectedConversationId == event.conversationId) {
+                synchronizeActiveConversation(
+                    state = refreshedState,
+                    conversationId = event.conversationId,
+                    conversationRepository = conversationRepository,
+                )
+            } else if (selectedConversationId == event.conversationId) {
                 conversationRepository.refreshConversationDetail(
                     state = refreshedState,
                     conversationId = event.conversationId,

@@ -99,6 +99,20 @@ fun ChatScreen(
                         Text(text = state.addMemberActionLabel)
                     }
                 }
+                state.statusMessage?.let { message ->
+                    Surface(
+                        shape = RoundedCornerShape(16.dp),
+                        color = if (state.isStatusError) Color(0x33FF6F61) else Color(0x297AF5C9),
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(
+                            text = message,
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (state.isStatusError) Color(0xFFFFC2BA) else Color(0xFFDFFBF1),
+                        )
+                    }
+                }
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -528,6 +542,8 @@ private fun ChatScreenPreview() {
                 addMemberActionLabel = "Invite member",
                 isAddMemberEnabled = false,
                 isGroupConversation = false,
+                statusMessage = null,
+                isStatusError = false,
                 messages = listOf(
                     ChatMessageItem(
                         id = "1",
