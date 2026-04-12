@@ -2,6 +2,8 @@ package com.kzzz3.argus.lens.data.local
 
 import android.content.Context
 import com.kzzz3.argus.lens.data.conversation.ConversationRepository
+import com.kzzz3.argus.lens.data.conversation.applyLocalMessageStatus
+import com.kzzz3.argus.lens.data.conversation.clearConversationUnreadCount
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.kzzz3.argus.lens.feature.contacts.ConversationCreationMode
@@ -217,7 +219,12 @@ class LocalConversationCoordinator(
         conversationId: String,
         messageId: String,
     ): ConversationThreadsState {
-        return state
+        return applyLocalMessageStatus(
+            state = state,
+            conversationId = conversationId,
+            messageId = messageId,
+            targetStatus = ChatMessageDeliveryStatus.Delivered,
+        )
     }
 
     override suspend fun acknowledgeMessageRead(
@@ -225,7 +232,12 @@ class LocalConversationCoordinator(
         conversationId: String,
         messageId: String,
     ): ConversationThreadsState {
-        return state
+        return applyLocalMessageStatus(
+            state = state,
+            conversationId = conversationId,
+            messageId = messageId,
+            targetStatus = ChatMessageDeliveryStatus.Read,
+        )
     }
 
     override suspend fun recallMessage(
@@ -240,7 +252,10 @@ class LocalConversationCoordinator(
         state: ConversationThreadsState,
         conversationId: String,
     ): ConversationThreadsState {
-        return state
+        return clearConversationUnreadCount(
+            state = state,
+            conversationId = conversationId,
+        )
     }
 
     override suspend fun createConversationRemote(
@@ -255,14 +270,9 @@ class LocalConversationCoordinator(
         state: ConversationThreadsState,
         conversationId: String,
     ): ConversationThreadsState {
-        return state.copy(
-            threads = state.threads.map { thread ->
-                if (thread.id == conversationId) {
-                    thread.copy(unreadCount = 0)
-                } else {
-                    thread
-                }
-            }
+        return clearConversationUnreadCount(
+            state = state,
+            conversationId = conversationId,
         )
     }
 

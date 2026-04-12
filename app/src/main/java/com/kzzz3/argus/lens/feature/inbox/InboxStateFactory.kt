@@ -34,7 +34,11 @@ fun createInboxUiState(
                 ChatMessageDeliveryStatus.Failed -> InboxStatusColorToken.Warning
                 ChatMessageDeliveryStatus.Sent,
                 ChatMessageDeliveryStatus.Delivered,
-                ChatMessageDeliveryStatus.Read -> InboxStatusColorToken.Success
+                ChatMessageDeliveryStatus.Read -> if (latestMessage.isFromCurrentUser) {
+                    InboxStatusColorToken.Success
+                } else {
+                    InboxStatusColorToken.Neutral
+                }
                 ChatMessageDeliveryStatus.Recalled -> InboxStatusColorToken.Neutral
                 else -> InboxStatusColorToken.Neutral
             }

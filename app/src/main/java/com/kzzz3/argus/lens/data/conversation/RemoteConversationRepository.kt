@@ -42,26 +42,10 @@ class RemoteConversationRepository(
                     else -> localState
                 }
             } else {
-                val remoteThreads = response.body().orEmpty().map { summary ->
-                    InboxConversationThread(
-                        id = summary.id,
-                        title = summary.title,
-                        subtitle = summary.subtitle,
-                        unreadCount = summary.unreadCount,
-                        syncCursor = summary.syncCursor,
-                        messages = listOf(
-                            ChatMessageItem(
-                                id = "${summary.id}-remote-preview",
-                                senderDisplayName = summary.title,
-                                body = summary.preview,
-                                timestampLabel = summary.timestampLabel,
-                                isFromCurrentUser = false,
-                                statusUpdatedAt = summary.timestampLabel,
-                            )
-                        ),
-                    )
-                }
-                val remoteState = ConversationThreadsState(remoteThreads)
+                val remoteState = mergeRemoteConversationSummaries(
+                    localState = localState,
+                    remoteSummaries = response.body().orEmpty(),
+                )
                 localRepository.saveConversationThreads(accountId, remoteState)
                 remoteState
             }
@@ -126,7 +110,7 @@ class RemoteConversationRepository(
                     localRepository.saveConversationThreads(accountId, nextState)
                 }
                 remoteMessages
-                    .filter { !it.isFromCurrentUser && it.deliveryStatus != ChatMessageDeliveryStatus.Delivered }
+                    .filter { !it.isFromCurrentUser && it.deliveryStatus == ChatMessageDeliveryStatus.Sent }
                     .fold(nextState) { currentState, message ->
                         acknowledgeMessageDelivery(currentState, conversationId, message.id)
                     }
@@ -264,18 +248,10 @@ class RemoteConversationRepository(
                     deliveryStatus = parseRemoteDeliveryStatus(message.deliveryStatus),
                     statusUpdatedAt = message.statusUpdatedAt,
                 )
-                val nextState = state.copy(
-                    threads = state.threads.map { thread ->
-                        if (thread.id == conversationId) {
-                            thread.copy(
-                                messages = thread.messages.map { existingMessage ->
-                                    if (existingMessage.id == messageId) readMessage else existingMessage
-                                }
-                            )
-                        } else {
-                            thread
-                        }
-                    }
+                val nextState = applyRemoteMessageUpdate(
+                    state = state,
+                    conversationId = conversationId,
+                    remoteMessage = readMessage,
                 )
                 if (session.accountId.isNotBlank()) {
                     localRepository.saveConversationThreads(session.accountId, nextState)
@@ -377,18 +353,10 @@ class RemoteConversationRepository(
                     deliveryStatus = parseRemoteDeliveryStatus(message.deliveryStatus),
                     statusUpdatedAt = message.statusUpdatedAt,
                 )
-                val nextState = state.copy(
-                    threads = state.threads.map { thread ->
-                        if (thread.id == conversationId) {
-                            thread.copy(
-                                messages = thread.messages.map { existingMessage ->
-                                    if (existingMessage.id == messageId) deliveredMessage else existingMessage
-                                }
-                            )
-                        } else {
-                            thread
-                        }
-                    }
+                val nextState = applyRemoteMessageUpdate(
+                    state = state,
+                    conversationId = conversationId,
+                    remoteMessage = deliveredMessage,
                 )
                 if (session.accountId.isNotBlank()) {
                     localRepository.saveConversationThreads(session.accountId, nextState)
@@ -477,13 +445,18 @@ class RemoteConversationRepository(
                 }
             } else {
                 val summary = response.body() ?: return state
-                val nextState = state.copy(
-                    threads = state.threads.map { thread ->
+                val clearedState = clearConversationUnreadCount(
+                    state = state,
+                    conversationId = conversationId,
+                )
+                val nextState = clearedState.copy(
+                    threads = clearedState.threads.map { thread ->
                         if (thread.id == conversationId) {
                             thread.copy(
                                 title = summary.title,
                                 subtitle = summary.subtitle,
                                 unreadCount = summary.unreadCount,
+                                syncCursor = summary.syncCursor,
                             )
                         } else {
                             thread
