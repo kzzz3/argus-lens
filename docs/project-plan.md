@@ -263,14 +263,17 @@ Lens becomes the Android simulator of smart glasses:
 - [x] SSE resume now reuses Last-Event-ID so reconnects can replay missed conversation events
 - [x] Message-level realtime updates now refresh inbox summaries instead of only the open chat state
 - [x] Remote conversation/message fetch now uses recent-window semantics rather than pretending to be full-history sync
+- [x] Cursor-backed reconnect sync now continues across multiple pages instead of stopping after a single recent-window pull
+- [x] Contacts now prefer stable direct-conversation ids instead of depending on display-name/title matching
+- [x] File messages now prefer structured attachment metadata over body-string parsing, while legacy body parsing remains as a compatibility fallback
 
 ## 13. Next-Phase Checklist
 
 ### 13.1 Near-term Stage 1 priorities
-- [ ] add explicit sync cursor / next-window semantics instead of simple recent-window pulls
+- [x] add explicit sync cursor / next-window semantics instead of simple recent-window pulls
 - [ ] persist and restore selected conversation/session-entry context across process death if we want chat re-entry to survive full app recreation
 - [x] broaden receipt reconciliation beyond foreground chat so background/inbox refresh paths stay fully monotonic under delayed events
-- [ ] harden file-message metadata presentation and download management beyond the current basic save-as UX
+- [x] harden file-message metadata presentation and download management beyond the current basic save-as UX
 - [ ] connect remote send for richer message types beyond the current text-first plus generic-file path
 
 ### 13.2 RTC and realtime follow-up
