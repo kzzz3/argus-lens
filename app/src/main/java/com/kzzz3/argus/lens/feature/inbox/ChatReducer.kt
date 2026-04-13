@@ -205,10 +205,11 @@ fun reduceChatState(
                         ChatMessageItem(
                             id = "${currentState.conversationId}-local-media-${currentState.messages.size + size + 1}",
                             senderDisplayName = currentState.currentUserDisplayName,
-                            body = draftAttachmentMessageBody(attachment),
+                            body = attachment.title,
                             timestampLabel = "Now",
                             isFromCurrentUser = true,
                             deliveryStatus = ChatMessageDeliveryStatus.Sending,
+                            attachment = attachment.toMessageAttachment(),
                         )
                     )
                 }
@@ -284,4 +285,16 @@ private fun formatVoiceAttachmentDuration(
     val minutes = seconds / 60
     val remainSeconds = seconds % 60
     return "%02d:%02d".format(minutes, remainSeconds)
+}
+
+private fun ChatDraftAttachment.toMessageAttachment(): ChatMessageAttachment {
+    return ChatMessageAttachment(
+        attachmentType = kind.name,
+        fileName = title,
+        contentType = when (kind) {
+            ChatDraftAttachmentKind.Image -> "image/jpeg"
+            ChatDraftAttachmentKind.Video -> "video/mp4"
+            ChatDraftAttachmentKind.Voice -> "audio/mpeg"
+        },
+    )
 }

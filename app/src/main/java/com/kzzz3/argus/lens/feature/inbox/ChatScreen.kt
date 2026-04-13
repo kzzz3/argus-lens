@@ -337,7 +337,7 @@ private fun MessageBubble(
     val bubbleColor = if (message.isFromCurrentUser) Color(0xFF1E785D) else Color(0x1F9AD0FF)
     val contentColor = if (message.isFromCurrentUser) Color.White else Color(0xFFEAF6FF)
     val horizontalAlignment = if (message.isFromCurrentUser) Alignment.End else Alignment.Start
-    val richMediaMessage = parseRichMediaMessage(message.body)
+    val richMediaMessage = message.attachment?.toRichMediaMessage() ?: parseRichMediaMessage(message.body)
     val downloadAction = richMediaMessage?.attachmentId?.let { attachmentId ->
         {
             onAction(
@@ -502,6 +502,19 @@ private data class RichMediaMessage(
     val summary: String,
     val attachmentId: String? = null,
 )
+
+private fun ChatMessageAttachment.toRichMediaMessage(): RichMediaMessage {
+    return RichMediaMessage(
+        type = attachmentType.lowercase().replaceFirstChar { it.titlecase() },
+        title = fileName,
+        summary = if (contentLength > 0L) {
+            "Structured attachment envelope ? ${contentLength} bytes"
+        } else {
+            "Structured attachment envelope"
+        },
+        attachmentId = attachmentId,
+    )
+}
 
 private fun parseRichMediaMessage(
     body: String,

@@ -35,6 +35,15 @@ enum class InboxStatusColorToken {
 }
 
 @Parcelize
+data class ChatMessageAttachment(
+    val attachmentId: String? = null,
+    val attachmentType: String,
+    val fileName: String,
+    val contentType: String = "",
+    val contentLength: Long = 0L,
+) : Parcelable
+
+@Parcelize
 data class ChatMessageItem(
     val id: String,
     val senderDisplayName: String,
@@ -43,6 +52,7 @@ data class ChatMessageItem(
     val isFromCurrentUser: Boolean,
     val deliveryStatus: ChatMessageDeliveryStatus = ChatMessageDeliveryStatus.Sent,
     val statusUpdatedAt: String = "",
+    val attachment: ChatMessageAttachment? = null,
 ) : Parcelable
 
 enum class ChatMessageDeliveryStatus {

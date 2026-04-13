@@ -120,7 +120,9 @@ class ChatReducerTest {
         val result = reduceChatState(state, ChatAction.SendMessage)
 
         assertEquals(1, result.state.messages.size)
-        assertTrue(result.state.messages.first().body.startsWith("[Video]"))
+        assertEquals("Video draft 1", result.state.messages.first().body)
+        assertEquals("Video", result.state.messages.first().attachment?.attachmentType)
+        assertEquals("Video draft 1", result.state.messages.first().attachment?.fileName)
         assertEquals(ChatMessageDeliveryStatus.Sending, result.state.messages.first().deliveryStatus)
         assertTrue(result.state.draftAttachments.isEmpty())
         assertFalse(result.state.isVoiceRecording)
@@ -222,7 +224,9 @@ class ChatReducerTest {
 
         assertEquals(2, result.state.messages.size)
         assertEquals("Text payload", result.state.messages.first().body)
-        assertTrue(result.state.messages.last().body.startsWith("[Image]"))
+        assertEquals("Image draft 1", result.state.messages.last().body)
+        assertEquals("Image", result.state.messages.last().attachment?.attachmentType)
+        assertEquals("Image draft 1", result.state.messages.last().attachment?.fileName)
         assertEquals(
             ChatEffect.DispatchOutgoingMessages(
                 conversationId = "conv-1",
