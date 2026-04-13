@@ -259,6 +259,9 @@ Lens becomes the Android simulator of smart glasses:
 - [x] Generic file-message upload/finalize/send path is enabled for image/video-as-file behavior
 - [x] Attachment download/save-as path is enabled with in-chat success/failure feedback
 - [x] SSE realtime conversation updates are enabled
+- [x] Realtime client now keeps a visible connection status and auto-recovers with reconnect backoff
+- [x] SSE resume now reuses Last-Event-ID so reconnects can replay missed conversation events
+- [x] Message-level realtime updates now refresh inbox summaries instead of only the open chat state
 - [x] Remote conversation/message fetch now uses recent-window semantics rather than pretending to be full-history sync
 
 ## 13. Next-Phase Checklist
@@ -266,7 +269,7 @@ Lens becomes the Android simulator of smart glasses:
 ### 13.1 Near-term Stage 1 priorities
 - [ ] add explicit sync cursor / next-window semantics instead of simple recent-window pulls
 - [ ] persist and restore selected conversation/session-entry context across process death if we want chat re-entry to survive full app recreation
-- [ ] broaden receipt reconciliation beyond foreground chat so background/inbox refresh paths stay fully monotonic under delayed events
+- [x] broaden receipt reconciliation beyond foreground chat so background/inbox refresh paths stay fully monotonic under delayed events
 - [ ] harden file-message metadata presentation and download management beyond the current basic save-as UX
 - [ ] connect remote send for richer message types beyond the current text-first plus generic-file path
 
