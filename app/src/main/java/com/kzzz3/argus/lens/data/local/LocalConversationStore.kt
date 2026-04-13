@@ -8,6 +8,7 @@ import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.kzzz3.argus.lens.feature.contacts.ConversationCreationMode
 import com.kzzz3.argus.lens.feature.inbox.ChatMessageDeliveryStatus
+import com.kzzz3.argus.lens.feature.inbox.ChatMessageAttachment
 import com.kzzz3.argus.lens.feature.inbox.ChatMessageItem
 import com.kzzz3.argus.lens.feature.inbox.ChatState
 import com.kzzz3.argus.lens.feature.inbox.ChatDraftAttachment
@@ -41,6 +42,21 @@ class LocalConversationStore(
                                 isFromCurrentUser = message.isFromCurrentUser,
                                 deliveryStatus = ChatMessageDeliveryStatus.valueOf(message.deliveryStatus),
                                 statusUpdatedAt = message.statusUpdatedAt,
+                                attachment = if (
+                                    !message.attachmentId.isNullOrBlank() ||
+                                        !message.attachmentType.isNullOrBlank() ||
+                                        !message.attachmentFileName.isNullOrBlank()
+                                ) {
+                                    ChatMessageAttachment(
+                                        attachmentId = message.attachmentId,
+                                        attachmentType = message.attachmentType.orEmpty(),
+                                        fileName = message.attachmentFileName.orEmpty(),
+                                        contentType = message.attachmentContentType.orEmpty(),
+                                        contentLength = message.attachmentContentLength,
+                                    )
+                                } else {
+                                    null
+                                },
                             )
                         },
                     draftMessage = row.conversation.draftMessage,
@@ -103,6 +119,11 @@ class LocalConversationStore(
                     conversationStorageId = conversationStorageId(accountId, thread.id),
                     senderDisplayName = message.senderDisplayName,
                     body = message.body,
+                    attachmentId = message.attachment?.attachmentId,
+                    attachmentType = message.attachment?.attachmentType,
+                    attachmentFileName = message.attachment?.fileName,
+                    attachmentContentType = message.attachment?.contentType,
+                    attachmentContentLength = message.attachment?.contentLength ?: 0L,
                     timestampLabel = message.timestampLabel,
                     isFromCurrentUser = message.isFromCurrentUser,
                     deliveryStatus = message.deliveryStatus.name,
@@ -210,6 +231,7 @@ class LocalConversationCoordinator(
         conversationId: String,
         localMessageId: String,
         body: String,
+        attachment: ChatMessageAttachment?,
     ): ConversationThreadsState {
         return state
     }

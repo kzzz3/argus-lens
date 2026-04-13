@@ -14,7 +14,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         LocalMessageEntity::class,
         LocalDraftAttachmentEntity::class,
     ],
-    version = 4,
+    version = 5,
     exportSchema = false,
 )
 abstract class ArgusLensDatabase : RoomDatabase() {
@@ -118,13 +118,33 @@ abstract class ArgusLensDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "ALTER TABLE `local_message` ADD COLUMN `attachmentId` TEXT"
+                )
+                db.execSQL(
+                    "ALTER TABLE `local_message` ADD COLUMN `attachmentType` TEXT"
+                )
+                db.execSQL(
+                    "ALTER TABLE `local_message` ADD COLUMN `attachmentFileName` TEXT"
+                )
+                db.execSQL(
+                    "ALTER TABLE `local_message` ADD COLUMN `attachmentContentType` TEXT"
+                )
+                db.execSQL(
+                    "ALTER TABLE `local_message` ADD COLUMN `attachmentContentLength` INTEGER NOT NULL DEFAULT 0"
+                )
+            }
+        }
+
         fun getInstance(context: Context): ArgusLensDatabase {
             return INSTANCE ?: synchronized(this) {
                 INSTANCE ?: Room.databaseBuilder(
                     context = context.applicationContext,
                     klass = ArgusLensDatabase::class.java,
                     name = "argus-lens.db",
-                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4).build().also { INSTANCE = it }
+                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5).build().also { INSTANCE = it }
             }
         }
     }
