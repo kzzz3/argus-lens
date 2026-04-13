@@ -26,6 +26,7 @@ import com.kzzz3.argus.lens.data.media.MediaRepository
 import com.kzzz3.argus.lens.data.media.MediaRepositoryResult
 import com.kzzz3.argus.lens.data.media.FinalizedAttachmentMetadata
 import com.kzzz3.argus.lens.data.media.createMediaRepository
+import com.kzzz3.argus.lens.data.realtime.ConversationRealtimeConnectionState
 import com.kzzz3.argus.lens.data.realtime.ConversationRealtimeEvent
 import com.kzzz3.argus.lens.data.realtime.ConversationRealtimeSubscription
 import com.kzzz3.argus.lens.data.realtime.createConversationRealtimeClient
@@ -78,6 +79,8 @@ import com.kzzz3.argus.lens.feature.register.reduceRegisterFormState
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlin.text.Charsets
 
 @Composable
@@ -134,6 +137,13 @@ fun ArgusLensApp() {
     var hydratedConversationAccountId by remember { mutableStateOf<String?>(null) }
     var hydratedSession by remember { mutableStateOf(false) }
     var realtimeSubscription by remember { mutableStateOf<ConversationRealtimeSubscription?>(null) }
+    var realtimeConnectionState by remember { mutableStateOf(ConversationRealtimeConnectionState.DISABLED) }
+    var realtimeLastEventId by rememberSaveable { mutableStateOf("") }
+    var realtimeReconnectAttempt by remember { mutableStateOf(0) }
+    var realtimeReconnectGeneration by remember { mutableStateOf(0) }
+    var realtimeReconnectJob by remember { mutableStateOf<Job?>(null) }
+    var activeRealtimeConnectionId by remember { mutableStateOf("") }
+    val realtimeEventMutex = remember { Mutex() }
     var friends by remember { mutableStateOf<List<FriendEntry>>(emptyList()) }
     val previewThreadsState = remember {
         conversationRepository.createPreviewState(currentUserDisplayName = "Argus Tester")
@@ -154,10 +164,11 @@ fun ArgusLensApp() {
     val sessionDisplayName = remember(appSessionState.displayName) {
         appSessionState.displayName.ifBlank { "Argus Tester" }
     }
-    val inboxState = remember(appSessionState, conversationThreads) {
+    val inboxState = remember(appSessionState, conversationThreads, realtimeConnectionState) {
         createInboxUiState(
             sessionState = appSessionState,
             threads = conversationThreads,
+            realtimeStatusLabel = buildRealtimeStatusLabel(realtimeConnectionState),
         )
     }
     val contactsState = remember(contactsStateModel, friends, conversationThreads) {
@@ -174,6 +185,9 @@ fun ArgusLensApp() {
     val latestSelectedConversationId by rememberUpdatedState(selectedConversationId)
     val latestAppSessionState by rememberUpdatedState(appSessionState)
     val latestCurrentRoute by rememberUpdatedState(currentRoute)
+    val latestRealtimeEnabled by rememberUpdatedState(
+        hydratedSession && appSessionState.isAuthenticated && appSessionState.accessToken.isNotBlank()
+    )
     val chatState = remember(selectedConversation, sessionDisplayName) {
         selectedConversation?.let { conversation ->
             ChatState(
@@ -224,6 +238,20 @@ fun ArgusLensApp() {
         chatStatusError = false
     }
 
+    fun scheduleRealtimeReconnect() {
+        if (!latestRealtimeEnabled) return
+        if (realtimeReconnectJob?.isActive == true) return
+        val nextAttempt = realtimeReconnectAttempt + 1
+        realtimeReconnectAttempt = nextAttempt
+        realtimeConnectionState = ConversationRealtimeConnectionState.RECOVERING
+        realtimeReconnectJob = coroutineScope.launch {
+            delay(realtimeReconnectDelayMillis(nextAttempt))
+            if (latestRealtimeEnabled) {
+                realtimeReconnectGeneration += 1
+            }
+        }
+    }
+
     LaunchedEffect(appSessionState.isAuthenticated, appSessionState.accountId, appSessionState.displayName) {
         if (hydratedSession && appSessionState.isAuthenticated) {
             hydratedConversationAccountId = null
@@ -235,32 +263,88 @@ fun ArgusLensApp() {
         }
     }
 
-    LaunchedEffect(hydratedSession, appSessionState.isAuthenticated, appSessionState.accessToken) {
+    LaunchedEffect(hydratedSession, appSessionState.isAuthenticated, appSessionState.accessToken, realtimeReconnectGeneration) {
+        activeRealtimeConnectionId = ""
         realtimeSubscription?.close()
         realtimeSubscription = null
 
-        if (hydratedSession && appSessionState.isAuthenticated && appSessionState.accessToken.isNotBlank()) {
-            realtimeSubscription = realtimeClient.connect(
-                accessToken = appSessionState.accessToken,
-                onEvent = { event ->
-                    coroutineScope.launch {
+        val realtimeEnabled = hydratedSession && appSessionState.isAuthenticated && appSessionState.accessToken.isNotBlank()
+        if (!realtimeEnabled) {
+            realtimeReconnectJob?.cancel()
+            realtimeReconnectJob = null
+            realtimeReconnectAttempt = 0
+            realtimeLastEventId = ""
+            realtimeConnectionState = ConversationRealtimeConnectionState.DISABLED
+            return@LaunchedEffect
+        }
+
+        val connectionId = "realtime-${appSessionState.accountId}-${realtimeReconnectGeneration}"
+        activeRealtimeConnectionId = connectionId
+        realtimeConnectionState = if (realtimeReconnectAttempt > 0) {
+            ConversationRealtimeConnectionState.RECOVERING
+        } else {
+            ConversationRealtimeConnectionState.CONNECTING
+        }
+        realtimeSubscription = realtimeClient.connect(
+            accessToken = appSessionState.accessToken,
+            lastEventId = realtimeLastEventId.ifBlank { null },
+            onConnected = {
+                coroutineScope.launch {
+                    if (activeRealtimeConnectionId == connectionId) {
+                        realtimeConnectionState = ConversationRealtimeConnectionState.LIVE
+                        realtimeReconnectAttempt = 0
+                        realtimeReconnectJob?.cancel()
+                        realtimeReconnectJob = null
+                    }
+                }
+            },
+            onClosed = {
+                coroutineScope.launch {
+                    if (activeRealtimeConnectionId == connectionId) {
+                        scheduleRealtimeReconnect()
+                    }
+                }
+            },
+            onEvent = { event ->
+                coroutineScope.launch {
+                    if (activeRealtimeConnectionId != connectionId) return@launch
+                    if (event.eventId.isNotBlank()) {
+                        realtimeLastEventId = event.eventId
+                    }
+                    if (event.eventType == REALTIME_EVENT_STREAM_READY) {
+                        realtimeConnectionState = ConversationRealtimeConnectionState.LIVE
+                        return@launch
+                    }
+                    if (event.eventType == REALTIME_EVENT_HEARTBEAT) {
+                        return@launch
+                    }
+                    realtimeEventMutex.withLock {
                         conversationThreadsState = handleConversationRealtimeEvent(
                             event = event,
                             conversationRepository = conversationRepository,
                             session = latestAppSessionState,
-                            currentState = latestConversationThreadsState,
+                            currentState = conversationThreadsState,
                             selectedConversationId = latestSelectedConversationId,
                             isChatRouteActive = latestCurrentRoute == AppRoute.Chat,
                         )
                     }
-                },
-                onError = { },
-            )
-        }
+                }
+            },
+            onError = {
+                coroutineScope.launch {
+                    if (activeRealtimeConnectionId == connectionId) {
+                        scheduleRealtimeReconnect()
+                    }
+                }
+            },
+        )
     }
 
     DisposableEffect(realtimeClient) {
         onDispose {
+            activeRealtimeConnectionId = ""
+            realtimeReconnectJob?.cancel()
+            realtimeReconnectJob = null
             realtimeSubscription?.close()
             realtimeSubscription = null
         }
@@ -920,24 +1004,12 @@ private suspend fun handleConversationRealtimeEvent(
     if (session.accountId.isBlank()) return currentState
 
     return when (event.eventType) {
+        REALTIME_EVENT_STREAM_READY,
+        REALTIME_EVENT_HEARTBEAT -> currentState
+
         REALTIME_EVENT_MESSAGE_CREATED,
         REALTIME_EVENT_MESSAGE_STATUS_UPDATED,
-        REALTIME_EVENT_MESSAGE_RECALLED -> {
-            val refreshedState = conversationRepository.refreshConversationMessages(
-                state = currentState,
-                conversationId = event.conversationId,
-            )
-            if (isChatRouteActive && selectedConversationId == event.conversationId) {
-                acknowledgeVisibleRemoteMessagesAsRead(
-                    state = refreshedState,
-                    conversationId = event.conversationId,
-                    conversationRepository = conversationRepository,
-                )
-            } else {
-                refreshedState
-            }
-        }
-
+        REALTIME_EVENT_MESSAGE_RECALLED,
         REALTIME_EVENT_CONVERSATION_READ,
         REALTIME_EVENT_CONVERSATION_CREATED,
         REALTIME_EVENT_CONVERSATION_UPDATED -> {
@@ -945,16 +1017,13 @@ private suspend fun handleConversationRealtimeEvent(
                 accountId = session.accountId,
                 currentUserDisplayName = session.displayName,
             )
-            if (isChatRouteActive && selectedConversationId == event.conversationId) {
+            if (event.conversationId.isBlank()) {
+                refreshedState
+            } else if (isChatRouteActive && selectedConversationId == event.conversationId) {
                 synchronizeActiveConversation(
                     state = refreshedState,
                     conversationId = event.conversationId,
                     conversationRepository = conversationRepository,
-                )
-            } else if (selectedConversationId == event.conversationId) {
-                conversationRepository.refreshConversationDetail(
-                    state = refreshedState,
-                    conversationId = event.conversationId,
                 )
             } else {
                 refreshedState
@@ -965,12 +1034,32 @@ private suspend fun handleConversationRealtimeEvent(
     }
 }
 
+private const val REALTIME_EVENT_STREAM_READY = "STREAM_READY"
+private const val REALTIME_EVENT_HEARTBEAT = "HEARTBEAT"
 private const val REALTIME_EVENT_MESSAGE_CREATED = "MESSAGE_CREATED"
 private const val REALTIME_EVENT_MESSAGE_STATUS_UPDATED = "MESSAGE_STATUS_UPDATED"
 private const val REALTIME_EVENT_MESSAGE_RECALLED = "MESSAGE_RECALLED"
 private const val REALTIME_EVENT_CONVERSATION_READ = "CONVERSATION_READ"
 private const val REALTIME_EVENT_CONVERSATION_CREATED = "CONVERSATION_CREATED"
 private const val REALTIME_EVENT_CONVERSATION_UPDATED = "CONVERSATION_UPDATED"
+
+private fun buildRealtimeStatusLabel(state: ConversationRealtimeConnectionState): String {
+    return when (state) {
+        ConversationRealtimeConnectionState.DISABLED -> "offline"
+        ConversationRealtimeConnectionState.CONNECTING -> "connecting"
+        ConversationRealtimeConnectionState.LIVE -> "live"
+        ConversationRealtimeConnectionState.RECOVERING -> "recovering"
+    }
+}
+
+private fun realtimeReconnectDelayMillis(attempt: Int): Long {
+    return when {
+        attempt <= 1 -> 1_000L
+        attempt == 2 -> 2_000L
+        attempt == 3 -> 4_000L
+        else -> 8_000L
+    }
+}
 
 private fun buildMediaPlaceholderBytes(fileName: String, kind: ChatDraftAttachmentKind): ByteArray {
     return "$fileName|${kind.name}".toByteArray(Charsets.UTF_8)

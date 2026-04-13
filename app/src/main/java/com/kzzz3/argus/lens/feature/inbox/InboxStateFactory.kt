@@ -1,10 +1,11 @@
-package com.kzzz3.argus.lens.feature.inbox
+﻿package com.kzzz3.argus.lens.feature.inbox
 
 import com.kzzz3.argus.lens.app.session.AppSessionState
 
 fun createInboxUiState(
     sessionState: AppSessionState,
     threads: List<InboxConversationThread>,
+    realtimeStatusLabel: String,
 ): InboxUiState {
     return InboxUiState(
         title = "Stage-1 Inbox",
@@ -15,9 +16,9 @@ fun createInboxUiState(
             "No active session"
         },
         sessionSummary = if (sessionState.isAuthenticated) {
-            "Account ID: ${sessionState.accountId}. Auth is real; messages are local for this step."
+            "Account ID: ${sessionState.accountId}. Realtime: $realtimeStatusLabel."
         } else {
-            "Session is empty."
+            "Session is empty. Realtime: $realtimeStatusLabel."
         },
         conversations = threads.map { thread ->
             val latestMessage = thread.messages.lastOrNull()

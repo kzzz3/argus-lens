@@ -15,6 +15,7 @@ class InboxStateFactoryTest {
                 displayName = "Argus Tester",
                 accessToken = "token",
             ),
+            realtimeStatusLabel = "live",
             threads = listOf(
                 InboxConversationThread(
                     id = "conv-1",
@@ -48,6 +49,7 @@ class InboxStateFactoryTest {
                 displayName = "Argus Tester",
                 accessToken = "token",
             ),
+            realtimeStatusLabel = "live",
             threads = listOf(
                 InboxConversationThread(
                     id = "conv-2",
@@ -74,6 +76,21 @@ class InboxStateFactoryTest {
     }
 
     @Test
+    fun createInboxUiState_includesRealtimeStatusInSessionSummary() {
+        val uiState = createInboxUiState(
+            sessionState = createAuthenticatedSession(
+                accountId = "argus_tester",
+                displayName = "Argus Tester",
+                accessToken = "token",
+            ),
+            threads = emptyList(),
+            realtimeStatusLabel = "recovering",
+        )
+
+        assertEquals("Account ID: argus_tester. Realtime: recovering.", uiState.sessionSummary)
+    }
+
+    @Test
     fun createInboxUiState_failedMessageShowsWarningStatus() {
         val uiState = createInboxUiState(
             sessionState = createAuthenticatedSession(
@@ -81,6 +98,7 @@ class InboxStateFactoryTest {
                 displayName = "Argus Tester",
                 accessToken = "token",
             ),
+            realtimeStatusLabel = "live",
             threads = listOf(
                 InboxConversationThread(
                     id = "conv-3",
