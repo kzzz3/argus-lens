@@ -56,9 +56,11 @@ import com.kzzz3.argus.lens.feature.contacts.reduceContactsState
 import com.kzzz3.argus.lens.feature.home.HomeHudScreen
 import com.kzzz3.argus.lens.feature.home.HomeHudUiState
 import com.kzzz3.argus.lens.feature.inbox.ChatAction
+import com.kzzz3.argus.lens.feature.inbox.ChatMessageAttachment
 import com.kzzz3.argus.lens.feature.inbox.ChatCallMode
 import com.kzzz3.argus.lens.feature.inbox.ChatEffect
 import com.kzzz3.argus.lens.feature.inbox.ChatMessageDeliveryStatus
+import com.kzzz3.argus.lens.feature.inbox.ChatMessageItem
 import com.kzzz3.argus.lens.feature.inbox.ChatScreen
 import com.kzzz3.argus.lens.feature.inbox.ChatState
 import com.kzzz3.argus.lens.feature.inbox.ChatDraftAttachmentKind
@@ -171,11 +173,12 @@ fun ArgusLensApp() {
             realtimeStatusLabel = buildRealtimeStatusLabel(realtimeConnectionState),
         )
     }
-    val contactsState = remember(contactsStateModel, friends, conversationThreads) {
+    val contactsState = remember(contactsStateModel, friends, conversationThreads, appSessionState.accountId) {
         createContactsUiState(
             state = contactsStateModel,
             friends = friends,
             threads = conversationThreads,
+            currentAccountId = appSessionState.accountId,
         )
     }
     val selectedConversation = remember(selectedConversationId, conversationThreads) {
@@ -532,29 +535,52 @@ fun ArgusLensApp() {
 
                 when (val effect = result.effect) {
                     is ContactsEffect.OpenConversation -> {
-                        val existingThread = conversationThreads.firstOrNull { it.id == effect.conversationId }
-                        val resolvedConversationId = if (existingThread != null) {
-                            conversationThreadsState = conversationRepository.markConversationAsRead(
-                                state = conversationThreadsState,
-                                conversationId = effect.conversationId,
-                            )
-                            effect.conversationId
-                        } else {
-                            val matchingFriend = friends.firstOrNull { it.accountId == effect.conversationId }
-                            val displayName = matchingFriend?.displayName ?: effect.conversationId
-                            conversationThreadsState = conversationRepository.createConversation(
-                                state = conversationThreadsState,
-                                displayName = displayName,
-                                mode = ConversationCreationMode.Direct,
-                            )
-                            conversationRepository.resolveConversationId(
-                                state = conversationThreadsState,
-                                displayName = displayName,
-                            )
-                        }
-                        selectedConversationId = resolvedConversationId
-                        currentRoute = AppRoute.Chat
                         coroutineScope.launch {
+                            val existingThread = conversationThreads.firstOrNull { it.id == effect.conversationId }
+                            val resolvedConversationId = if (existingThread != null) {
+                                conversationThreadsState = conversationRepository.markConversationAsRead(
+                                    state = conversationThreadsState,
+                                    conversationId = effect.conversationId,
+                                )
+                                effect.conversationId
+                            } else {
+                                val matchingFriend = friends.firstOrNull { friend ->
+                                    friend.accountId == effect.conversationId ||
+                                        buildDirectConversationId(appSessionState.accountId, friend.accountId) == effect.conversationId
+                                }
+                                val preferredConversationId = matchingFriend?.let { friend ->
+                                    buildDirectConversationId(appSessionState.accountId, friend.accountId)
+                                }
+                                val refreshedConversationId = if (appSessionState.isAuthenticated && matchingFriend != null) {
+                                    conversationThreadsState = conversationRepository.loadOrCreateConversationThreads(
+                                        accountId = appSessionState.accountId,
+                                        currentUserDisplayName = appSessionState.displayName,
+                                    )
+                                    conversationThreadsState.threads.firstOrNull { thread ->
+                                        thread.id == preferredConversationId
+                                    }?.id
+                                } else {
+                                    null
+                                }
+                                if (refreshedConversationId != null) {
+                                    conversationThreadsState = conversationRepository.markConversationAsRead(
+                                        state = conversationThreadsState,
+                                        conversationId = refreshedConversationId,
+                                    )
+                                    refreshedConversationId
+                                } else {
+                                    val displayName = matchingFriend?.displayName ?: effect.conversationId
+                                    val deterministicConversationId = preferredConversationId ?: effect.conversationId
+                                    conversationThreadsState = ensureDirectConversationPlaceholder(
+                                        state = conversationThreadsState,
+                                        conversationId = deterministicConversationId,
+                                        title = displayName,
+                                    )
+                                    deterministicConversationId
+                                }
+                            }
+                            selectedConversationId = resolvedConversationId
+                            currentRoute = AppRoute.Chat
                             conversationThreadsState = synchronizeActiveConversation(
                                 state = conversationThreadsState,
                                 conversationId = resolvedConversationId,
@@ -565,11 +591,19 @@ fun ArgusLensApp() {
 
                     is ContactsEffect.CreateConversation -> {
                         coroutineScope.launch {
-                            conversationThreadsState = conversationRepository.createConversationRemote(
-                                state = conversationThreadsState,
-                                displayName = effect.displayName,
-                                mode = effect.mode,
-                            )
+                            conversationThreadsState = if (effect.mode == ConversationCreationMode.Group) {
+                                conversationRepository.createConversationRemote(
+                                    state = conversationThreadsState,
+                                    displayName = effect.displayName,
+                                    mode = effect.mode,
+                                )
+                            } else {
+                                conversationRepository.createConversation(
+                                    state = conversationThreadsState,
+                                    displayName = effect.displayName,
+                                    mode = effect.mode,
+                                )
+                            }
                             selectedConversationId = conversationRepository.resolveConversationId(
                                 state = conversationThreadsState,
                                 displayName = effect.displayName,
@@ -578,7 +612,7 @@ fun ArgusLensApp() {
                                 statusMessage = if (effect.mode == ConversationCreationMode.Group) {
                                     "Group created successfully."
                                 } else {
-                                    "Conversation created successfully."
+                                    "Direct draft created locally."
                                 },
                                 isStatusError = false,
                             )
@@ -738,98 +772,26 @@ fun ArgusLensApp() {
                                 coroutineScope.launch {
                                     val outgoingMessages = result.state.messages
                                         .filter { it.id in result.effect.messageIds }
-                                    val latestMessage = outgoingMessages.lastOrNull()
-                                    val latestBody = latestMessage?.body
                                     val conversationId = result.effect.conversationId
-                                    var messageHandled = false
-                                    var mediaFailureMessage: String? = null
+                                    var firstFailureMessage: String? = null
 
-                                    if (result.effect.messageIds.size == 1 && latestMessage != null && latestBody != null) {
-                                        if (isMediaPlaceholderBody(latestBody)) {
-                                            val attachmentKind = mediaAttachmentKindFromPlaceholder(latestBody)
-                                            if (attachmentKind != null) {
-                                                val fileName = buildMediaPlaceholderFileName(conversationId, latestMessage.id, attachmentKind)
-                                                val uploadSessionResult = mediaRepository.createUploadSession(
-                                                    conversationId = conversationId,
-                                                    attachmentKind = attachmentKind,
-                                                    fileName = fileName,
-                                                    contentType = mediaContentTypeFor(attachmentKind),
-                                                    contentLength = 0L,
-                                                    durationSeconds = null,
-                                                )
-
-                                                if (uploadSessionResult is MediaRepositoryResult.Success) {
-                                                    val session = uploadSessionResult.session
-                                                    val placeholderBytes = buildMediaPlaceholderBytes(fileName, attachmentKind)
-                                                    val uploadResult = mediaRepository.uploadContent(
-                                                        session,
-                                                        placeholderBytes,
-                                                    )
-                                                    if (uploadResult is MediaRepositoryResult.UploadSuccess) {
-                                                        val finalizeResult = mediaRepository.finalizeUploadSession(
-                                                            sessionId = session.uploadSessionId,
-                                                            conversationId = conversationId,
-                                                            fileName = fileName,
-                                                            contentType = session.contentType,
-                                                            contentLength = placeholderBytes.size.toLong(),
-                                                            objectKey = session.objectKey,
-                                                        )
-                                                        if (finalizeResult is MediaRepositoryResult.FinalizeSuccess) {
-                                                            conversationThreadsState = conversationRepository.sendMessage(
-                                                                state = conversationThreadsState,
-                                                                conversationId = conversationId,
-                                                                localMessageId = latestMessage.id,
-                                                                body = buildFileMessageBodyWithFinalizedAttachment(
-                                                                    kind = attachmentKind,
-                                                                    metadata = finalizeResult.metadata,
-                                                                ),
-                                                            )
-                                                            messageHandled = true
-                                                        } else if (finalizeResult is MediaRepositoryResult.Failure) {
-                                                            mediaFailureMessage = finalizeResult.message
-                                                        }
-                                                    } else if (uploadResult is MediaRepositoryResult.Failure) {
-                                                        mediaFailureMessage = uploadResult.message
-                                                    }
-                                                } else if (uploadSessionResult is MediaRepositoryResult.Failure) {
-                                                    mediaFailureMessage = uploadSessionResult.message
-                                                }
-
-
-                                                if (!messageHandled) {
-                                                    conversationThreadsState = markOutgoingMessagesFailed(
-                                                        state = conversationThreadsState,
-                                                        conversationId = conversationId,
-                                                        messageIds = result.effect.messageIds,
-                                                    )
-                                                    chatStatusMessage = mediaFailureMessage ?: "File upload failed."
-                                                    chatStatusError = true
-                                                }
-                                            }
-                                        } else {
-                                            conversationThreadsState = conversationRepository.sendMessage(
-                                                state = conversationThreadsState,
-                                                conversationId = conversationId,
-                                                localMessageId = latestMessage.id,
-                                                body = latestBody,
-                                            )
-                                            messageHandled = true
+                                    outgoingMessages.forEach { outgoingMessage ->
+                                        val sendResult = dispatchOutgoingChatMessage(
+                                            state = conversationThreadsState,
+                                            conversationId = conversationId,
+                                            message = outgoingMessage,
+                                            conversationRepository = conversationRepository,
+                                            mediaRepository = mediaRepository,
+                                        )
+                                        conversationThreadsState = sendResult.state
+                                        if (firstFailureMessage == null) {
+                                            firstFailureMessage = sendResult.failureMessage
                                         }
                                     }
 
-                                    if (!messageHandled && mediaFailureMessage == null) {
-                                        delay(350)
-                                        conversationThreadsState = conversationRepository.resolveOutgoingMessages(
-                                            state = conversationThreadsState,
-                                            conversationId = conversationId,
-                                            messageIds = result.effect.messageIds,
-                                        )
-                                        delay(700)
-                                        conversationThreadsState = conversationRepository.resolveDeliveredMessages(
-                                            state = conversationThreadsState,
-                                            conversationId = conversationId,
-                                            messageIds = result.effect.messageIds,
-                                        )
+                                    if (firstFailureMessage != null) {
+                                        chatStatusMessage = firstFailureMessage
+                                        chatStatusError = true
                                     }
                                 }
                             }
@@ -1042,6 +1004,155 @@ private const val REALTIME_EVENT_MESSAGE_RECALLED = "MESSAGE_RECALLED"
 private const val REALTIME_EVENT_CONVERSATION_READ = "CONVERSATION_READ"
 private const val REALTIME_EVENT_CONVERSATION_CREATED = "CONVERSATION_CREATED"
 private const val REALTIME_EVENT_CONVERSATION_UPDATED = "CONVERSATION_UPDATED"
+
+private fun ensureDirectConversationPlaceholder(
+    state: ConversationThreadsState,
+    conversationId: String,
+    title: String,
+): ConversationThreadsState {
+    if (state.threads.any { it.id == conversationId }) {
+        return state
+    }
+    return state.copy(
+        threads = listOf(
+            InboxConversationThread(
+                id = conversationId,
+                title = title,
+                subtitle = "Direct friend conversation",
+                unreadCount = 0,
+                messages = emptyList(),
+            )
+        ) + state.threads
+    )
+}
+
+private fun buildDirectConversationId(
+    currentAccountId: String,
+    friendAccountId: String,
+): String {
+    val normalizedCurrent = currentAccountId.trim()
+    val normalizedFriend = friendAccountId.trim()
+    if (normalizedCurrent.isEmpty() || normalizedFriend.isEmpty()) {
+        return normalizedFriend
+    }
+    return if (normalizedCurrent < normalizedFriend) {
+        "conv-direct-$normalizedCurrent-$normalizedFriend"
+    } else {
+        "conv-direct-$normalizedFriend-$normalizedCurrent"
+    }
+}
+
+private fun FinalizedAttachmentMetadata.toChatMessageAttachment(): ChatMessageAttachment {
+    return ChatMessageAttachment(
+        attachmentId = attachmentId,
+        attachmentType = attachmentType,
+        fileName = fileName,
+        contentType = contentType,
+        contentLength = contentLength,
+    )
+}
+
+private data class OutgoingDispatchResult(
+    val state: ConversationThreadsState,
+    val failureMessage: String? = null,
+)
+
+private suspend fun dispatchOutgoingChatMessage(
+    state: ConversationThreadsState,
+    conversationId: String,
+    message: ChatMessageItem,
+    conversationRepository: ConversationRepository,
+    mediaRepository: MediaRepository,
+): OutgoingDispatchResult {
+    val attachment = message.attachment
+    if (attachment == null) {
+        return OutgoingDispatchResult(
+            state = conversationRepository.sendMessage(
+                state = state,
+                conversationId = conversationId,
+                localMessageId = message.id,
+                body = message.body,
+                attachment = null,
+            )
+        )
+    }
+
+    val finalizedAttachment = if (attachment.attachmentId.isNullOrBlank()) {
+        val attachmentKind = attachment.toDraftAttachmentKind()
+        val fileName = attachment.fileName.ifBlank {
+            buildMediaPlaceholderFileName(conversationId, message.id, attachmentKind)
+        }
+        when (val uploadSessionResult = mediaRepository.createUploadSession(
+            conversationId = conversationId,
+            attachmentKind = attachmentKind,
+            fileName = fileName,
+            contentType = attachment.contentType.ifBlank { mediaContentTypeFor(attachmentKind) },
+            contentLength = attachment.contentLength,
+            durationSeconds = null,
+        )) {
+            is MediaRepositoryResult.Success -> {
+                val session = uploadSessionResult.session
+                val placeholderBytes = buildMediaPlaceholderBytes(fileName, attachmentKind)
+                when (val uploadResult = mediaRepository.uploadContent(session, placeholderBytes)) {
+                    is MediaRepositoryResult.UploadSuccess -> {
+                        when (val finalizeResult = mediaRepository.finalizeUploadSession(
+                            sessionId = session.uploadSessionId,
+                            conversationId = conversationId,
+                            fileName = fileName,
+                            contentType = session.contentType,
+                            contentLength = placeholderBytes.size.toLong(),
+                            objectKey = session.objectKey,
+                        )) {
+                            is MediaRepositoryResult.FinalizeSuccess -> finalizeResult.metadata.toChatMessageAttachment()
+                            is MediaRepositoryResult.Failure -> return OutgoingDispatchResult(
+                                state = markOutgoingMessagesFailed(state, conversationId, listOf(message.id)),
+                                failureMessage = finalizeResult.message,
+                            )
+                            else -> null
+                        }
+                    }
+                    is MediaRepositoryResult.Failure -> return OutgoingDispatchResult(
+                        state = markOutgoingMessagesFailed(state, conversationId, listOf(message.id)),
+                        failureMessage = uploadResult.message,
+                    )
+                    else -> null
+                }
+            }
+            is MediaRepositoryResult.Failure -> return OutgoingDispatchResult(
+                state = markOutgoingMessagesFailed(state, conversationId, listOf(message.id)),
+                failureMessage = uploadSessionResult.message,
+            )
+            else -> null
+        }
+    } else {
+        attachment
+    }
+
+    if (finalizedAttachment == null) {
+        return OutgoingDispatchResult(
+            state = markOutgoingMessagesFailed(state, conversationId, listOf(message.id)),
+            failureMessage = "File upload failed.",
+        )
+    }
+
+    return OutgoingDispatchResult(
+        state = conversationRepository.sendMessage(
+            state = state,
+            conversationId = conversationId,
+            localMessageId = message.id,
+            body = finalizedAttachment.fileName,
+            attachment = finalizedAttachment,
+        )
+    )
+}
+
+private fun ChatMessageAttachment.toDraftAttachmentKind(): ChatDraftAttachmentKind {
+    return when (attachmentType.uppercase()) {
+        "IMAGE" -> ChatDraftAttachmentKind.Image
+        "VIDEO" -> ChatDraftAttachmentKind.Video
+        else -> ChatDraftAttachmentKind.Voice
+    }
+}
 
 private fun buildRealtimeStatusLabel(state: ConversationRealtimeConnectionState): String {
     return when (state) {

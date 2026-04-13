@@ -91,6 +91,46 @@ class InboxStateFactoryTest {
     }
 
     @Test
+    fun createInboxUiState_attachmentMessageUsesFileNamePreview() {
+        val uiState = createInboxUiState(
+            sessionState = createAuthenticatedSession(
+                accountId = "argus_tester",
+                displayName = "Argus Tester",
+                accessToken = "token",
+            ),
+            realtimeStatusLabel = "live",
+            threads = listOf(
+                InboxConversationThread(
+                    id = "conv-file",
+                    title = "Files",
+                    subtitle = "direct",
+                    unreadCount = 0,
+                    messages = listOf(
+                        ChatMessageItem(
+                            id = "m-file",
+                            senderDisplayName = "Argus Tester",
+                            body = "design-spec.png",
+                            timestampLabel = "10:10",
+                            isFromCurrentUser = true,
+                            deliveryStatus = ChatMessageDeliveryStatus.Delivered,
+                            attachment = ChatMessageAttachment(
+                                attachmentId = "att-1",
+                                attachmentType = "IMAGE",
+                                fileName = "design-spec.png",
+                                contentType = "image/png",
+                                contentLength = 11,
+                            ),
+                        )
+                    ),
+                )
+            ),
+        )
+
+        val item = uiState.conversations.single()
+        assertEquals("design-spec.png", item.preview)
+    }
+
+    @Test
     fun createInboxUiState_failedMessageShowsWarningStatus() {
         val uiState = createInboxUiState(
             sessionState = createAuthenticatedSession(
