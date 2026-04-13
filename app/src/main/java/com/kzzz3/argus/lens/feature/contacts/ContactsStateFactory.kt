@@ -7,6 +7,7 @@ fun createContactsUiState(
     state: ContactsState,
     friends: List<FriendEntry>,
     threads: List<InboxConversationThread>,
+    currentAccountId: String,
 ): ContactsUiState {
     return ContactsUiState(
         title = "Contacts",
@@ -46,12 +47,16 @@ fun createContactsUiState(
         },
         isCreateConversationEnabled = state.draftConversationName.trim().isNotEmpty(),
         contacts = friends.map { friend ->
+            val preferredConversationId = preferredDirectConversationId(
+                currentAccountId = currentAccountId,
+                friendAccountId = friend.accountId,
+            )
             val matchingThread = threads.firstOrNull {
-                it.title.equals(friend.displayName, ignoreCase = true) ||
+                it.id.equals(preferredConversationId, ignoreCase = true) ||
                     it.id.equals(friend.accountId, ignoreCase = true)
             }
             ContactEntryUiState(
-                conversationId = matchingThread?.id ?: friend.accountId,
+                conversationId = matchingThread?.id ?: preferredConversationId,
                 accountId = friend.accountId,
                 displayName = friend.displayName,
                 supportingLabel = friend.note.ifBlank { "Remote friend" },
@@ -60,4 +65,20 @@ fun createContactsUiState(
         },
         backActionLabel = "Back to inbox",
     )
+}
+
+private fun preferredDirectConversationId(
+    currentAccountId: String,
+    friendAccountId: String,
+): String {
+    val normalizedCurrent = currentAccountId.trim()
+    val normalizedFriend = friendAccountId.trim()
+    if (normalizedCurrent.isEmpty() || normalizedFriend.isEmpty()) {
+        return normalizedFriend
+    }
+    return if (normalizedCurrent < normalizedFriend) {
+        "conv-direct-$normalizedCurrent-$normalizedFriend"
+    } else {
+        "conv-direct-$normalizedFriend-$normalizedCurrent"
+    }
 }
