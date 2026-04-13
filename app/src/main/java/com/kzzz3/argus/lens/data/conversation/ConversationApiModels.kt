@@ -18,6 +18,14 @@ data class RemoteConversationDetail(
     val memberDisplayNames: List<String>,
 )
 
+data class RemoteConversationMessageAttachment(
+    val attachmentId: String,
+    val attachmentType: String,
+    val fileName: String,
+    val contentType: String,
+    val contentLength: Long,
+)
+
 data class RemoteConversationMessage(
     val id: String,
     val conversationId: String,
@@ -27,6 +35,7 @@ data class RemoteConversationMessage(
     val fromCurrentUser: Boolean,
     val deliveryStatus: String,
     val statusUpdatedAt: String,
+    val attachment: RemoteConversationMessageAttachment? = null,
 )
 
 data class RemoteConversationMessagePage(
@@ -36,9 +45,14 @@ data class RemoteConversationMessagePage(
     val limit: Int,
 )
 
+data class SendRemoteMessageAttachmentRequest(
+    val attachmentId: String,
+)
+
 data class SendRemoteMessageRequest(
     val clientMessageId: String,
-    val body: String,
+    val body: String? = null,
+    val attachment: SendRemoteMessageAttachmentRequest? = null,
 )
 
 data class CreateConversationRequest(

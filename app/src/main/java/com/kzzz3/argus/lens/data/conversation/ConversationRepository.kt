@@ -1,6 +1,7 @@
 package com.kzzz3.argus.lens.data.conversation
 
 import com.kzzz3.argus.lens.feature.contacts.ConversationCreationMode
+import com.kzzz3.argus.lens.feature.inbox.ChatMessageAttachment
 import com.kzzz3.argus.lens.feature.inbox.ChatMessageItem
 import com.kzzz3.argus.lens.feature.inbox.ChatState
 import com.kzzz3.argus.lens.feature.inbox.ConversationThreadsState
@@ -13,7 +14,7 @@ interface ConversationRepository {
     suspend fun refreshConversationMessages(state: ConversationThreadsState, conversationId: String): ConversationThreadsState
     suspend fun refreshConversationDetail(state: ConversationThreadsState, conversationId: String): ConversationThreadsState
     suspend fun addConversationMember(state: ConversationThreadsState, conversationId: String, memberAccountId: String): ConversationThreadsState
-    suspend fun sendMessage(state: ConversationThreadsState, conversationId: String, localMessageId: String, body: String): ConversationThreadsState
+    suspend fun sendMessage(state: ConversationThreadsState, conversationId: String, localMessageId: String, body: String, attachment: ChatMessageAttachment? = null): ConversationThreadsState
     suspend fun acknowledgeMessageDelivery(state: ConversationThreadsState, conversationId: String, messageId: String): ConversationThreadsState
     suspend fun acknowledgeMessageRead(state: ConversationThreadsState, conversationId: String, messageId: String): ConversationThreadsState
     suspend fun recallMessage(state: ConversationThreadsState, conversationId: String, messageId: String): ConversationThreadsState

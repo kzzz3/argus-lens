@@ -3,6 +3,7 @@ package com.kzzz3.argus.lens.data.conversation
 import com.google.gson.Gson
 import com.kzzz3.argus.lens.data.session.SessionRepository
 import com.kzzz3.argus.lens.feature.contacts.ConversationCreationMode
+import com.kzzz3.argus.lens.feature.inbox.ChatMessageAttachment
 import com.kzzz3.argus.lens.feature.inbox.ChatMessageDeliveryStatus
 import com.kzzz3.argus.lens.feature.inbox.ChatMessageItem
 import com.kzzz3.argus.lens.feature.inbox.ConversationThreadsState
@@ -64,34 +65,34 @@ class RemoteConversationRepository(
         }
 
         return try {
-            val response = conversationApiService.listMessages(
-                conversationId = conversationId,
-                recentWindowDays = RECENT_WINDOW_DAYS,
-                limit = MESSAGE_PAGE_LIMIT,
-                sinceCursor = state.threads.firstOrNull { it.id == conversationId }?.syncCursor?.ifBlank { null },
-                authorizationHeader = "Bearer $accessToken",
-            )
-            if (!response.isSuccessful) {
-                when (parseApiError(response.code(), response.errorBody()?.string().orEmpty())?.code) {
-                    "CONVERSATION_NOT_FOUND" -> state
-                    else -> state
-                }
-            } else {
-                val page = response.body() ?: return state
-                val remoteMessages = page.messages.map { message ->
-                    ChatMessageItem(
-                        id = message.id,
-                        senderDisplayName = message.senderDisplayName,
-                        body = message.body,
-                        timestampLabel = message.timestampLabel,
-                        isFromCurrentUser = message.fromCurrentUser,
-                        deliveryStatus = parseRemoteDeliveryStatus(message.deliveryStatus),
-                        statusUpdatedAt = message.statusUpdatedAt,
-                    )
+            var nextState = state
+            var requestCursor = state.threads.firstOrNull { it.id == conversationId }?.syncCursor?.ifBlank { null }
+            val deliveredMessages = mutableListOf<ChatMessageItem>()
+
+            while (true) {
+                val response = conversationApiService.listMessages(
+                    conversationId = conversationId,
+                    recentWindowDays = RECENT_WINDOW_DAYS,
+                    limit = MESSAGE_PAGE_LIMIT,
+                    sinceCursor = requestCursor,
+                    authorizationHeader = "Bearer $accessToken",
+                )
+                if (!response.isSuccessful) {
+                    return when (parseApiError(response.code(), response.errorBody()?.string().orEmpty())?.code) {
+                        "CONVERSATION_NOT_FOUND" -> state
+                        else -> nextState
+                    }
                 }
 
-                val nextState = state.copy(
-                    threads = state.threads.map { thread ->
+                val page = response.body() ?: return nextState
+                val previousCursor = requestCursor
+                val remoteMessages = page.messages.map { it.toChatMessageItem() }
+                deliveredMessages += remoteMessages.filter {
+                    !it.isFromCurrentUser && it.deliveryStatus == ChatMessageDeliveryStatus.Sent
+                }
+
+                nextState = nextState.copy(
+                    threads = nextState.threads.map { thread ->
                         if (thread.id == conversationId) {
                             thread.copy(
                                 messages = mergeMessages(
@@ -105,16 +106,26 @@ class RemoteConversationRepository(
                         }
                     }
                 )
-                val accountId = sessionRepository.loadSession().accountId
-                if (accountId.isNotBlank()) {
-                    localRepository.saveConversationThreads(accountId, nextState)
+
+                if (
+                    remoteMessages.isEmpty() ||
+                    page.nextSyncCursor.isBlank() ||
+                    page.nextSyncCursor == previousCursor ||
+                    remoteMessages.size < MESSAGE_PAGE_LIMIT
+                ) {
+                    break
                 }
-                remoteMessages
-                    .filter { !it.isFromCurrentUser && it.deliveryStatus == ChatMessageDeliveryStatus.Sent }
-                    .fold(nextState) { currentState, message ->
-                        acknowledgeMessageDelivery(currentState, conversationId, message.id)
-                    }
+                requestCursor = page.nextSyncCursor
             }
+
+            val finalState = deliveredMessages.fold(nextState) { currentState, message ->
+                acknowledgeMessageDelivery(currentState, conversationId, message.id)
+            }
+            val accountId = sessionRepository.loadSession().accountId
+            if (accountId.isNotBlank()) {
+                localRepository.saveConversationThreads(accountId, finalState)
+            }
+            finalState
         } catch (_: IOException) {
             state
         }
@@ -239,15 +250,7 @@ class RemoteConversationRepository(
                 state
             } else {
                 val message = response.body() ?: return state
-                val readMessage = ChatMessageItem(
-                    id = message.id,
-                    senderDisplayName = message.senderDisplayName,
-                    body = message.body,
-                    timestampLabel = message.timestampLabel,
-                    isFromCurrentUser = message.fromCurrentUser,
-                    deliveryStatus = parseRemoteDeliveryStatus(message.deliveryStatus),
-                    statusUpdatedAt = message.statusUpdatedAt,
-                )
+                val readMessage = message.toChatMessageItem()
                 val nextState = applyRemoteMessageUpdate(
                     state = state,
                     conversationId = conversationId,
@@ -268,6 +271,7 @@ class RemoteConversationRepository(
         conversationId: String,
         localMessageId: String,
         body: String,
+        attachment: ChatMessageAttachment?,
     ): ConversationThreadsState {
         val session = sessionRepository.loadSession()
         if (session.accessToken.isBlank()) {
@@ -278,7 +282,7 @@ class RemoteConversationRepository(
             val response = conversationApiService.sendMessage(
                 conversationId = conversationId,
                 authorizationHeader = "Bearer ${session.accessToken}",
-                request = SendRemoteMessageRequest(clientMessageId = localMessageId, body = body),
+                request = SendRemoteMessageRequest(clientMessageId = localMessageId, body = body.ifBlank { null }, attachment = attachment?.attachmentId?.takeIf { it.isNotBlank() }?.let(::SendRemoteMessageAttachmentRequest)),
             )
             if (!response.isSuccessful) {
                 when (parseApiError(response.code(), response.errorBody()?.string().orEmpty())?.code) {
@@ -287,15 +291,7 @@ class RemoteConversationRepository(
                 }
             } else {
                 val message = response.body() ?: return state
-                val remoteMessage = ChatMessageItem(
-                    id = message.id,
-                    senderDisplayName = message.senderDisplayName,
-                    body = message.body,
-                    timestampLabel = message.timestampLabel,
-                    isFromCurrentUser = message.fromCurrentUser,
-                    deliveryStatus = parseRemoteDeliveryStatus(message.deliveryStatus),
-                    statusUpdatedAt = message.statusUpdatedAt,
-                )
+                val remoteMessage = message.toChatMessageItem()
                 val nextState = state.copy(
                     threads = state.threads.map { thread ->
                         if (thread.id == conversationId) {
@@ -344,15 +340,7 @@ class RemoteConversationRepository(
                 state
             } else {
                 val message = response.body() ?: return state
-                val deliveredMessage = ChatMessageItem(
-                    id = message.id,
-                    senderDisplayName = message.senderDisplayName,
-                    body = message.body,
-                    timestampLabel = message.timestampLabel,
-                    isFromCurrentUser = message.fromCurrentUser,
-                    deliveryStatus = parseRemoteDeliveryStatus(message.deliveryStatus),
-                    statusUpdatedAt = message.statusUpdatedAt,
-                )
+                val deliveredMessage = message.toChatMessageItem()
                 val nextState = applyRemoteMessageUpdate(
                     state = state,
                     conversationId = conversationId,
@@ -392,15 +380,7 @@ class RemoteConversationRepository(
                 }
             } else {
                 val message = response.body() ?: return state
-                val recalledMessage = ChatMessageItem(
-                    id = message.id,
-                    senderDisplayName = message.senderDisplayName,
-                    body = message.body,
-                    timestampLabel = message.timestampLabel,
-                    isFromCurrentUser = message.fromCurrentUser,
-                    deliveryStatus = parseRemoteDeliveryStatus(message.deliveryStatus),
-                    statusUpdatedAt = message.statusUpdatedAt,
-                )
+                val recalledMessage = message.toChatMessageItem()
                 val nextState = state.copy(
                     threads = state.threads.map { thread ->
                         if (thread.id == conversationId) {
@@ -546,6 +526,29 @@ class RemoteConversationRepository(
                     thread
                 }
             }
+        )
+    }
+
+    private fun RemoteConversationMessage.toChatMessageItem(): ChatMessageItem {
+        return ChatMessageItem(
+            id = id,
+            senderDisplayName = senderDisplayName,
+            body = body,
+            timestampLabel = timestampLabel,
+            isFromCurrentUser = fromCurrentUser,
+            deliveryStatus = parseRemoteDeliveryStatus(deliveryStatus),
+            statusUpdatedAt = statusUpdatedAt,
+            attachment = attachment?.toChatMessageAttachment(),
+        )
+    }
+
+    private fun RemoteConversationMessageAttachment.toChatMessageAttachment(): ChatMessageAttachment {
+        return ChatMessageAttachment(
+            attachmentId = attachmentId,
+            attachmentType = attachmentType,
+            fileName = fileName,
+            contentType = contentType,
+            contentLength = contentLength,
         )
     }
 
