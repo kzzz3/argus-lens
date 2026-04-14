@@ -1,0 +1,32 @@
+package com.kzzz3.argus.lens.data.payment
+
+data class ResolvePaymentScanRequestBody(
+    val scanPayload: String,
+)
+
+data class ResolvePaymentScanResponseBody(
+    val scanSessionId: String,
+    val merchantAccountId: String,
+    val merchantDisplayName: String,
+    val currency: String,
+    val suggestedAmount: Double?,
+    val amountEditable: Boolean,
+    val suggestedNote: String,
+)
+
+data class ConfirmPaymentRequestBody(
+    val amount: Double?,
+    val note: String,
+)
+
+data class ConfirmPaymentResponseBody(
+    val paymentId: String,
+    val status: String,
+    val merchantAccountId: String,
+    val merchantDisplayName: String,
+    val conversationId: String,
+    val amount: Double,
+    val currency: String,
+    val note: String,
+    val paidAt: String,
+)

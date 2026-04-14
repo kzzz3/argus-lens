@@ -11,6 +11,8 @@ import com.kzzz3.argus.lens.data.friend.FriendRepository
 import com.kzzz3.argus.lens.data.friend.createFriendRepository
 import com.kzzz3.argus.lens.data.media.MediaRepository
 import com.kzzz3.argus.lens.data.media.createMediaRepository
+import com.kzzz3.argus.lens.data.payment.PaymentRepository
+import com.kzzz3.argus.lens.data.payment.createPaymentRepository
 import com.kzzz3.argus.lens.data.realtime.ConversationRealtimeClient
 import com.kzzz3.argus.lens.data.realtime.createConversationRealtimeClient
 import com.kzzz3.argus.lens.data.session.SessionRepository
@@ -22,6 +24,7 @@ data class AppDependencies(
     val conversationRepository: ConversationRepository,
     val friendRepository: FriendRepository,
     val mediaRepository: MediaRepository,
+    val paymentRepository: PaymentRepository,
     val realtimeClient: ConversationRealtimeClient,
     val appShellCoordinator: AppShellCoordinator,
 )
@@ -41,6 +44,9 @@ fun rememberAppDependencies(
     val mediaRepository = remember(sessionRepository, context) {
         createMediaRepository(sessionRepository, context)
     }
+    val paymentRepository = remember(sessionRepository) {
+        createPaymentRepository(sessionRepository)
+    }
     val realtimeClient = remember { createConversationRealtimeClient() }
     val appShellCoordinator = remember(authRepository, sessionRepository, conversationRepository) {
         AppShellCoordinator(
@@ -55,6 +61,7 @@ fun rememberAppDependencies(
         conversationRepository,
         friendRepository,
         mediaRepository,
+        paymentRepository,
         realtimeClient,
         appShellCoordinator,
     ) {
@@ -64,6 +71,7 @@ fun rememberAppDependencies(
             conversationRepository = conversationRepository,
             friendRepository = friendRepository,
             mediaRepository = mediaRepository,
+            paymentRepository = paymentRepository,
             realtimeClient = realtimeClient,
             appShellCoordinator = appShellCoordinator,
         )
