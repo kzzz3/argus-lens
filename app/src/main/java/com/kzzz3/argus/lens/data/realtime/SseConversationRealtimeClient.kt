@@ -1,9 +1,7 @@
 ﻿package com.kzzz3.argus.lens.data.realtime
 
 import com.google.gson.Gson
-import com.kzzz3.argus.lens.BuildConfig
 import okhttp3.HttpUrl
-import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
@@ -14,7 +12,7 @@ import okhttp3.sse.EventSources
 class SseConversationRealtimeClient(
     private val okHttpClient: OkHttpClient,
     private val gson: Gson = Gson(),
-    private val baseUrl: HttpUrl = BuildConfig.AUTH_BASE_URL.toHttpUrl(),
+    private val baseUrl: HttpUrl,
 ) : ConversationRealtimeClient {
 
     private val eventSourceFactory: EventSource.Factory = EventSources.createFactory(okHttpClient)
