@@ -1,5 +1,6 @@
 package com.kzzz3.argus.lens.feature.contacts
 
+import com.kzzz3.argus.lens.data.conversation.buildDirectConversationId
 import com.kzzz3.argus.lens.feature.inbox.InboxConversationThread
 import com.kzzz3.argus.lens.data.friend.FriendEntry
 
@@ -47,7 +48,7 @@ fun createContactsUiState(
         },
         isCreateConversationEnabled = state.draftConversationName.trim().isNotEmpty(),
         contacts = friends.map { friend ->
-            val preferredConversationId = preferredDirectConversationId(
+            val preferredConversationId = buildDirectConversationId(
                 currentAccountId = currentAccountId,
                 friendAccountId = friend.accountId,
             )
@@ -65,20 +66,4 @@ fun createContactsUiState(
         },
         backActionLabel = "Back to inbox",
     )
-}
-
-private fun preferredDirectConversationId(
-    currentAccountId: String,
-    friendAccountId: String,
-): String {
-    val normalizedCurrent = currentAccountId.trim()
-    val normalizedFriend = friendAccountId.trim()
-    if (normalizedCurrent.isEmpty() || normalizedFriend.isEmpty()) {
-        return normalizedFriend
-    }
-    return if (normalizedCurrent < normalizedFriend) {
-        "conv-direct-$normalizedCurrent-$normalizedFriend"
-    } else {
-        "conv-direct-$normalizedFriend-$normalizedCurrent"
-    }
 }
