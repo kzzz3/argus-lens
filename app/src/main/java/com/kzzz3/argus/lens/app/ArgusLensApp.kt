@@ -23,6 +23,8 @@ import com.kzzz3.argus.lens.data.friend.FriendRepositoryResult
 import com.kzzz3.argus.lens.data.media.MediaRepository
 import com.kzzz3.argus.lens.data.media.MediaRepositoryResult
 import com.kzzz3.argus.lens.data.media.FinalizedAttachmentMetadata
+import com.kzzz3.argus.lens.data.payment.PaymentRepository
+import com.kzzz3.argus.lens.data.payment.PaymentRepositoryResult
 import com.kzzz3.argus.lens.data.realtime.ConversationRealtimeConnectionState
 import com.kzzz3.argus.lens.data.realtime.ConversationRealtimeEvent
 import com.kzzz3.argus.lens.data.realtime.ConversationRealtimeSubscription
@@ -71,6 +73,16 @@ import com.kzzz3.argus.lens.feature.register.RegisterFormState
 import com.kzzz3.argus.lens.feature.register.RegisterScreen
 import com.kzzz3.argus.lens.feature.register.createRegisterUiState
 import com.kzzz3.argus.lens.feature.register.reduceRegisterFormState
+import com.kzzz3.argus.lens.feature.scan.ScanAction
+import com.kzzz3.argus.lens.feature.scan.ScanEffect
+import com.kzzz3.argus.lens.feature.scan.ScanScreen
+import com.kzzz3.argus.lens.feature.scan.ScanState
+import com.kzzz3.argus.lens.feature.scan.createScanUiState
+import com.kzzz3.argus.lens.feature.scan.reduceScanState
+import com.kzzz3.argus.lens.feature.scan.withConfirmFailure
+import com.kzzz3.argus.lens.feature.scan.withConfirmedPayment
+import com.kzzz3.argus.lens.feature.scan.withResolveFailure
+import com.kzzz3.argus.lens.feature.scan.withResolvedPayment
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -104,6 +116,9 @@ fun ArgusLensApp() {
     var callSessionState by rememberSaveable {
         mutableStateOf(CallSessionState())
     }
+    var scanStateModel by rememberSaveable {
+        mutableStateOf(ScanState())
+    }
     var selectedConversationId by rememberSaveable { mutableStateOf("") }
     var chatStatusMessage by rememberSaveable { mutableStateOf<String?>(null) }
     var chatStatusError by rememberSaveable { mutableStateOf(false) }
@@ -115,6 +130,7 @@ fun ArgusLensApp() {
     val conversationRepository: ConversationRepository = dependencies.conversationRepository
     val friendRepository: FriendRepository = dependencies.friendRepository
     val mediaRepository: MediaRepository = dependencies.mediaRepository
+    val paymentRepository: PaymentRepository = dependencies.paymentRepository
     val realtimeClient = dependencies.realtimeClient
     val appShellCoordinator = dependencies.appShellCoordinator
     var callSessionJob by remember { mutableStateOf<Job?>(null) }
@@ -201,6 +217,9 @@ fun ArgusLensApp() {
     }
     val callSessionUiState = remember(callSessionState) {
         createCallSessionUiState(callSessionState)
+    }
+    val scanUiState = remember(scanStateModel) {
+        createScanUiState(scanStateModel)
     }
 
     LaunchedEffect(Unit) {
@@ -392,6 +411,7 @@ fun ArgusLensApp() {
                                     callSessionJob?.cancel()
                                     val signedInState = appShellCoordinator.handleSignedIn(appSessionState)
                                     callSessionState = signedInState.callSessionState
+                                    scanStateModel = ScanState()
                                     conversationThreadsState = signedInState.conversationThreadsState
                                     hydratedConversationAccountId = signedInState.hydratedConversationAccountId
                                     selectedConversationId = signedInState.selectedConversationId
@@ -449,6 +469,7 @@ fun ArgusLensApp() {
                                     conversationThreadsState = signedInState.conversationThreadsState
                                     hydratedConversationAccountId = signedInState.hydratedConversationAccountId
                                     selectedConversationId = signedInState.selectedConversationId
+                                    scanStateModel = ScanState()
                                     authFormState = AuthFormState(account = authResult.session.accountId)
                                     currentRoute = AppRoute.Inbox
                                 }
@@ -487,19 +508,22 @@ fun ArgusLensApp() {
                         }
                     }
 
-                    InboxAction.OpenContacts -> currentRoute = AppRoute.Contacts
+					InboxAction.OpenContacts -> currentRoute = AppRoute.Contacts
 
-                    InboxAction.SignOutToHud -> {
-                        val signedOutState = appShellCoordinator.createSignedOutState(previewThreadsState)
+					InboxAction.OpenScan -> currentRoute = AppRoute.Scan
+
+					InboxAction.SignOutToHud -> {
+						val signedOutState = appShellCoordinator.createSignedOutState(previewThreadsState)
                         appSessionState = AppSessionState()
                         authFormState = signedOutState.authFormState
                         registerFormState = signedOutState.registerFormState
-                        contactsStateModel = signedOutState.contactsState
-                        callSessionJob?.cancel()
-                        callSessionState = signedOutState.callSessionState
-                        hydratedConversationAccountId = null
-                        conversationThreadsState = signedOutState.conversationThreadsState
-                        selectedConversationId = signedOutState.selectedConversationId
+						contactsStateModel = signedOutState.contactsState
+						callSessionJob?.cancel()
+						callSessionState = signedOutState.callSessionState
+						scanStateModel = ScanState()
+						hydratedConversationAccountId = null
+						conversationThreadsState = signedOutState.conversationThreadsState
+						selectedConversationId = signedOutState.selectedConversationId
                         currentRoute = AppRoute.Home
                     }
                 }
@@ -654,6 +678,81 @@ fun ArgusLensApp() {
             }
         )
 
+        AppRoute.Scan -> ScanScreen(
+            state = scanUiState,
+            permissionRequestPending = scanStateModel.shouldRequestCameraPermission,
+            onAction = { action ->
+                val result = reduceScanState(
+                    currentState = scanStateModel,
+                    action = action,
+                )
+                scanStateModel = result.state
+
+                when (val effect = result.effect) {
+                    ScanEffect.NavigateBack -> currentRoute = AppRoute.Inbox
+                    is ScanEffect.ResolvePayload -> {
+                        coroutineScope.launch {
+                            when (val paymentResult = paymentRepository.resolveScanPayload(effect.payload)) {
+                                is PaymentRepositoryResult.ResolutionSuccess -> {
+                                    scanStateModel = scanStateModel.withResolvedPayment(paymentResult.resolution)
+                                }
+                                is PaymentRepositoryResult.Failure -> {
+                                    scanStateModel = scanStateModel.withResolveFailure(paymentResult.message)
+                                }
+                                else -> Unit
+                            }
+                        }
+                    }
+                    is ScanEffect.ConfirmPayment -> {
+                        coroutineScope.launch {
+                            val amount = effect.amountInput?.toDoubleOrNull()
+                            if (effect.amountInput != null && amount == null) {
+                                scanStateModel = scanStateModel.withConfirmFailure("Amount must be a valid decimal value.")
+                                return@launch
+                            }
+                            when (
+                                val paymentResult = paymentRepository.confirmPayment(
+                                    sessionId = effect.sessionId,
+                                    amount = amount,
+                                    note = effect.note,
+                                )
+                            ) {
+                                is PaymentRepositoryResult.ConfirmationSuccess -> {
+                                    scanStateModel = scanStateModel.withConfirmedPayment(paymentResult.confirmation)
+                                }
+                                is PaymentRepositoryResult.Failure -> {
+                                    scanStateModel = scanStateModel.withConfirmFailure(paymentResult.message)
+                                }
+                                else -> Unit
+                            }
+                        }
+                    }
+                    is ScanEffect.OpenConversation -> {
+                        coroutineScope.launch {
+                            if (appSessionState.isAuthenticated) {
+                                conversationThreadsState = conversationRepository.loadOrCreateConversationThreads(
+                                    accountId = appSessionState.accountId,
+                                    currentUserDisplayName = appSessionState.displayName,
+                                )
+                            }
+                            conversationThreadsState = conversationRepository.markConversationAsRead(
+                                state = conversationThreadsState,
+                                conversationId = effect.conversationId,
+                            )
+                            selectedConversationId = effect.conversationId
+                            currentRoute = AppRoute.Chat
+                            conversationThreadsState = synchronizeActiveConversation(
+                                state = conversationThreadsState,
+                                conversationId = effect.conversationId,
+                                conversationRepository = conversationRepository,
+                            )
+                        }
+                    }
+                    null -> Unit
+                }
+            }
+        )
+
         AppRoute.Chat -> {
             val resolvedChatUiState = chatUiState
             val resolvedChatState = chatState
@@ -679,19 +778,22 @@ fun ArgusLensApp() {
                                 }
                             }
 
-                            InboxAction.OpenContacts -> currentRoute = AppRoute.Contacts
+							InboxAction.OpenContacts -> currentRoute = AppRoute.Contacts
 
-                            InboxAction.SignOutToHud -> {
-                                val signedOutState = appShellCoordinator.createSignedOutState(previewThreadsState)
+							InboxAction.OpenScan -> currentRoute = AppRoute.Scan
+
+							InboxAction.SignOutToHud -> {
+								val signedOutState = appShellCoordinator.createSignedOutState(previewThreadsState)
                                 appSessionState = AppSessionState()
                                 authFormState = signedOutState.authFormState
                                 registerFormState = signedOutState.registerFormState
-                                contactsStateModel = signedOutState.contactsState
-                                callSessionJob?.cancel()
-                                callSessionState = signedOutState.callSessionState
-                                hydratedConversationAccountId = null
-                                conversationThreadsState = signedOutState.conversationThreadsState
-                                selectedConversationId = signedOutState.selectedConversationId
+								contactsStateModel = signedOutState.contactsState
+								callSessionJob?.cancel()
+								callSessionState = signedOutState.callSessionState
+								scanStateModel = ScanState()
+								hydratedConversationAccountId = null
+								conversationThreadsState = signedOutState.conversationThreadsState
+								selectedConversationId = signedOutState.selectedConversationId
                                 currentRoute = AppRoute.Home
                             }
                         }

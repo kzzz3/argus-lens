@@ -10,6 +10,7 @@ enum class AppRoute: Parcelable {
     RegisterEntry,
     Inbox,
     Contacts,
+    Scan,
     CallSession,
     Chat;
 }

@@ -106,6 +106,12 @@ fun InboxScreen(
                 Text(text = state.contactsActionLabel)
             }
             Button(
+                onClick = { onAction(InboxAction.OpenScan) },
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(text = state.scanActionLabel)
+            }
+            Button(
                 onClick = { onAction(InboxAction.SignOutToHud) },
                 modifier = Modifier.weight(1f)
             ) {
@@ -224,6 +230,7 @@ private fun InboxScreenPreview() {
                     )
                 ),
                 contactsActionLabel = "Open contacts",
+                scanActionLabel = "Scan pay",
                 primaryActionLabel = "Back to HUD"
             ),
             onAction = {}
