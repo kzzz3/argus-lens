@@ -1,0 +1,27 @@
+package com.kzzz3.argus.lens.feature.scan
+
+data class ScanUiState(
+    val title: String,
+    val subtitle: String,
+    val statusMessage: String?,
+    val isStatusError: Boolean,
+    val cameraPermissionGranted: Boolean,
+    val permissionActionLabel: String,
+    val isScannerActive: Boolean,
+    val scannerHint: String,
+    val manualPayload: String,
+    val manualPayloadLabel: String,
+    val manualPayloadPlaceholder: String,
+    val resolveActionLabel: String,
+    val resolution: ScanResolutionUi?,
+    val amountDraft: String,
+    val noteDraft: String,
+    val amountLabel: String,
+    val noteLabel: String,
+    val confirmActionLabel: String,
+    val rescanActionLabel: String,
+    val canConfirm: Boolean,
+    val completedPayment: ScanPaymentReceiptUi?,
+    val openConversationActionLabel: String,
+    val backActionLabel: String,
+)
