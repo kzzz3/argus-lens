@@ -15,23 +15,17 @@ import com.kzzz3.argus.lens.app.navigation.AppRoute
 import com.kzzz3.argus.lens.app.session.AppSessionState
 import com.kzzz3.argus.lens.app.session.createAuthenticatedSession
 import com.kzzz3.argus.lens.data.auth.AuthRepositoryResult
-import com.kzzz3.argus.lens.data.auth.createAuthRepository
 import com.kzzz3.argus.lens.data.conversation.ConversationRepository
-import com.kzzz3.argus.lens.data.conversation.createConversationRepository
+import com.kzzz3.argus.lens.data.conversation.buildDirectConversationId
 import com.kzzz3.argus.lens.data.friend.FriendEntry
 import com.kzzz3.argus.lens.data.friend.FriendRepository
 import com.kzzz3.argus.lens.data.friend.FriendRepositoryResult
-import com.kzzz3.argus.lens.data.friend.createFriendRepository
 import com.kzzz3.argus.lens.data.media.MediaRepository
 import com.kzzz3.argus.lens.data.media.MediaRepositoryResult
 import com.kzzz3.argus.lens.data.media.FinalizedAttachmentMetadata
-import com.kzzz3.argus.lens.data.media.createMediaRepository
 import com.kzzz3.argus.lens.data.realtime.ConversationRealtimeConnectionState
 import com.kzzz3.argus.lens.data.realtime.ConversationRealtimeEvent
 import com.kzzz3.argus.lens.data.realtime.ConversationRealtimeSubscription
-import com.kzzz3.argus.lens.data.realtime.createConversationRealtimeClient
-import com.kzzz3.argus.lens.data.session.SessionRepository
-import com.kzzz3.argus.lens.data.session.createLocalSessionStore
 import com.kzzz3.argus.lens.feature.auth.AuthEntryAction
 import com.kzzz3.argus.lens.feature.auth.AuthEntryEffect
 import com.kzzz3.argus.lens.feature.auth.AuthEntryScreen
@@ -69,7 +63,6 @@ import com.kzzz3.argus.lens.feature.inbox.InboxAction
 import com.kzzz3.argus.lens.feature.inbox.InboxConversationThread
 import com.kzzz3.argus.lens.feature.inbox.InboxScreen
 import com.kzzz3.argus.lens.feature.inbox.createChatUiState
-import com.kzzz3.argus.lens.feature.inbox.createInboxSampleThreads
 import com.kzzz3.argus.lens.feature.inbox.createInboxUiState
 import com.kzzz3.argus.lens.feature.inbox.reduceChatState
 import com.kzzz3.argus.lens.feature.register.RegisterAction
@@ -114,27 +107,16 @@ fun ArgusLensApp() {
     var selectedConversationId by rememberSaveable { mutableStateOf("") }
     var chatStatusMessage by rememberSaveable { mutableStateOf<String?>(null) }
     var chatStatusError by rememberSaveable { mutableStateOf(false) }
-    val authRepository = remember { createAuthRepository() }
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
-    val sessionRepository: SessionRepository = remember(context) { createLocalSessionStore(context) }
-    val conversationRepository: ConversationRepository = remember(context, sessionRepository) {
-        createConversationRepository(context = context, sessionRepository = sessionRepository)
-    }
-    val friendRepository: FriendRepository = remember(sessionRepository) {
-        createFriendRepository(sessionRepository)
-    }
-    val mediaRepository: MediaRepository = remember(sessionRepository, context) {
-        createMediaRepository(sessionRepository, context)
-    }
-    val realtimeClient = remember { createConversationRealtimeClient() }
-    val appShellCoordinator = remember(conversationRepository, sessionRepository) {
-        AppShellCoordinator(
-            authRepository = authRepository,
-            sessionRepository = sessionRepository,
-            conversationRepository = conversationRepository,
-        )
-    }
+    val dependencies = rememberAppDependencies(context)
+    val authRepository = dependencies.authRepository
+    val sessionRepository = dependencies.sessionRepository
+    val conversationRepository: ConversationRepository = dependencies.conversationRepository
+    val friendRepository: FriendRepository = dependencies.friendRepository
+    val mediaRepository: MediaRepository = dependencies.mediaRepository
+    val realtimeClient = dependencies.realtimeClient
+    val appShellCoordinator = dependencies.appShellCoordinator
     var callSessionJob by remember { mutableStateOf<Job?>(null) }
     var hydratedConversationAccountId by remember { mutableStateOf<String?>(null) }
     var hydratedSession by remember { mutableStateOf(false) }
@@ -841,62 +823,6 @@ fun ArgusLensApp() {
     }
 }
 
-private suspend fun synchronizeActiveConversation(
-    state: ConversationThreadsState,
-    conversationId: String,
-    conversationRepository: ConversationRepository,
-    refreshDetail: Boolean = true,
-): ConversationThreadsState {
-    var nextState = conversationRepository.markConversationAsRead(
-        state = state,
-        conversationId = conversationId,
-    )
-    if (refreshDetail) {
-        nextState = conversationRepository.refreshConversationDetail(
-            state = nextState,
-            conversationId = conversationId,
-        )
-    }
-    nextState = conversationRepository.markConversationReadRemote(
-        state = nextState,
-        conversationId = conversationId,
-    )
-    nextState = conversationRepository.refreshConversationMessages(
-        state = nextState,
-        conversationId = conversationId,
-    )
-    return acknowledgeVisibleRemoteMessagesAsRead(
-        state = nextState,
-        conversationId = conversationId,
-        conversationRepository = conversationRepository,
-    )
-}
-
-private suspend fun acknowledgeVisibleRemoteMessagesAsRead(
-    state: ConversationThreadsState,
-    conversationId: String,
-    conversationRepository: ConversationRepository,
-): ConversationThreadsState {
-    val visibleRemoteMessageIds = state.threads
-        .firstOrNull { it.id == conversationId }
-        ?.messages
-        ?.filter { message ->
-            !message.isFromCurrentUser &&
-                message.deliveryStatus != ChatMessageDeliveryStatus.Read &&
-                message.deliveryStatus != ChatMessageDeliveryStatus.Recalled
-        }
-        ?.map { it.id }
-        .orEmpty()
-
-    return visibleRemoteMessageIds.fold(state) { currentState, messageId ->
-        conversationRepository.acknowledgeMessageRead(
-            state = currentState,
-            conversationId = conversationId,
-            messageId = messageId,
-        )
-    }
-}
-
 private fun markOutgoingMessagesFailed(
     state: ConversationThreadsState,
     conversationId: String,
@@ -952,93 +878,6 @@ private fun mediaContentTypeFor(kind: ChatDraftAttachmentKind): String {
         ChatDraftAttachmentKind.Image -> "image/jpeg"
         ChatDraftAttachmentKind.Video -> "video/mp4"
         ChatDraftAttachmentKind.Voice -> "audio/mpeg"
-    }
-}
-
-private suspend fun handleConversationRealtimeEvent(
-    event: ConversationRealtimeEvent,
-    conversationRepository: ConversationRepository,
-    session: com.kzzz3.argus.lens.app.session.AppSessionState,
-    currentState: com.kzzz3.argus.lens.feature.inbox.ConversationThreadsState,
-    selectedConversationId: String,
-    isChatRouteActive: Boolean,
-): com.kzzz3.argus.lens.feature.inbox.ConversationThreadsState {
-    if (session.accountId.isBlank()) return currentState
-
-    return when (event.eventType) {
-        REALTIME_EVENT_STREAM_READY,
-        REALTIME_EVENT_HEARTBEAT -> currentState
-
-        REALTIME_EVENT_MESSAGE_CREATED,
-        REALTIME_EVENT_MESSAGE_STATUS_UPDATED,
-        REALTIME_EVENT_MESSAGE_RECALLED,
-        REALTIME_EVENT_CONVERSATION_READ,
-        REALTIME_EVENT_CONVERSATION_CREATED,
-        REALTIME_EVENT_CONVERSATION_UPDATED -> {
-            val refreshedState = conversationRepository.loadOrCreateConversationThreads(
-                accountId = session.accountId,
-                currentUserDisplayName = session.displayName,
-            )
-            if (event.conversationId.isBlank()) {
-                refreshedState
-            } else if (isChatRouteActive && selectedConversationId == event.conversationId) {
-                synchronizeActiveConversation(
-                    state = refreshedState,
-                    conversationId = event.conversationId,
-                    conversationRepository = conversationRepository,
-                )
-            } else {
-                refreshedState
-            }
-        }
-
-        else -> currentState
-    }
-}
-
-private const val REALTIME_EVENT_STREAM_READY = "STREAM_READY"
-private const val REALTIME_EVENT_HEARTBEAT = "HEARTBEAT"
-private const val REALTIME_EVENT_MESSAGE_CREATED = "MESSAGE_CREATED"
-private const val REALTIME_EVENT_MESSAGE_STATUS_UPDATED = "MESSAGE_STATUS_UPDATED"
-private const val REALTIME_EVENT_MESSAGE_RECALLED = "MESSAGE_RECALLED"
-private const val REALTIME_EVENT_CONVERSATION_READ = "CONVERSATION_READ"
-private const val REALTIME_EVENT_CONVERSATION_CREATED = "CONVERSATION_CREATED"
-private const val REALTIME_EVENT_CONVERSATION_UPDATED = "CONVERSATION_UPDATED"
-
-private fun ensureDirectConversationPlaceholder(
-    state: ConversationThreadsState,
-    conversationId: String,
-    title: String,
-): ConversationThreadsState {
-    if (state.threads.any { it.id == conversationId }) {
-        return state
-    }
-    return state.copy(
-        threads = listOf(
-            InboxConversationThread(
-                id = conversationId,
-                title = title,
-                subtitle = "Direct friend conversation",
-                unreadCount = 0,
-                messages = emptyList(),
-            )
-        ) + state.threads
-    )
-}
-
-private fun buildDirectConversationId(
-    currentAccountId: String,
-    friendAccountId: String,
-): String {
-    val normalizedCurrent = currentAccountId.trim()
-    val normalizedFriend = friendAccountId.trim()
-    if (normalizedCurrent.isEmpty() || normalizedFriend.isEmpty()) {
-        return normalizedFriend
-    }
-    return if (normalizedCurrent < normalizedFriend) {
-        "conv-direct-$normalizedCurrent-$normalizedFriend"
-    } else {
-        "conv-direct-$normalizedFriend-$normalizedCurrent"
     }
 }
 
@@ -1151,24 +990,6 @@ private fun ChatMessageAttachment.toDraftAttachmentKind(): ChatDraftAttachmentKi
         "IMAGE" -> ChatDraftAttachmentKind.Image
         "VIDEO" -> ChatDraftAttachmentKind.Video
         else -> ChatDraftAttachmentKind.Voice
-    }
-}
-
-private fun buildRealtimeStatusLabel(state: ConversationRealtimeConnectionState): String {
-    return when (state) {
-        ConversationRealtimeConnectionState.DISABLED -> "offline"
-        ConversationRealtimeConnectionState.CONNECTING -> "connecting"
-        ConversationRealtimeConnectionState.LIVE -> "live"
-        ConversationRealtimeConnectionState.RECOVERING -> "recovering"
-    }
-}
-
-private fun realtimeReconnectDelayMillis(attempt: Int): Long {
-    return when {
-        attempt <= 1 -> 1_000L
-        attempt == 2 -> 2_000L
-        attempt == 3 -> 4_000L
-        else -> 8_000L
     }
 }
 
