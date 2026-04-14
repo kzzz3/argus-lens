@@ -1,6 +1,5 @@
 package com.kzzz3.argus.lens.data.local
 
-import com.google.gson.Gson
 import com.kzzz3.argus.lens.feature.inbox.ChatMessageAttachment
 import com.kzzz3.argus.lens.feature.inbox.ChatMessageDeliveryStatus
 import com.kzzz3.argus.lens.feature.inbox.ChatMessageItem
@@ -15,8 +14,7 @@ class LocalConversationStoreTest {
     @Test
     fun saveAndLoadConversationThreads_preservesMessageAttachmentEnvelope() = runBlocking {
         val dao = FakeLocalConversationDao()
-        val snapshotDao = FakeConversationSnapshotDao()
-        val store = LocalConversationStore(snapshotDao, dao, Gson())
+        val store = LocalConversationStore(dao)
         val threads = listOf(
             InboxConversationThread(
                 id = "conv-1",
@@ -57,8 +55,7 @@ class LocalConversationStoreTest {
     @Test
     fun saveAndLoadConversationThreads_preservesAttachmentWithoutServerId() = runBlocking {
         val dao = FakeLocalConversationDao()
-        val snapshotDao = FakeConversationSnapshotDao()
-        val store = LocalConversationStore(snapshotDao, dao, Gson())
+        val store = LocalConversationStore(dao)
         val threads = listOf(
             InboxConversationThread(
                 id = "conv-2",
@@ -132,18 +129,6 @@ class LocalConversationStoreTest {
 
         override suspend fun upsertDraftAttachments(entities: List<LocalDraftAttachmentEntity>) {
             draftAttachments = entities
-        }
-    }
-
-    private class FakeConversationSnapshotDao : ConversationSnapshotDao {
-        private var entity: ConversationSnapshotEntity? = null
-
-        override suspend fun findByKey(key: String): ConversationSnapshotEntity? = entity?.takeIf { it.key == key }
-        override suspend fun deleteByKey(key: String) {
-            if (entity?.key == key) entity = null
-        }
-        override suspend fun upsert(entity: ConversationSnapshotEntity) {
-            this.entity = entity
         }
     }
 }
