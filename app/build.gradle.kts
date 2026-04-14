@@ -1,3 +1,8 @@
+val debugAuthBaseUrl = "http://10.0.2.2:8080/"
+val releaseAuthBaseUrl = providers.gradleProperty("ARGUS_RELEASE_BASE_URL")
+    .orElse("https://api.argus.invalid/")
+    .get()
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -28,14 +33,14 @@ android {
         debug {
             buildConfigField("String", "AUTH_MODE", "\"REMOTE\"")
             buildConfigField("String", "CONVERSATION_MODE", "\"REMOTE\"")
-            buildConfigField("String", "AUTH_BASE_URL", "\"http://10.0.2.2:8080/\"")
+            buildConfigField("String", "AUTH_BASE_URL", "\"$debugAuthBaseUrl\"")
         }
 
         release {
             isMinifyEnabled = false
             buildConfigField("String", "AUTH_MODE", "\"REMOTE\"")
             buildConfigField("String", "CONVERSATION_MODE", "\"REMOTE\"")
-            buildConfigField("String", "AUTH_BASE_URL", "\"http://10.0.2.2:8080/\"")
+            buildConfigField("String", "AUTH_BASE_URL", "\"$releaseAuthBaseUrl\"")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

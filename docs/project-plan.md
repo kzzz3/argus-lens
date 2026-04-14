@@ -244,6 +244,9 @@ Lens becomes the Android simulator of smart glasses:
 - [x] `AppShellCoordinator` now owns hydration / signed-in / signed-out coordination logic
 - [x] `ArgusLensApp.kt` is thinner than before and relies more on repository/coordinator boundaries
 - [x] Conversation mode boundary exists (`LOCAL` / `REMOTE`)
+- [x] app-level dependency creation now lives in a dedicated composition root instead of being hand-built inline inside the main app composable
+- [x] shared remote network factories now own Retrofit/OkHttp creation instead of repeating setup per feature module
+- [x] local empty-state bootstrap no longer seeds sample inbox threads; the current development baseline starts from real persisted or remotely synced state only
 
 ### 12.4 Completed real chain integration
 - [x] Remote auth login/registration path is enabled
@@ -265,7 +268,9 @@ Lens becomes the Android simulator of smart glasses:
 - [x] Remote conversation/message fetch now uses recent-window semantics rather than pretending to be full-history sync
 - [x] Cursor-backed reconnect sync now continues across multiple pages instead of stopping after a single recent-window pull
 - [x] Contacts now prefer stable direct-conversation ids instead of depending on display-name/title matching
-- [x] File messages now prefer structured attachment metadata over body-string parsing, while legacy body parsing remains as a compatibility fallback
+- [x] File messages now use structured attachment metadata as the latest contract baseline
+- [x] local Room storage now treats the current schema as the single supported development baseline; legacy snapshot bridging and incremental migration steps were removed
+- [x] local conversation startup no longer injects demo/sample timeline data into empty accounts
 
 ## 13. Next-Phase Checklist
 
