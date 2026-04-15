@@ -17,7 +17,7 @@ Lens behaves like a standard mobile IM and payment client:
 - contact list and chat timeline
 - text, image, voice, and video messages
 - 1v1 audio/video call entry
-- scan-pay and transfer initiation
+- wallet pay/collect flows and peer transfer initiation
 - offline recovery and message resync
 
 ### Stage 2 — AI Glasses Enhancement
@@ -36,7 +36,7 @@ Lens becomes the Android simulator of smart glasses:
 - press-to-talk or hold-to-record voice interaction
 - image/video picking and capture entry
 - call launch and in-call controls
-- QR scan and payment confirmation flows
+- wallet page, QR pay scanner, collect QR, and transfer confirmation flows
 
 ### 3.2 Stage 2 wearable UX
 - translucent HUD instead of full-screen phone-first UI
@@ -54,7 +54,7 @@ Lens becomes the Android simulator of smart glasses:
 - text/media composer
 - voice capture and send
 - RTC session entry and signaling client
-- payment scan and confirmation screen
+- wallet home, pay scanner, collect QR, transfer history, and receipt screens
 - local persistence and sync recovery
 
 ### Technical backbone
@@ -94,7 +94,7 @@ Lens becomes the Android simulator of smart glasses:
 - CameraX integration and preview/capture state
 - AudioRecord orchestration and app-facing voice UX
 - Room queue and WorkManager resync behavior
-- QR scanning entry and payment UI confirmation
+- wallet QR scanning / collect UI and transfer confirmation
 - sensor capture and local gesture interpretation
 - user-visible status for model or payment operations
 
@@ -112,7 +112,7 @@ Lens becomes the Android simulator of smart glasses:
 - message send, ack, recall, read-state sync
 - upload session creation and media metadata submission
 - WebRTC signaling exchange
-- QR pay session creation and status polling
+- wallet summary loading, QR transfer session creation, and receipt/history sync
 - multimodal intent upload in Stage 2
 
 ### 6.2 Lens -> Retina
@@ -138,9 +138,10 @@ Lens becomes the Android simulator of smart glasses:
 - 1v1 audio/video call entry and session screens
 
 ### Payment baseline
-- QR scan and merchant parsing
-- amount confirmation and password/biometric-confirmed payment initiation
-- transfer record display and status feedback
+- wallet page with live wallet summary and balance
+- Pay action opens QR scan for peer-to-peer wallet transfer
+- Collect action shows the user's own QR code with optional amount / note request context
+- transfer confirmation, result receipt, history list, and receipt detail views
 
 ## 7.2 Stage 2 — AI Glasses Features
 
@@ -171,7 +172,7 @@ Lens becomes the Android simulator of smart glasses:
 - **Phase 6 support/primary**: upload multimodal slices, display intent suggestions, collect confirm/reject interactions
 
 ### Pair D — Phase 7 / Phase 8
-- **Phase 7 primary**: standard scan-pay and transfer UI
+- **Phase 7 primary**: standard wallet pay / collect / transfer UI
 - **Phase 8 primary**: gaze-like QR capture, head-gesture confirmation, Retina-backed secure signing handoff, success/failure HUD feedback
 
 ## 9. Technical Tracks
@@ -287,8 +288,8 @@ Lens becomes the Android simulator of smart glasses:
 - [ ] separate RTC state handling from `ArgusLensApp.kt` into a stronger coordinator/state holder
 
 ### 13.3 Payment and scanning follow-up
-- [ ] add QR scan-pay shell beyond current IM baseline focus
-- [ ] add payment session persistence and confirmation flow
+- [x] add wallet page with pay / collect entry points
+- [x] add QR transfer session persistence and confirmation flow
 
 ### 13.4 Best-practice cleanup still worth doing
 - [ ] continue shrinking `ArgusLensApp.kt` by extracting remaining chat/call orchestration slices
