@@ -81,8 +81,12 @@ import com.kzzz3.argus.lens.feature.scan.createScanUiState
 import com.kzzz3.argus.lens.feature.scan.reduceScanState
 import com.kzzz3.argus.lens.feature.scan.withConfirmFailure
 import com.kzzz3.argus.lens.feature.scan.withConfirmedPayment
+import com.kzzz3.argus.lens.feature.scan.withHistoryFailure
+import com.kzzz3.argus.lens.feature.scan.withHistoryLoaded
 import com.kzzz3.argus.lens.feature.scan.withResolveFailure
 import com.kzzz3.argus.lens.feature.scan.withResolvedPayment
+import com.kzzz3.argus.lens.feature.scan.withReceiptFailure
+import com.kzzz3.argus.lens.feature.scan.withReceiptLoaded
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -718,7 +722,7 @@ fun ArgusLensApp() {
                                 )
                             ) {
                                 is PaymentRepositoryResult.ConfirmationSuccess -> {
-                                    scanStateModel = scanStateModel.withConfirmedPayment(paymentResult.confirmation)
+                                    scanStateModel = scanStateModel.withConfirmedPayment(paymentResult.receipt)
                                 }
                                 is PaymentRepositoryResult.Failure -> {
                                     scanStateModel = scanStateModel.withConfirmFailure(paymentResult.message)
@@ -727,25 +731,30 @@ fun ArgusLensApp() {
                             }
                         }
                     }
-                    is ScanEffect.OpenConversation -> {
+                    ScanEffect.LoadPaymentHistory -> {
                         coroutineScope.launch {
-                            if (appSessionState.isAuthenticated) {
-                                conversationThreadsState = conversationRepository.loadOrCreateConversationThreads(
-                                    accountId = appSessionState.accountId,
-                                    currentUserDisplayName = appSessionState.displayName,
-                                )
+                            when (val paymentResult = paymentRepository.listPayments()) {
+                                is PaymentRepositoryResult.HistorySuccess -> {
+                                    scanStateModel = scanStateModel.withHistoryLoaded(paymentResult.history)
+                                }
+                                is PaymentRepositoryResult.Failure -> {
+                                    scanStateModel = scanStateModel.withHistoryFailure(paymentResult.message)
+                                }
+                                else -> Unit
                             }
-                            conversationThreadsState = conversationRepository.markConversationAsRead(
-                                state = conversationThreadsState,
-                                conversationId = effect.conversationId,
-                            )
-                            selectedConversationId = effect.conversationId
-                            currentRoute = AppRoute.Chat
-                            conversationThreadsState = synchronizeActiveConversation(
-                                state = conversationThreadsState,
-                                conversationId = effect.conversationId,
-                                conversationRepository = conversationRepository,
-                            )
+                        }
+                    }
+                    is ScanEffect.LoadPaymentReceipt -> {
+                        coroutineScope.launch {
+                            when (val paymentResult = paymentRepository.getPaymentReceipt(effect.paymentId)) {
+                                is PaymentRepositoryResult.ReceiptSuccess -> {
+                                    scanStateModel = scanStateModel.withReceiptLoaded(paymentResult.receipt)
+                                }
+                                is PaymentRepositoryResult.Failure -> {
+                                    scanStateModel = scanStateModel.withReceiptFailure(paymentResult.message)
+                                }
+                                else -> Unit
+                            }
                         }
                     }
                     null -> Unit
