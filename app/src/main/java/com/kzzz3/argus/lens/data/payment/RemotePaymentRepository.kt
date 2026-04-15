@@ -81,12 +81,92 @@ class RemotePaymentRepository(
                     message = "Payment service returned an empty confirmation response.",
                 )
                 PaymentRepositoryResult.ConfirmationSuccess(
-                    confirmation = PaymentConfirmation(
+                    receipt = PaymentReceipt(
                         paymentId = body.paymentId,
+                        scanSessionId = body.scanSessionId,
                         status = body.status,
+                        payerAccountId = body.payerAccountId,
                         merchantAccountId = body.merchantAccountId,
                         merchantDisplayName = body.merchantDisplayName,
-                        conversationId = body.conversationId,
+                        amount = body.amount,
+                        currency = body.currency,
+                        note = body.note,
+                        paidAt = body.paidAt,
+                    )
+                )
+            }
+        } catch (_: IOException) {
+            PaymentRepositoryResult.Failure(
+                code = "NETWORK_UNAVAILABLE",
+                message = "Cannot reach payment service.",
+            )
+        }
+    }
+
+    override suspend fun listPayments(): PaymentRepositoryResult {
+        val accessToken = sessionRepository.loadSession().accessToken
+        if (accessToken.isBlank()) {
+            return PaymentRepositoryResult.Failure(
+                code = "INVALID_CREDENTIALS",
+                message = "No active session token.",
+            )
+        }
+
+        return try {
+            val response = paymentApiService.listPayments("Bearer $accessToken")
+            if (!response.isSuccessful) {
+                parseFailure(response.code(), response.errorBody()?.string().orEmpty())
+            } else {
+                PaymentRepositoryResult.HistorySuccess(
+                    history = response.body().orEmpty().map { item ->
+                        PaymentHistoryEntry(
+                            paymentId = item.paymentId,
+                            merchantDisplayName = item.merchantDisplayName,
+                            amount = item.amount,
+                            currency = item.currency,
+                            status = item.status,
+                            paidAt = item.paidAt,
+                        )
+                    }
+                )
+            }
+        } catch (_: IOException) {
+            PaymentRepositoryResult.Failure(
+                code = "NETWORK_UNAVAILABLE",
+                message = "Cannot reach payment service.",
+            )
+        }
+    }
+
+    override suspend fun getPaymentReceipt(paymentId: String): PaymentRepositoryResult {
+        val accessToken = sessionRepository.loadSession().accessToken
+        if (accessToken.isBlank()) {
+            return PaymentRepositoryResult.Failure(
+                code = "INVALID_CREDENTIALS",
+                message = "No active session token.",
+            )
+        }
+
+        return try {
+            val response = paymentApiService.getPaymentReceipt(
+                authorizationHeader = "Bearer $accessToken",
+                paymentId = paymentId,
+            )
+            if (!response.isSuccessful) {
+                parseFailure(response.code(), response.errorBody()?.string().orEmpty())
+            } else {
+                val body = response.body() ?: return PaymentRepositoryResult.Failure(
+                    code = "EMPTY_PAYMENT_RECEIPT",
+                    message = "Payment service returned an empty receipt response.",
+                )
+                PaymentRepositoryResult.ReceiptSuccess(
+                    receipt = PaymentReceipt(
+                        paymentId = body.paymentId,
+                        scanSessionId = body.scanSessionId,
+                        status = body.status,
+                        payerAccountId = body.payerAccountId,
+                        merchantAccountId = body.merchantAccountId,
+                        merchantDisplayName = body.merchantDisplayName,
                         amount = body.amount,
                         currency = body.currency,
                         note = body.note,
