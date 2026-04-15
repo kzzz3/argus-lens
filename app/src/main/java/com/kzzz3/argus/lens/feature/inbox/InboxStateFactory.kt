@@ -55,7 +55,7 @@ fun createInboxUiState(
             )
         },
         contactsActionLabel = "Open contacts",
-        scanActionLabel = "Scan pay",
+        walletActionLabel = "Open wallet",
         primaryActionLabel = "Sign out to HUD",
     )
 }

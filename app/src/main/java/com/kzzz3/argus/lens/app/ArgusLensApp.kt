@@ -73,20 +73,23 @@ import com.kzzz3.argus.lens.feature.register.RegisterFormState
 import com.kzzz3.argus.lens.feature.register.RegisterScreen
 import com.kzzz3.argus.lens.feature.register.createRegisterUiState
 import com.kzzz3.argus.lens.feature.register.reduceRegisterFormState
-import com.kzzz3.argus.lens.feature.scan.ScanAction
-import com.kzzz3.argus.lens.feature.scan.ScanEffect
-import com.kzzz3.argus.lens.feature.scan.ScanScreen
-import com.kzzz3.argus.lens.feature.scan.ScanState
-import com.kzzz3.argus.lens.feature.scan.createScanUiState
-import com.kzzz3.argus.lens.feature.scan.reduceScanState
-import com.kzzz3.argus.lens.feature.scan.withConfirmFailure
-import com.kzzz3.argus.lens.feature.scan.withConfirmedPayment
-import com.kzzz3.argus.lens.feature.scan.withHistoryFailure
-import com.kzzz3.argus.lens.feature.scan.withHistoryLoaded
-import com.kzzz3.argus.lens.feature.scan.withResolveFailure
-import com.kzzz3.argus.lens.feature.scan.withResolvedPayment
-import com.kzzz3.argus.lens.feature.scan.withReceiptFailure
-import com.kzzz3.argus.lens.feature.scan.withReceiptLoaded
+import com.kzzz3.argus.lens.feature.wallet.WalletAction
+import com.kzzz3.argus.lens.feature.wallet.WalletEffect
+import com.kzzz3.argus.lens.feature.wallet.WalletScreen
+import com.kzzz3.argus.lens.feature.wallet.WalletState
+import com.kzzz3.argus.lens.feature.wallet.createWalletUiState
+import com.kzzz3.argus.lens.feature.wallet.reduceWalletState
+import com.kzzz3.argus.lens.feature.wallet.withConfirmFailure
+import com.kzzz3.argus.lens.feature.wallet.withConfirmedPayment
+import com.kzzz3.argus.lens.feature.wallet.withCurrentAccount
+import com.kzzz3.argus.lens.feature.wallet.withHistoryFailure
+import com.kzzz3.argus.lens.feature.wallet.withHistoryLoaded
+import com.kzzz3.argus.lens.feature.wallet.withReceiptFailure
+import com.kzzz3.argus.lens.feature.wallet.withReceiptLoaded
+import com.kzzz3.argus.lens.feature.wallet.withResolveFailure
+import com.kzzz3.argus.lens.feature.wallet.withResolvedPayment
+import com.kzzz3.argus.lens.feature.wallet.withWalletSummaryFailure
+import com.kzzz3.argus.lens.feature.wallet.withWalletSummaryLoaded
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -120,8 +123,8 @@ fun ArgusLensApp() {
     var callSessionState by rememberSaveable {
         mutableStateOf(CallSessionState())
     }
-    var scanStateModel by rememberSaveable {
-        mutableStateOf(ScanState())
+    var walletStateModel by rememberSaveable {
+        mutableStateOf(WalletState())
     }
     var selectedConversationId by rememberSaveable { mutableStateOf("") }
     var chatStatusMessage by rememberSaveable { mutableStateOf<String?>(null) }
@@ -222,8 +225,8 @@ fun ArgusLensApp() {
     val callSessionUiState = remember(callSessionState) {
         createCallSessionUiState(callSessionState)
     }
-    val scanUiState = remember(scanStateModel) {
-        createScanUiState(scanStateModel)
+    val walletUiState = remember(walletStateModel) {
+        createWalletUiState(walletStateModel)
     }
 
     LaunchedEffect(Unit) {
@@ -415,7 +418,7 @@ fun ArgusLensApp() {
                                     callSessionJob?.cancel()
                                     val signedInState = appShellCoordinator.handleSignedIn(appSessionState)
                                     callSessionState = signedInState.callSessionState
-                                    scanStateModel = ScanState()
+                                    walletStateModel = WalletState()
                                     conversationThreadsState = signedInState.conversationThreadsState
                                     hydratedConversationAccountId = signedInState.hydratedConversationAccountId
                                     selectedConversationId = signedInState.selectedConversationId
@@ -473,7 +476,7 @@ fun ArgusLensApp() {
                                     conversationThreadsState = signedInState.conversationThreadsState
                                     hydratedConversationAccountId = signedInState.hydratedConversationAccountId
                                     selectedConversationId = signedInState.selectedConversationId
-                                    scanStateModel = ScanState()
+                                    walletStateModel = WalletState()
                                     authFormState = AuthFormState(account = authResult.session.accountId)
                                     currentRoute = AppRoute.Inbox
                                 }
@@ -514,7 +517,10 @@ fun ArgusLensApp() {
 
 					InboxAction.OpenContacts -> currentRoute = AppRoute.Contacts
 
-					InboxAction.OpenScan -> currentRoute = AppRoute.Scan
+							InboxAction.OpenWallet -> {
+								walletStateModel = walletStateModel.withCurrentAccount(appSessionState.accountId)
+								currentRoute = AppRoute.Wallet
+							}
 
 					InboxAction.SignOutToHud -> {
 						val signedOutState = appShellCoordinator.createSignedOutState(previewThreadsState)
@@ -524,7 +530,7 @@ fun ArgusLensApp() {
 						contactsStateModel = signedOutState.contactsState
 						callSessionJob?.cancel()
 						callSessionState = signedOutState.callSessionState
-						scanStateModel = ScanState()
+							walletStateModel = WalletState()
 						hydratedConversationAccountId = null
 						conversationThreadsState = signedOutState.conversationThreadsState
 						selectedConversationId = signedOutState.selectedConversationId
@@ -682,36 +688,49 @@ fun ArgusLensApp() {
             }
         )
 
-        AppRoute.Scan -> ScanScreen(
-            state = scanUiState,
-            permissionRequestPending = scanStateModel.shouldRequestCameraPermission,
+        AppRoute.Wallet -> WalletScreen(
+            state = walletUiState,
+            permissionRequestPending = walletStateModel.shouldRequestCameraPermission,
             onAction = { action ->
-                val result = reduceScanState(
-                    currentState = scanStateModel,
+                val result = reduceWalletState(
+                    currentState = walletStateModel,
                     action = action,
                 )
-                scanStateModel = result.state
+                walletStateModel = result.state
 
                 when (val effect = result.effect) {
-                    ScanEffect.NavigateBack -> currentRoute = AppRoute.Inbox
-                    is ScanEffect.ResolvePayload -> {
+                    WalletEffect.NavigateBackToInbox -> currentRoute = AppRoute.Inbox
+                    WalletEffect.LoadWalletSummary -> {
                         coroutineScope.launch {
-                            when (val paymentResult = paymentRepository.resolveScanPayload(effect.payload)) {
-                                is PaymentRepositoryResult.ResolutionSuccess -> {
-                                    scanStateModel = scanStateModel.withResolvedPayment(paymentResult.resolution)
+                            when (val paymentResult = paymentRepository.getWalletSummary()) {
+                                is PaymentRepositoryResult.WalletSummarySuccess -> {
+                                    walletStateModel = walletStateModel.withWalletSummaryLoaded(paymentResult.summary)
                                 }
                                 is PaymentRepositoryResult.Failure -> {
-                                    scanStateModel = scanStateModel.withResolveFailure(paymentResult.message)
+                                    walletStateModel = walletStateModel.withWalletSummaryFailure(paymentResult.message)
                                 }
                                 else -> Unit
                             }
                         }
                     }
-                    is ScanEffect.ConfirmPayment -> {
+                    is WalletEffect.ResolvePayload -> {
+                        coroutineScope.launch {
+                            when (val paymentResult = paymentRepository.resolveScanPayload(effect.payload)) {
+                                is PaymentRepositoryResult.ResolutionSuccess -> {
+                                    walletStateModel = walletStateModel.withResolvedPayment(paymentResult.resolution)
+                                }
+                                is PaymentRepositoryResult.Failure -> {
+                                    walletStateModel = walletStateModel.withResolveFailure(paymentResult.message)
+                                }
+                                else -> Unit
+                            }
+                        }
+                    }
+                    is WalletEffect.ConfirmPayment -> {
                         coroutineScope.launch {
                             val amount = effect.amountInput?.toDoubleOrNull()
                             if (effect.amountInput != null && amount == null) {
-                                scanStateModel = scanStateModel.withConfirmFailure("Amount must be a valid decimal value.")
+                                walletStateModel = walletStateModel.withConfirmFailure("Amount must be a valid decimal value.")
                                 return@launch
                             }
                             when (
@@ -722,36 +741,36 @@ fun ArgusLensApp() {
                                 )
                             ) {
                                 is PaymentRepositoryResult.ConfirmationSuccess -> {
-                                    scanStateModel = scanStateModel.withConfirmedPayment(paymentResult.receipt)
+                                    walletStateModel = walletStateModel.withConfirmedPayment(paymentResult.receipt)
                                 }
                                 is PaymentRepositoryResult.Failure -> {
-                                    scanStateModel = scanStateModel.withConfirmFailure(paymentResult.message)
+                                    walletStateModel = walletStateModel.withConfirmFailure(paymentResult.message)
                                 }
                                 else -> Unit
                             }
                         }
                     }
-                    ScanEffect.LoadPaymentHistory -> {
+                    WalletEffect.LoadPaymentHistory -> {
                         coroutineScope.launch {
                             when (val paymentResult = paymentRepository.listPayments()) {
                                 is PaymentRepositoryResult.HistorySuccess -> {
-                                    scanStateModel = scanStateModel.withHistoryLoaded(paymentResult.history)
+                                    walletStateModel = walletStateModel.withHistoryLoaded(paymentResult.history)
                                 }
                                 is PaymentRepositoryResult.Failure -> {
-                                    scanStateModel = scanStateModel.withHistoryFailure(paymentResult.message)
+                                    walletStateModel = walletStateModel.withHistoryFailure(paymentResult.message)
                                 }
                                 else -> Unit
                             }
                         }
                     }
-                    is ScanEffect.LoadPaymentReceipt -> {
+                    is WalletEffect.LoadPaymentReceipt -> {
                         coroutineScope.launch {
                             when (val paymentResult = paymentRepository.getPaymentReceipt(effect.paymentId)) {
                                 is PaymentRepositoryResult.ReceiptSuccess -> {
-                                    scanStateModel = scanStateModel.withReceiptLoaded(paymentResult.receipt)
+                                    walletStateModel = walletStateModel.withReceiptLoaded(paymentResult.receipt)
                                 }
                                 is PaymentRepositoryResult.Failure -> {
-                                    scanStateModel = scanStateModel.withReceiptFailure(paymentResult.message)
+                                    walletStateModel = walletStateModel.withReceiptFailure(paymentResult.message)
                                 }
                                 else -> Unit
                             }
@@ -789,7 +808,10 @@ fun ArgusLensApp() {
 
 							InboxAction.OpenContacts -> currentRoute = AppRoute.Contacts
 
-							InboxAction.OpenScan -> currentRoute = AppRoute.Scan
+							InboxAction.OpenWallet -> {
+								walletStateModel = walletStateModel.withCurrentAccount(appSessionState.accountId)
+								currentRoute = AppRoute.Wallet
+							}
 
 							InboxAction.SignOutToHud -> {
 								val signedOutState = appShellCoordinator.createSignedOutState(previewThreadsState)
@@ -799,7 +821,7 @@ fun ArgusLensApp() {
 								contactsStateModel = signedOutState.contactsState
 								callSessionJob?.cancel()
 								callSessionState = signedOutState.callSessionState
-								scanStateModel = ScanState()
+								walletStateModel = WalletState()
 								hydratedConversationAccountId = null
 								conversationThreadsState = signedOutState.conversationThreadsState
 								selectedConversationId = signedOutState.selectedConversationId

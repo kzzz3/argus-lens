@@ -106,10 +106,10 @@ fun InboxScreen(
                 Text(text = state.contactsActionLabel)
             }
             Button(
-                onClick = { onAction(InboxAction.OpenScan) },
+                onClick = { onAction(InboxAction.OpenWallet) },
                 modifier = Modifier.weight(1f)
             ) {
-                Text(text = state.scanActionLabel)
+                Text(text = state.walletActionLabel)
             }
             Button(
                 onClick = { onAction(InboxAction.SignOutToHud) },
@@ -230,7 +230,7 @@ private fun InboxScreenPreview() {
                     )
                 ),
                 contactsActionLabel = "Open contacts",
-                scanActionLabel = "Scan pay",
+                walletActionLabel = "Open wallet",
                 primaryActionLabel = "Back to HUD"
             ),
             onAction = {}

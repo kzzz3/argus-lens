@@ -7,6 +7,6 @@ data class InboxUiState(
     val sessionSummary: String,
     val conversations: List<InboxConversationItem>,
     val contactsActionLabel: String,
-    val scanActionLabel: String,
+    val walletActionLabel: String,
     val primaryActionLabel: String,
 )
