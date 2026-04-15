@@ -10,6 +10,41 @@ class RemotePaymentRepository(
     private val paymentApiService: PaymentApiService,
     private val gson: Gson = Gson(),
 ) : PaymentRepository {
+    override suspend fun getWalletSummary(): PaymentRepositoryResult {
+        val accessToken = sessionRepository.loadSession().accessToken
+        if (accessToken.isBlank()) {
+            return PaymentRepositoryResult.Failure(
+                code = "INVALID_CREDENTIALS",
+                message = "No active session token.",
+            )
+        }
+
+        return try {
+            val response = paymentApiService.getWalletSummary("Bearer $accessToken")
+            if (!response.isSuccessful) {
+                parseFailure(response.code(), response.errorBody()?.string().orEmpty())
+            } else {
+                val body = response.body() ?: return PaymentRepositoryResult.Failure(
+                    code = "EMPTY_WALLET_SUMMARY",
+                    message = "Payment service returned an empty wallet summary.",
+                )
+                PaymentRepositoryResult.WalletSummarySuccess(
+                    summary = WalletSummary(
+                        accountId = body.accountId,
+                        displayName = body.displayName,
+                        balance = body.balance,
+                        currency = body.currency,
+                    )
+                )
+            }
+        } catch (_: IOException) {
+            PaymentRepositoryResult.Failure(
+                code = "NETWORK_UNAVAILABLE",
+                message = "Cannot reach payment service.",
+            )
+        }
+    }
+
     override suspend fun resolveScanPayload(scanPayload: String): PaymentRepositoryResult {
         val accessToken = sessionRepository.loadSession().accessToken
         if (accessToken.isBlank()) {
@@ -32,14 +67,14 @@ class RemotePaymentRepository(
                     message = "Payment scan service returned an empty response.",
                 )
                 PaymentRepositoryResult.ResolutionSuccess(
-                    resolution = PaymentScanResolution(
+                    resolution = PaymentTransferResolution(
                         scanSessionId = body.scanSessionId,
-                        merchantAccountId = body.merchantAccountId,
-                        merchantDisplayName = body.merchantDisplayName,
+                        recipientAccountId = body.recipientAccountId,
+                        recipientDisplayName = body.recipientDisplayName,
                         currency = body.currency,
-                        suggestedAmount = body.suggestedAmount,
+                        requestedAmount = body.requestedAmount,
                         amountEditable = body.amountEditable,
-                        suggestedNote = body.suggestedNote,
+                        requestedNote = body.requestedNote,
                     )
                 )
             }
@@ -86,8 +121,11 @@ class RemotePaymentRepository(
                         scanSessionId = body.scanSessionId,
                         status = body.status,
                         payerAccountId = body.payerAccountId,
-                        merchantAccountId = body.merchantAccountId,
-                        merchantDisplayName = body.merchantDisplayName,
+                        payerDisplayName = body.payerDisplayName,
+                        payerBalanceAfter = body.payerBalanceAfter,
+                        recipientAccountId = body.recipientAccountId,
+                        recipientDisplayName = body.recipientDisplayName,
+                        recipientBalanceAfter = body.recipientBalanceAfter,
                         amount = body.amount,
                         currency = body.currency,
                         note = body.note,
@@ -121,7 +159,10 @@ class RemotePaymentRepository(
                     history = response.body().orEmpty().map { item ->
                         PaymentHistoryEntry(
                             paymentId = item.paymentId,
-                            merchantDisplayName = item.merchantDisplayName,
+                            payerAccountId = item.payerAccountId,
+                            payerDisplayName = item.payerDisplayName,
+                            recipientAccountId = item.recipientAccountId,
+                            recipientDisplayName = item.recipientDisplayName,
                             amount = item.amount,
                             currency = item.currency,
                             status = item.status,
@@ -165,8 +206,11 @@ class RemotePaymentRepository(
                         scanSessionId = body.scanSessionId,
                         status = body.status,
                         payerAccountId = body.payerAccountId,
-                        merchantAccountId = body.merchantAccountId,
-                        merchantDisplayName = body.merchantDisplayName,
+                        payerDisplayName = body.payerDisplayName,
+                        payerBalanceAfter = body.payerBalanceAfter,
+                        recipientAccountId = body.recipientAccountId,
+                        recipientDisplayName = body.recipientDisplayName,
+                        recipientBalanceAfter = body.recipientBalanceAfter,
                         amount = body.amount,
                         currency = body.currency,
                         note = body.note,

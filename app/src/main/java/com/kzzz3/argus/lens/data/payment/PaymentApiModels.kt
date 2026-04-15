@@ -1,17 +1,24 @@
 package com.kzzz3.argus.lens.data.payment
 
+data class WalletSummaryResponseBody(
+    val accountId: String,
+    val displayName: String,
+    val balance: Double,
+    val currency: String,
+)
+
 data class ResolvePaymentScanRequestBody(
     val scanPayload: String,
 )
 
 data class ResolvePaymentScanResponseBody(
     val scanSessionId: String,
-    val merchantAccountId: String,
-    val merchantDisplayName: String,
+    val recipientAccountId: String,
+    val recipientDisplayName: String,
     val currency: String,
-    val suggestedAmount: Double?,
+    val requestedAmount: Double?,
     val amountEditable: Boolean,
-    val suggestedNote: String,
+    val requestedNote: String,
 )
 
 data class ConfirmPaymentRequestBody(
@@ -24,8 +31,11 @@ data class ConfirmPaymentResponseBody(
     val scanSessionId: String,
     val status: String,
     val payerAccountId: String,
-    val merchantAccountId: String,
-    val merchantDisplayName: String,
+    val payerDisplayName: String,
+    val payerBalanceAfter: Double,
+    val recipientAccountId: String,
+    val recipientDisplayName: String,
+    val recipientBalanceAfter: Double,
     val amount: Double,
     val currency: String,
     val note: String,
@@ -34,7 +44,10 @@ data class ConfirmPaymentResponseBody(
 
 data class PaymentHistoryItemResponseBody(
     val paymentId: String,
-    val merchantDisplayName: String,
+    val payerAccountId: String,
+    val payerDisplayName: String,
+    val recipientAccountId: String,
+    val recipientDisplayName: String,
     val amount: Double,
     val currency: String,
     val status: String,

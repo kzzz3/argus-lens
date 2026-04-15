@@ -8,6 +8,11 @@ import retrofit2.http.POST
 import retrofit2.http.Path
 
 interface PaymentApiService {
+    @GET("api/v1/payments/wallet")
+    suspend fun getWalletSummary(
+        @Header("Authorization") authorizationHeader: String,
+    ): Response<WalletSummaryResponseBody>
+
     @GET("api/v1/payments")
     suspend fun listPayments(
         @Header("Authorization") authorizationHeader: String,
