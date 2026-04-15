@@ -63,6 +63,19 @@ class ScanReducerTest {
         assertEquals("18.88", updated.amountDraft)
         assertEquals("Lunch set", updated.noteDraft)
         assertFalse(updated.isStatusError)
+        assertEquals(ScanPage.Merchant, updated.page)
         assertEquals("Li Si", updated.resolution?.merchantDisplayName)
+    }
+
+    @Test
+    fun openTransactionHistory_emitsHistoryEffect() {
+        val result = reduceScanState(
+            currentState = ScanState(page = ScanPage.Result),
+            action = ScanAction.OpenTransactionHistory,
+        )
+
+        assertEquals(ScanPage.History, result.state.page)
+        assertTrue(result.state.isHistoryLoading)
+        assertEquals(ScanEffect.LoadPaymentHistory, result.effect)
     }
 }

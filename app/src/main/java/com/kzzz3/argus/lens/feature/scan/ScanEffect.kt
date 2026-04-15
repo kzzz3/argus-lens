@@ -8,5 +8,6 @@ sealed interface ScanEffect {
         val amountInput: String?,
         val note: String,
     ) : ScanEffect
-    data class OpenConversation(val conversationId: String) : ScanEffect
+    data object LoadPaymentHistory : ScanEffect
+    data class LoadPaymentReceipt(val paymentId: String) : ScanEffect
 }

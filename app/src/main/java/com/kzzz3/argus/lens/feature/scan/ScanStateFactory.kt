@@ -2,14 +2,15 @@ package com.kzzz3.argus.lens.feature.scan
 
 fun createScanUiState(state: ScanState): ScanUiState {
     val isScannerActive = state.cameraPermissionGranted &&
+        state.page == ScanPage.Scanner &&
         !state.isResolving &&
         !state.isConfirming &&
-        state.resolution == null &&
-        state.completedPayment == null
+        state.resolution == null
 
     return ScanUiState(
+        page = state.page,
         title = "Scan Pay",
-        subtitle = "Scan an Argus merchant QR code, confirm the amount, then finish payment with a linked chat receipt.",
+        subtitle = "Scan an Argus merchant QR code, review the merchant page, complete payment, then inspect the receipt in transaction history.",
         statusMessage = state.statusMessage,
         isStatusError = state.isStatusError,
         cameraPermissionGranted = state.cameraPermissionGranted,
@@ -31,9 +32,19 @@ fun createScanUiState(state: ScanState): ScanUiState {
         noteLabel = "Payment note",
         confirmActionLabel = if (state.isConfirming) "Confirming..." else "Confirm payment",
         rescanActionLabel = "Scan another code",
+        openHistoryActionLabel = "View transaction history",
+        openReceiptActionLabel = "View receipt details",
         canConfirm = state.resolution != null && !state.isConfirming,
         completedPayment = state.completedPayment,
-        openConversationActionLabel = "Open merchant chat",
-        backActionLabel = "Back to inbox",
+        historyItems = state.historyItems,
+        isHistoryLoading = state.isHistoryLoading,
+        selectedReceipt = state.selectedReceipt,
+        isReceiptLoading = state.isReceiptLoading,
+        backActionLabel = when (state.page) {
+            ScanPage.Merchant -> "Back to scanner"
+            ScanPage.History -> if (state.completedPayment != null) "Back to result" else "Back to scanner"
+            ScanPage.ReceiptDetail -> "Back to history"
+            else -> "Back to inbox"
+        },
     )
 }

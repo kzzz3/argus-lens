@@ -1,6 +1,7 @@
 package com.kzzz3.argus.lens.feature.scan
 
 data class ScanUiState(
+    val page: ScanPage,
     val title: String,
     val subtitle: String,
     val statusMessage: String?,
@@ -20,8 +21,13 @@ data class ScanUiState(
     val noteLabel: String,
     val confirmActionLabel: String,
     val rescanActionLabel: String,
+    val openHistoryActionLabel: String,
+    val openReceiptActionLabel: String,
     val canConfirm: Boolean,
     val completedPayment: ScanPaymentReceiptUi?,
-    val openConversationActionLabel: String,
+    val historyItems: List<ScanPaymentHistoryItemUi>,
+    val isHistoryLoading: Boolean,
+    val selectedReceipt: ScanPaymentReceiptUi?,
+    val isReceiptLoading: Boolean,
     val backActionLabel: String,
 )

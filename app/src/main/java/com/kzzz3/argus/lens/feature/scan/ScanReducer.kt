@@ -10,10 +10,7 @@ fun reduceScanState(
     action: ScanAction,
 ): ScanReducerResult {
     return when (action) {
-        ScanAction.NavigateBack -> ScanReducerResult(
-            state = currentState,
-            effect = ScanEffect.NavigateBack,
-        )
+        ScanAction.NavigateBack -> handleNavigateBack(currentState)
 
         ScanAction.RequestCameraPermission -> ScanReducerResult(
             state = currentState.copy(
@@ -94,33 +91,72 @@ fun reduceScanState(
             }
         }
 
+        ScanAction.OpenTransactionHistory -> ScanReducerResult(
+            state = currentState.withHistoryLoading(),
+            effect = ScanEffect.LoadPaymentHistory,
+        )
+
+        is ScanAction.OpenReceiptDetail -> {
+            if (currentState.isReceiptLoading) {
+                ScanReducerResult(currentState, null)
+            } else {
+                ScanReducerResult(
+                    state = currentState.withReceiptLoading(),
+                    effect = ScanEffect.LoadPaymentReceipt(action.paymentId),
+                )
+            }
+        }
+
         ScanAction.ResetForRescan -> ScanReducerResult(
+            state = ScanState(
+                cameraPermissionGranted = currentState.cameraPermissionGranted,
+            ),
+            effect = null,
+        )
+    }
+}
+
+private fun handleNavigateBack(currentState: ScanState): ScanReducerResult {
+    return when (currentState.page) {
+        ScanPage.ReceiptDetail -> ScanReducerResult(
             state = currentState.copy(
-                manualPayload = "",
-                activePayload = "",
-                isResolving = false,
-                resolution = null,
-                amountDraft = "",
-                noteDraft = "",
-                isConfirming = false,
-                completedPayment = null,
+                page = ScanPage.History,
+                selectedReceipt = null,
+                isReceiptLoading = false,
                 statusMessage = null,
                 isStatusError = false,
             ),
             effect = null,
         )
 
-        ScanAction.OpenReceiptConversation -> {
-            val receipt = currentState.completedPayment
-            if (receipt == null) {
-                ScanReducerResult(currentState, null)
-            } else {
-                ScanReducerResult(
-                    state = currentState,
-                    effect = ScanEffect.OpenConversation(receipt.conversationId),
-                )
-            }
-        }
+        ScanPage.History -> ScanReducerResult(
+            state = currentState.copy(
+                page = if (currentState.completedPayment != null) ScanPage.Result else ScanPage.Scanner,
+                selectedReceipt = null,
+                isReceiptLoading = false,
+                statusMessage = null,
+                isStatusError = false,
+            ),
+            effect = null,
+        )
+
+        ScanPage.Merchant -> ScanReducerResult(
+            state = currentState.copy(
+                page = ScanPage.Scanner,
+                resolution = null,
+                amountDraft = "",
+                noteDraft = "",
+                statusMessage = null,
+                isStatusError = false,
+            ),
+            effect = null,
+        )
+
+        ScanPage.Scanner,
+        ScanPage.Result -> ScanReducerResult(
+            state = currentState,
+            effect = ScanEffect.NavigateBack,
+        )
     }
 }
 
@@ -139,10 +175,12 @@ private fun submitPayload(
 
     return ScanReducerResult(
         state = currentState.copy(
+            page = ScanPage.Scanner,
             activePayload = trimmedPayload,
             isResolving = true,
             resolution = null,
             completedPayment = null,
+            selectedReceipt = null,
             statusMessage = null,
             isStatusError = false,
         ),

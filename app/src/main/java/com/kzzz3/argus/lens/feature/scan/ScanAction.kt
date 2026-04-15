@@ -10,6 +10,7 @@ sealed interface ScanAction {
     data class UpdateAmountDraft(val value: String) : ScanAction
     data class UpdateNoteDraft(val value: String) : ScanAction
     data object ConfirmPayment : ScanAction
+    data object OpenTransactionHistory : ScanAction
+    data class OpenReceiptDetail(val paymentId: String) : ScanAction
     data object ResetForRescan : ScanAction
-    data object OpenReceiptConversation : ScanAction
 }
