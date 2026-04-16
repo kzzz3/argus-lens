@@ -12,41 +12,16 @@ fun createContactsUiState(
 ): ContactsUiState {
     return ContactsUiState(
         title = "Contacts",
-        subtitle = "Manage friends, then open or create chats from the local-first IM shell.",
+        subtitle = "Manage friends and open the one direct chat linked to each contact.",
         statusMessage = state.statusMessage,
         isStatusError = state.isStatusError,
-        draftConversationName = state.draftConversationName,
+        newFriendsLabel = "New Friends",
+        newFriendsSubtitle = "Review incoming requests and track requests you have sent.",
         draftFriendAccountId = state.draftFriendAccountId,
         addFriendLabel = "Add remote friend",
         addFriendPlaceholder = "Type a friend account ID",
         addFriendActionLabel = "Add friend",
         isAddFriendEnabled = state.draftFriendAccountId.trim().isNotEmpty(),
-        draftLabel = if (state.creationMode == ConversationCreationMode.Group) {
-            "New local group"
-        } else {
-            "New local conversation"
-        },
-        draftPlaceholder = if (state.creationMode == ConversationCreationMode.Group) {
-            "Type a group name"
-        } else {
-            "Type a contact or chat title"
-        },
-        creationModeLabel = if (state.creationMode == ConversationCreationMode.Group) {
-            "Group mode"
-        } else {
-            "Direct mode"
-        },
-        toggleCreationModeActionLabel = if (state.creationMode == ConversationCreationMode.Group) {
-            "Switch to direct"
-        } else {
-            "Switch to group"
-        },
-        createConversationActionLabel = if (state.creationMode == ConversationCreationMode.Group) {
-            "Create group"
-        } else {
-            "Create chat"
-        },
-        isCreateConversationEnabled = state.draftConversationName.trim().isNotEmpty(),
         contacts = friends.map { friend ->
             val preferredConversationId = buildDirectConversationId(
                 currentAccountId = currentAccountId,

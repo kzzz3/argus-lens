@@ -17,6 +17,7 @@ enum class AuthFailureKind {
 
 interface AuthRepository {
     suspend fun restoreSession(accessToken: String): AuthRepositoryResult
+    suspend fun refreshSession(refreshToken: String): AuthRepositoryResult
 
     suspend fun login(account: String, password: String): AuthRepositoryResult
 

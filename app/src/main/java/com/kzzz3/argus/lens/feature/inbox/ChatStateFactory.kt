@@ -8,13 +8,6 @@ fun createChatUiState(
     return ChatUiState(
         conversationTitle = state.conversationTitle,
         conversationSubtitle = state.conversationSubtitle,
-        memberSummary = state.memberSummary,
-        draftMemberAccountId = state.draftMemberAccountId,
-        addMemberLabel = "Add group member",
-        addMemberPlaceholder = "Type a friend account ID",
-        addMemberActionLabel = "Invite member",
-        isAddMemberEnabled = state.draftMemberAccountId.trim().isNotEmpty(),
-        isGroupConversation = state.conversationId.startsWith("conv-group-"),
         statusMessage = statusMessage,
         isStatusError = isStatusError,
         messages = state.messages,

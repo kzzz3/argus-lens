@@ -15,7 +15,12 @@ data class AuthSuccessResponse(
     val accountId: String,
     val displayName: String,
     val accessToken: String,
+    val refreshToken: String?,
     val message: String,
+)
+
+data class RefreshTokenRequestBody(
+    val refreshToken: String,
 )
 
 data class ApiErrorResponse(
@@ -27,5 +32,6 @@ data class AuthSession(
     val accountId: String,
     val displayName: String,
     val accessToken: String,
+    val refreshToken: String,
     val message: String,
 )

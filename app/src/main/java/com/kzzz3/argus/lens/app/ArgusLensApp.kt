@@ -10,14 +10,28 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.Alignment
 import com.kzzz3.argus.lens.app.navigation.AppRoute
 import com.kzzz3.argus.lens.app.session.AppSessionState
 import com.kzzz3.argus.lens.app.session.createAuthenticatedSession
+import com.kzzz3.argus.lens.data.auth.AuthFailureKind
 import com.kzzz3.argus.lens.data.auth.AuthRepositoryResult
 import com.kzzz3.argus.lens.data.conversation.ConversationRepository
 import com.kzzz3.argus.lens.data.conversation.buildDirectConversationId
 import com.kzzz3.argus.lens.data.friend.FriendEntry
+import com.kzzz3.argus.lens.data.friend.FriendRequestsSnapshot
 import com.kzzz3.argus.lens.data.friend.FriendRepository
 import com.kzzz3.argus.lens.data.friend.FriendRepositoryResult
 import com.kzzz3.argus.lens.data.media.MediaRepository
@@ -28,6 +42,7 @@ import com.kzzz3.argus.lens.data.payment.PaymentRepositoryResult
 import com.kzzz3.argus.lens.data.realtime.ConversationRealtimeConnectionState
 import com.kzzz3.argus.lens.data.realtime.ConversationRealtimeEvent
 import com.kzzz3.argus.lens.data.realtime.ConversationRealtimeSubscription
+import com.kzzz3.argus.lens.data.session.createLocalSessionSnapshot
 import com.kzzz3.argus.lens.feature.auth.AuthEntryAction
 import com.kzzz3.argus.lens.feature.auth.AuthEntryEffect
 import com.kzzz3.argus.lens.feature.auth.AuthEntryScreen
@@ -43,14 +58,14 @@ import com.kzzz3.argus.lens.feature.call.createCallSessionUiState
 import com.kzzz3.argus.lens.feature.call.createInitialCallSessionState
 import com.kzzz3.argus.lens.feature.call.reduceCallSessionState
 import com.kzzz3.argus.lens.feature.contacts.ContactsAction
-import com.kzzz3.argus.lens.feature.contacts.ConversationCreationMode
 import com.kzzz3.argus.lens.feature.contacts.ContactsEffect
 import com.kzzz3.argus.lens.feature.contacts.ContactsScreen
 import com.kzzz3.argus.lens.feature.contacts.ContactsState
+import com.kzzz3.argus.lens.feature.contacts.NewFriendsAction
+import com.kzzz3.argus.lens.feature.contacts.NewFriendsScreen
+import com.kzzz3.argus.lens.feature.contacts.NewFriendsUiState
 import com.kzzz3.argus.lens.feature.contacts.createContactsUiState
 import com.kzzz3.argus.lens.feature.contacts.reduceContactsState
-import com.kzzz3.argus.lens.feature.home.HomeHudScreen
-import com.kzzz3.argus.lens.feature.home.HomeHudUiState
 import com.kzzz3.argus.lens.feature.inbox.ChatAction
 import com.kzzz3.argus.lens.feature.inbox.ChatMessageAttachment
 import com.kzzz3.argus.lens.feature.inbox.ChatCallMode
@@ -67,6 +82,9 @@ import com.kzzz3.argus.lens.feature.inbox.InboxScreen
 import com.kzzz3.argus.lens.feature.inbox.createChatUiState
 import com.kzzz3.argus.lens.feature.inbox.createInboxUiState
 import com.kzzz3.argus.lens.feature.inbox.reduceChatState
+import com.kzzz3.argus.lens.feature.me.MeScreen
+import com.kzzz3.argus.lens.feature.me.MeStatCardUi
+import com.kzzz3.argus.lens.feature.me.MeUiState
 import com.kzzz3.argus.lens.feature.register.RegisterAction
 import com.kzzz3.argus.lens.feature.register.RegisterEffect
 import com.kzzz3.argus.lens.feature.register.RegisterFormState
@@ -90,24 +108,41 @@ import com.kzzz3.argus.lens.feature.wallet.withResolveFailure
 import com.kzzz3.argus.lens.feature.wallet.withResolvedPayment
 import com.kzzz3.argus.lens.feature.wallet.withWalletSummaryFailure
 import com.kzzz3.argus.lens.feature.wallet.withWalletSummaryLoaded
+import com.kzzz3.argus.lens.ui.shell.AuthenticatedShell
+import com.kzzz3.argus.lens.ui.theme.ImBackground
+import com.kzzz3.argus.lens.ui.theme.ImGreen
+import com.kzzz3.argus.lens.ui.theme.ImSurfaceElevated
+import com.kzzz3.argus.lens.ui.theme.ImTextPrimary
+import com.kzzz3.argus.lens.ui.theme.ImTextSecondary
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import androidx.compose.ui.unit.dp
 import kotlin.text.Charsets
 
 @Composable
 fun ArgusLensApp() {
-    val homeState = remember {
-        HomeHudUiState(
-            deviceLabel = "Android Glasses Simulator",
-            syncStatus = "Stage 1 Baseline Ready",
-            activeMode = "IM Foundation",
-            primaryHint = "Current module: local inbox + chat shell"
+    val coroutineScope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val dependencies = rememberAppDependencies(context)
+    val authRepository = dependencies.authRepository
+    val conversationRepository: ConversationRepository = dependencies.conversationRepository
+    val friendRepository: FriendRepository = dependencies.friendRepository
+    val mediaRepository: MediaRepository = dependencies.mediaRepository
+    val paymentRepository: PaymentRepository = dependencies.paymentRepository
+    val realtimeClient = dependencies.realtimeClient
+    val appShellCoordinator = dependencies.appShellCoordinator
+    val previewThreadsState = remember {
+        conversationRepository.createPreviewState(currentUserDisplayName = "Argus Tester")
+    }
+    val initialSessionSnapshot = remember(context) { createLocalSessionSnapshot(context) }
+    var currentRoute by rememberSaveable {
+        mutableStateOf(
+            if (initialSessionSnapshot.isAuthenticated && initialSessionSnapshot.accessToken.isNotBlank()) AppRoute.Inbox else AppRoute.AuthEntry
         )
     }
-    var currentRoute by rememberSaveable { mutableStateOf(AppRoute.Home) }
     var authFormState by rememberSaveable {
         mutableStateOf(AuthFormState())
     }
@@ -115,7 +150,7 @@ fun ArgusLensApp() {
         mutableStateOf(RegisterFormState())
     }
     var appSessionState by rememberSaveable {
-        mutableStateOf(AppSessionState())
+        mutableStateOf(initialSessionSnapshot)
     }
     var contactsStateModel by rememberSaveable {
         mutableStateOf(ContactsState())
@@ -129,32 +164,24 @@ fun ArgusLensApp() {
     var selectedConversationId by rememberSaveable { mutableStateOf("") }
     var chatStatusMessage by rememberSaveable { mutableStateOf<String?>(null) }
     var chatStatusError by rememberSaveable { mutableStateOf(false) }
-    val coroutineScope = rememberCoroutineScope()
-    val context = LocalContext.current
-    val dependencies = rememberAppDependencies(context)
-    val authRepository = dependencies.authRepository
-    val sessionRepository = dependencies.sessionRepository
-    val conversationRepository: ConversationRepository = dependencies.conversationRepository
-    val friendRepository: FriendRepository = dependencies.friendRepository
-    val mediaRepository: MediaRepository = dependencies.mediaRepository
-    val paymentRepository: PaymentRepository = dependencies.paymentRepository
-    val realtimeClient = dependencies.realtimeClient
-    val appShellCoordinator = dependencies.appShellCoordinator
+    var friendRequestsSnapshot by remember { mutableStateOf(FriendRequestsSnapshot(emptyList(), emptyList())) }
+    var friendRequestsStatusMessage by rememberSaveable { mutableStateOf<String?>(null) }
+    var friendRequestsStatusError by rememberSaveable { mutableStateOf(false) }
     var callSessionJob by remember { mutableStateOf<Job?>(null) }
-    var hydratedConversationAccountId by remember { mutableStateOf<String?>(null) }
-    var hydratedSession by remember { mutableStateOf(false) }
+    var hydratedConversationAccountId by remember {
+        mutableStateOf(if (initialSessionSnapshot.isAuthenticated) initialSessionSnapshot.accountId else null)
+    }
+    var hydratedSession by remember { mutableStateOf(true) }
     var realtimeSubscription by remember { mutableStateOf<ConversationRealtimeSubscription?>(null) }
     var realtimeConnectionState by remember { mutableStateOf(ConversationRealtimeConnectionState.DISABLED) }
     var realtimeLastEventId by rememberSaveable { mutableStateOf("") }
     var realtimeReconnectAttempt by remember { mutableStateOf(0) }
     var realtimeReconnectGeneration by remember { mutableStateOf(0) }
     var realtimeReconnectJob by remember { mutableStateOf<Job?>(null) }
+    var sessionRefreshJob by remember { mutableStateOf<Job?>(null) }
     var activeRealtimeConnectionId by remember { mutableStateOf("") }
     val realtimeEventMutex = remember { Mutex() }
     var friends by remember { mutableStateOf<List<FriendEntry>>(emptyList()) }
-    val previewThreadsState = remember {
-        conversationRepository.createPreviewState(currentUserDisplayName = "Argus Tester")
-    }
     var conversationThreadsState by remember {
         mutableStateOf(previewThreadsState)
     }
@@ -171,11 +198,30 @@ fun ArgusLensApp() {
     val sessionDisplayName = remember(appSessionState.displayName) {
         appSessionState.displayName.ifBlank { "Argus Tester" }
     }
-    val inboxState = remember(appSessionState, conversationThreads, realtimeConnectionState) {
+    val shellStatusLabel = remember(appSessionState.isAuthenticated, realtimeConnectionState) {
+        when {
+            !appSessionState.isAuthenticated -> "Signed out"
+            realtimeConnectionState == ConversationRealtimeConnectionState.LIVE -> "Online"
+            realtimeConnectionState == ConversationRealtimeConnectionState.RECOVERING -> "Reconnecting"
+            realtimeConnectionState == ConversationRealtimeConnectionState.CONNECTING -> "Connecting"
+            else -> "Offline"
+        }
+    }
+    val shellStatusSummary = remember(appSessionState.isAuthenticated, realtimeConnectionState) {
+        when {
+            !appSessionState.isAuthenticated -> "Sign in to enter the Argus IM shell."
+            realtimeConnectionState == ConversationRealtimeConnectionState.LIVE -> "Realtime channel connected and syncing now."
+            realtimeConnectionState == ConversationRealtimeConnectionState.RECOVERING -> "Network unavailable or connection interrupted. Reconnecting now."
+            realtimeConnectionState == ConversationRealtimeConnectionState.CONNECTING -> "Connecting secure realtime channel..."
+            else -> "Cached shell is available offline. Sign in again if your session was revoked or wait for the network to recover."
+        }
+    }
+    val inboxState = remember(appSessionState, conversationThreads, realtimeConnectionState, shellStatusLabel) {
         createInboxUiState(
             sessionState = appSessionState,
             threads = conversationThreads,
             realtimeStatusLabel = buildRealtimeStatusLabel(realtimeConnectionState),
+            shellStatusLabel = shellStatusLabel,
         )
     }
     val contactsState = remember(contactsStateModel, friends, conversationThreads, appSessionState.accountId) {
@@ -202,8 +248,6 @@ fun ArgusLensApp() {
                 conversationId = conversation.id,
                 conversationTitle = conversation.title,
                 conversationSubtitle = conversation.subtitle,
-                memberSummary = if (conversation.subtitle.contains("members")) conversation.subtitle else "",
-                draftMemberAccountId = "",
                 currentUserDisplayName = sessionDisplayName,
                 messages = conversation.messages,
                 draftMessage = conversation.draftMessage,
@@ -228,8 +272,59 @@ fun ArgusLensApp() {
     val walletUiState = remember(walletStateModel) {
         createWalletUiState(walletStateModel)
     }
+    val meUiState = remember(
+        appSessionState,
+        walletStateModel.summary,
+        friends,
+        conversationThreads,
+        shellStatusLabel,
+        shellStatusSummary,
+    ) {
+        MeUiState(
+            displayName = appSessionState.displayName.ifBlank { "Argus User" },
+            accountId = appSessionState.accountId.ifBlank { "offline-preview" },
+            walletSummary = walletStateModel.summary?.let { summary ->
+                "Wallet balance · ${summary.currency} ${summary.balance}"
+            } ?: "Wallet balance · Not synced yet",
+            statusLabel = shellStatusLabel,
+            summaryLine = shellStatusSummary,
+            cards = listOf(
+                MeStatCardUi(
+                    title = "Chats",
+                    value = "${conversationThreads.size} active threads",
+                    supporting = "Open the shell instantly from cache, then let realtime catch up in the background.",
+                ),
+                MeStatCardUi(
+                    title = "Contacts",
+                    value = "${friends.size} saved friends",
+                    supporting = "Friend links stay ready so you can jump into direct conversations without hunting through menus.",
+                ),
+            ),
+        )
+    }
+    val newFriendsUiState = remember(friendRequestsSnapshot, friendRequestsStatusMessage, friendRequestsStatusError) {
+        NewFriendsUiState(
+            title = "New Friends",
+            subtitle = "Review incoming requests and track the status of requests you have sent.",
+            isLoading = false,
+            statusMessage = friendRequestsStatusMessage,
+            isStatusError = friendRequestsStatusError,
+            incoming = friendRequestsSnapshot.incoming,
+            outgoing = friendRequestsSnapshot.outgoing,
+        )
+    }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(initialSessionSnapshot.isAuthenticated, initialSessionSnapshot.accountId, initialSessionSnapshot.accessToken) {
+        if (initialSessionSnapshot.isAuthenticated && initialSessionSnapshot.accountId.isNotBlank()) {
+            conversationThreadsState = conversationRepository.loadOrCreateConversationThreads(
+                accountId = initialSessionSnapshot.accountId,
+                currentUserDisplayName = initialSessionSnapshot.displayName.ifBlank { "Argus Tester" },
+            )
+            hydratedConversationAccountId = initialSessionSnapshot.accountId
+            currentRoute = AppRoute.Inbox
+            return@LaunchedEffect
+        }
+
         val hydratedState = appShellCoordinator.hydrateAppState(previewThreadsState)
         appSessionState = hydratedState.session
         conversationThreadsState = hydratedState.conversationThreadsState
@@ -237,7 +332,6 @@ fun ArgusLensApp() {
         if (hydratedState.session.isAuthenticated) {
             currentRoute = AppRoute.Inbox
         }
-        hydratedSession = true
     }
 
     LaunchedEffect(hydratedSession, appSessionState) {
@@ -260,6 +354,81 @@ fun ArgusLensApp() {
             if (latestRealtimeEnabled) {
                 realtimeReconnectGeneration += 1
             }
+        }
+    }
+
+    fun openTopLevelRoute(route: AppRoute) {
+        if (route == AppRoute.Wallet) {
+            walletStateModel = walletStateModel.withCurrentAccount(appSessionState.accountId)
+        }
+        currentRoute = route
+    }
+
+    fun signOutToEntry(message: String? = null) {
+        val signedOutState = appShellCoordinator.createSignedOutState(previewThreadsState)
+        sessionRefreshJob?.cancel()
+        sessionRefreshJob = null
+        appSessionState = AppSessionState()
+        authFormState = signedOutState.authFormState.copy(submitResult = message)
+        registerFormState = signedOutState.registerFormState
+        contactsStateModel = signedOutState.contactsState
+        callSessionJob?.cancel()
+        callSessionState = signedOutState.callSessionState
+        walletStateModel = WalletState()
+        hydratedConversationAccountId = null
+        conversationThreadsState = signedOutState.conversationThreadsState
+        selectedConversationId = signedOutState.selectedConversationId
+        currentRoute = AppRoute.AuthEntry
+    }
+
+    suspend fun refreshSessionTokens(): AuthRepositoryResult {
+        val refreshToken = appSessionState.refreshToken
+        if (refreshToken.isBlank()) {
+            return AuthRepositoryResult.Failure(
+                code = "INVALID_CREDENTIALS",
+                message = "Refresh token is missing.",
+                kind = AuthFailureKind.UNAUTHORIZED,
+            )
+        }
+        val refreshResult = authRepository.refreshSession(refreshToken)
+        if (refreshResult is AuthRepositoryResult.Success) {
+            appSessionState = createAuthenticatedSession(
+                accountId = refreshResult.session.accountId,
+                displayName = refreshResult.session.displayName,
+                accessToken = refreshResult.session.accessToken,
+                refreshToken = refreshResult.session.refreshToken.ifBlank { appSessionState.refreshToken },
+            )
+        }
+        return refreshResult
+    }
+
+    fun scheduleSessionRefreshLoop() {
+        if (sessionRefreshJob?.isActive == true) return
+        if (!appSessionState.isAuthenticated || appSessionState.refreshToken.isBlank()) return
+        sessionRefreshJob = coroutineScope.launch {
+            while (appSessionState.isAuthenticated && realtimeConnectionState == ConversationRealtimeConnectionState.LIVE) {
+                delay(60 * 60 * 1000L)
+                if (!appSessionState.isAuthenticated || appSessionState.refreshToken.isBlank()) {
+                    break
+                }
+                when (val refreshResult = authRepository.refreshSession(appSessionState.refreshToken)) {
+                    is AuthRepositoryResult.Success -> {
+                        appSessionState = createAuthenticatedSession(
+                            accountId = refreshResult.session.accountId,
+                            displayName = refreshResult.session.displayName,
+                            accessToken = refreshResult.session.accessToken,
+                            refreshToken = refreshResult.session.refreshToken.ifBlank { appSessionState.refreshToken },
+                        )
+                    }
+                    is AuthRepositoryResult.Failure -> {
+                        if (refreshResult.kind == AuthFailureKind.UNAUTHORIZED) {
+                            signOutToEntry("Session expired or was revoked. Please sign in again.")
+                            break
+                        }
+                    }
+                }
+            }
+            sessionRefreshJob = null
         }
     }
 
@@ -306,6 +475,7 @@ fun ArgusLensApp() {
                         realtimeReconnectAttempt = 0
                         realtimeReconnectJob?.cancel()
                         realtimeReconnectJob = null
+                        scheduleSessionRefreshLoop()
                     }
                 }
             },
@@ -344,7 +514,23 @@ fun ArgusLensApp() {
             onError = {
                 coroutineScope.launch {
                     if (activeRealtimeConnectionId == connectionId) {
-                        scheduleRealtimeReconnect()
+                        if (isSseAuthFailure(it)) {
+                            when (val refreshResult = refreshSessionTokens()) {
+                                is AuthRepositoryResult.Success -> {
+                                    realtimeReconnectAttempt = 0
+                                    realtimeReconnectGeneration += 1
+                                }
+                                is AuthRepositoryResult.Failure -> {
+                                    if (refreshResult.kind == AuthFailureKind.UNAUTHORIZED) {
+                                        signOutToEntry("Session expired or was revoked. Please sign in again.")
+                                    } else {
+                                        scheduleRealtimeReconnect()
+                                    }
+                                }
+                            }
+                        } else {
+                            scheduleRealtimeReconnect()
+                        }
                     }
                 }
             },
@@ -356,6 +542,8 @@ fun ArgusLensApp() {
             activeRealtimeConnectionId = ""
             realtimeReconnectJob?.cancel()
             realtimeReconnectJob = null
+            sessionRefreshJob?.cancel()
+            sessionRefreshJob = null
             realtimeSubscription?.close()
             realtimeSubscription = null
         }
@@ -372,18 +560,33 @@ fun ArgusLensApp() {
     LaunchedEffect(currentRoute, appSessionState.isAuthenticated) {
         if (currentRoute == AppRoute.Contacts && appSessionState.isAuthenticated) {
             when (val friendResult = friendRepository.listFriends()) {
-                is FriendRepositoryResult.Success -> friends = friendResult.friends
+                is FriendRepositoryResult.FriendsSuccess -> friends = friendResult.friends
                 is FriendRepositoryResult.Failure -> Unit
+                else -> Unit
+            }
+        }
+        if (currentRoute == AppRoute.NewFriends && appSessionState.isAuthenticated) {
+            when (val requestsResult = friendRepository.listFriendRequests()) {
+                is FriendRepositoryResult.RequestsSuccess -> {
+                    friendRequestsSnapshot = requestsResult.snapshot
+                    friendRequestsStatusMessage = null
+                    friendRequestsStatusError = false
+                }
+                is FriendRepositoryResult.Failure -> {
+                    friendRequestsStatusMessage = requestsResult.message
+                    friendRequestsStatusError = true
+                }
+                else -> Unit
             }
         }
     }
 
-    when (currentRoute) {
-        AppRoute.Home -> HomeHudScreen(
-            state = homeState,
-            onPrimaryActionClick = { currentRoute = AppRoute.AuthEntry }
-        )
+    if (!hydratedSession) {
+        AppLaunchPlaceholder()
+        return
+    }
 
+    when (currentRoute) {
         AppRoute.AuthEntry -> AuthEntryScreen(
             state = authState,
             onAction = { action ->
@@ -394,7 +597,7 @@ fun ArgusLensApp() {
                 authFormState = result.formState
 
                 when (result.effect) {
-                    AuthEntryEffect.NavigateBack -> currentRoute = AppRoute.Home
+                    AuthEntryEffect.NavigateBack -> Unit
                     AuthEntryEffect.NavigateToRegister -> currentRoute = AppRoute.RegisterEntry
                     is AuthEntryEffect.SubmitPasswordLogin -> {
                         coroutineScope.launch {
@@ -413,17 +616,19 @@ fun ArgusLensApp() {
                                         accountId = authResult.session.accountId,
                                         displayName = authResult.session.displayName,
                                         accessToken = authResult.session.accessToken,
+                                        refreshToken = authResult.session.refreshToken,
                                     )
                                     hydratedConversationAccountId = null
                                     callSessionJob?.cancel()
-                                    val signedInState = appShellCoordinator.handleSignedIn(appSessionState)
-                                    callSessionState = signedInState.callSessionState
-                                    walletStateModel = WalletState()
-                                    conversationThreadsState = signedInState.conversationThreadsState
-                                    hydratedConversationAccountId = signedInState.hydratedConversationAccountId
-                                    selectedConversationId = signedInState.selectedConversationId
-                                    currentRoute = AppRoute.Inbox
-                                }   
+                                val signedInState = appShellCoordinator.handleSignedIn(appSessionState)
+                                callSessionState = signedInState.callSessionState
+                                walletStateModel = WalletState()
+                                conversationThreadsState = signedInState.conversationThreadsState
+                                hydratedConversationAccountId = signedInState.hydratedConversationAccountId
+                                selectedConversationId = signedInState.selectedConversationId
+                                realtimeReconnectGeneration += 1
+                                currentRoute = AppRoute.Inbox
+                            }   
 
                                 is AuthRepositoryResult.Failure -> {
                                     authFormState = authFormState.copy(
@@ -468,6 +673,7 @@ fun ArgusLensApp() {
                                         accountId = authResult.session.accountId,
                                         displayName = authResult.session.displayName,
                                         accessToken = authResult.session.accessToken,
+                                        refreshToken = authResult.session.refreshToken,
                                     )
                                     hydratedConversationAccountId = null
                                     callSessionJob?.cancel()
@@ -478,6 +684,7 @@ fun ArgusLensApp() {
                                     selectedConversationId = signedInState.selectedConversationId
                                     walletStateModel = WalletState()
                                     authFormState = AuthFormState(account = authResult.session.accountId)
+                                    realtimeReconnectGeneration += 1
                                     currentRoute = AppRoute.Inbox
                                 }
 
@@ -495,461 +702,542 @@ fun ArgusLensApp() {
             }
         )
 
-        AppRoute.Inbox -> InboxScreen(
-            state = inboxState,
-            onAction = { action ->
-                when (action) {
-                    is InboxAction.OpenConversation -> {
-                        conversationThreadsState = conversationRepository.markConversationAsRead(
-                            state = conversationThreadsState,
-                            conversationId = action.conversationId,
-                        )
-                        selectedConversationId = action.conversationId
-                        currentRoute = AppRoute.Chat
-                        coroutineScope.launch {
-                            conversationThreadsState = synchronizeActiveConversation(
+        AppRoute.Inbox -> AuthenticatedShell(
+            currentRoute = currentRoute,
+            onTabSelected = ::openTopLevelRoute,
+        ) { innerPadding ->
+            InboxScreen(
+                state = inboxState,
+                onAction = { action ->
+                    when (action) {
+                        is InboxAction.OpenConversation -> {
+                            conversationThreadsState = conversationRepository.markConversationAsRead(
                                 state = conversationThreadsState,
                                 conversationId = action.conversationId,
-                                conversationRepository = conversationRepository,
                             )
-                        }
-                    }
-
-					InboxAction.OpenContacts -> currentRoute = AppRoute.Contacts
-
-							InboxAction.OpenWallet -> {
-								walletStateModel = walletStateModel.withCurrentAccount(appSessionState.accountId)
-								currentRoute = AppRoute.Wallet
-							}
-
-					InboxAction.SignOutToHud -> {
-						val signedOutState = appShellCoordinator.createSignedOutState(previewThreadsState)
-                        appSessionState = AppSessionState()
-                        authFormState = signedOutState.authFormState
-                        registerFormState = signedOutState.registerFormState
-						contactsStateModel = signedOutState.contactsState
-						callSessionJob?.cancel()
-						callSessionState = signedOutState.callSessionState
-							walletStateModel = WalletState()
-						hydratedConversationAccountId = null
-						conversationThreadsState = signedOutState.conversationThreadsState
-						selectedConversationId = signedOutState.selectedConversationId
-                        currentRoute = AppRoute.Home
-                    }
-                }
-            }
-        )
-
-        AppRoute.Contacts -> ContactsScreen(
-            state = contactsState,
-            onAction = { action ->
-                val result = reduceContactsState(
-                    currentState = contactsStateModel,
-                    action = action,
-                )
-                contactsStateModel = result.state
-
-                when (val effect = result.effect) {
-                    is ContactsEffect.OpenConversation -> {
-                        coroutineScope.launch {
-                            val existingThread = conversationThreads.firstOrNull { it.id == effect.conversationId }
-                            val resolvedConversationId = if (existingThread != null) {
-                                conversationThreadsState = conversationRepository.markConversationAsRead(
+                            selectedConversationId = action.conversationId
+                            currentRoute = AppRoute.Chat
+                            coroutineScope.launch {
+                                conversationThreadsState = synchronizeActiveConversation(
                                     state = conversationThreadsState,
-                                    conversationId = effect.conversationId,
+                                    conversationId = action.conversationId,
+                                    conversationRepository = conversationRepository,
                                 )
-                                effect.conversationId
-                            } else {
-                                val matchingFriend = friends.firstOrNull { friend ->
-                                    friend.accountId == effect.conversationId ||
-                                        buildDirectConversationId(appSessionState.accountId, friend.accountId) == effect.conversationId
-                                }
-                                val preferredConversationId = matchingFriend?.let { friend ->
-                                    buildDirectConversationId(appSessionState.accountId, friend.accountId)
-                                }
-                                val refreshedConversationId = if (appSessionState.isAuthenticated && matchingFriend != null) {
-                                    conversationThreadsState = conversationRepository.loadOrCreateConversationThreads(
-                                        accountId = appSessionState.accountId,
-                                        currentUserDisplayName = appSessionState.displayName,
-                                    )
-                                    conversationThreadsState.threads.firstOrNull { thread ->
-                                        thread.id == preferredConversationId
-                                    }?.id
-                                } else {
-                                    null
-                                }
-                                if (refreshedConversationId != null) {
+                            }
+                        }
+
+                        InboxAction.OpenContacts -> openTopLevelRoute(AppRoute.Contacts)
+                        InboxAction.OpenWallet -> openTopLevelRoute(AppRoute.Wallet)
+                        InboxAction.SignOutToHud -> signOutToEntry()
+                    }
+                },
+                modifier = Modifier.padding(innerPadding),
+            )
+        }
+
+        AppRoute.Contacts -> AuthenticatedShell(
+            currentRoute = currentRoute,
+            onTabSelected = ::openTopLevelRoute,
+        ) { innerPadding ->
+            ContactsScreen(
+                state = contactsState,
+                onAction = { action ->
+                    val result = reduceContactsState(
+                        currentState = contactsStateModel,
+                        action = action,
+                    )
+                    contactsStateModel = result.state
+
+                    when (val effect = result.effect) {
+                        is ContactsEffect.OpenConversation -> {
+                            coroutineScope.launch {
+                                val existingThread = conversationThreads.firstOrNull { it.id == effect.conversationId }
+                                val resolvedConversationId = if (existingThread != null) {
                                     conversationThreadsState = conversationRepository.markConversationAsRead(
                                         state = conversationThreadsState,
-                                        conversationId = refreshedConversationId,
+                                        conversationId = effect.conversationId,
                                     )
-                                    refreshedConversationId
+                                    effect.conversationId
                                 } else {
-                                    val displayName = matchingFriend?.displayName ?: effect.conversationId
-                                    val deterministicConversationId = preferredConversationId ?: effect.conversationId
-                                    conversationThreadsState = ensureDirectConversationPlaceholder(
-                                        state = conversationThreadsState,
-                                        conversationId = deterministicConversationId,
-                                        title = displayName,
-                                    )
-                                    deterministicConversationId
-                                }
-                            }
-                            selectedConversationId = resolvedConversationId
-                            currentRoute = AppRoute.Chat
-                            conversationThreadsState = synchronizeActiveConversation(
-                                state = conversationThreadsState,
-                                conversationId = resolvedConversationId,
-                                conversationRepository = conversationRepository,
-                            )
-                        }
-                    }
-
-                    is ContactsEffect.CreateConversation -> {
-                        coroutineScope.launch {
-                            conversationThreadsState = if (effect.mode == ConversationCreationMode.Group) {
-                                conversationRepository.createConversationRemote(
-                                    state = conversationThreadsState,
-                                    displayName = effect.displayName,
-                                    mode = effect.mode,
-                                )
-                            } else {
-                                conversationRepository.createConversation(
-                                    state = conversationThreadsState,
-                                    displayName = effect.displayName,
-                                    mode = effect.mode,
-                                )
-                            }
-                            selectedConversationId = conversationRepository.resolveConversationId(
-                                state = conversationThreadsState,
-                                displayName = effect.displayName,
-                            )
-                            contactsStateModel = contactsStateModel.copy(
-                                statusMessage = if (effect.mode == ConversationCreationMode.Group) {
-                                    "Group created successfully."
-                                } else {
-                                    "Direct draft created locally."
-                                },
-                                isStatusError = false,
-                            )
-                            currentRoute = AppRoute.Chat
-                        }
-                    }
-
-                    is ContactsEffect.AddFriend -> {
-                        coroutineScope.launch {
-                            when (val friendResult = friendRepository.addFriend(effect.friendAccountId)) {
-                                is FriendRepositoryResult.Success -> {
-                                    val refreshed = friendRepository.listFriends()
-                                    contactsStateModel = contactsStateModel.copy(
-                                        statusMessage = friendResult.message ?: "Friend added.",
-                                        isStatusError = false,
-                                    )
-                                    if (refreshed is FriendRepositoryResult.Success) {
-                                        friends = refreshed.friends
-                                    } else {
-                                        friends = friends + friendResult.friends
+                                    val matchingFriend = friends.firstOrNull { friend ->
+                                        friend.accountId == effect.conversationId ||
+                                            buildDirectConversationId(appSessionState.accountId, friend.accountId) == effect.conversationId
                                     }
-                                    if (appSessionState.isAuthenticated) {
+                                    val preferredConversationId = matchingFriend?.let { friend ->
+                                        buildDirectConversationId(appSessionState.accountId, friend.accountId)
+                                    }
+                                    val refreshedConversationId = if (appSessionState.isAuthenticated && matchingFriend != null) {
                                         conversationThreadsState = conversationRepository.loadOrCreateConversationThreads(
                                             accountId = appSessionState.accountId,
                                             currentUserDisplayName = appSessionState.displayName,
                                         )
+                                        conversationThreadsState.threads.firstOrNull { thread ->
+                                            thread.id == preferredConversationId
+                                        }?.id
+                                    } else {
+                                        null
+                                    }
+                                    if (refreshedConversationId != null) {
+                                        conversationThreadsState = conversationRepository.markConversationAsRead(
+                                            state = conversationThreadsState,
+                                            conversationId = refreshedConversationId,
+                                        )
+                                        refreshedConversationId
+                                    } else {
+                                        val displayName = matchingFriend?.displayName ?: effect.conversationId
+                                        val deterministicConversationId = preferredConversationId ?: effect.conversationId
+                                        conversationThreadsState = ensureDirectConversationPlaceholder(
+                                            state = conversationThreadsState,
+                                            conversationId = deterministicConversationId,
+                                            title = displayName,
+                                        )
+                                        deterministicConversationId
                                     }
                                 }
-
-                                is FriendRepositoryResult.Failure -> {
-                                    contactsStateModel = contactsStateModel.copy(
-                                        statusMessage = friendResult.message,
-                                        isStatusError = true,
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    ContactsEffect.NavigateBackToInbox -> currentRoute = AppRoute.Inbox
-                    null -> Unit
-                }
-            }
-        )
-
-        AppRoute.CallSession -> CallSessionScreen(
-            state = callSessionUiState,
-            onAction = { action ->
-                callSessionState = reduceCallSessionState(callSessionState, action)
-                if (action == CallSessionAction.EndCall) {
-                    callSessionJob?.cancel()
-                    coroutineScope.launch {
-                        delay(300)
-                        currentRoute = AppRoute.Chat
-                    }
-                }
-            }
-        )
-
-        AppRoute.Wallet -> WalletScreen(
-            state = walletUiState,
-            permissionRequestPending = walletStateModel.shouldRequestCameraPermission,
-            onAction = { action ->
-                val result = reduceWalletState(
-                    currentState = walletStateModel,
-                    action = action,
-                )
-                walletStateModel = result.state
-
-                when (val effect = result.effect) {
-                    WalletEffect.NavigateBackToInbox -> currentRoute = AppRoute.Inbox
-                    WalletEffect.LoadWalletSummary -> {
-                        coroutineScope.launch {
-                            when (val paymentResult = paymentRepository.getWalletSummary()) {
-                                is PaymentRepositoryResult.WalletSummarySuccess -> {
-                                    walletStateModel = walletStateModel.withWalletSummaryLoaded(paymentResult.summary)
-                                }
-                                is PaymentRepositoryResult.Failure -> {
-                                    walletStateModel = walletStateModel.withWalletSummaryFailure(paymentResult.message)
-                                }
-                                else -> Unit
-                            }
-                        }
-                    }
-                    is WalletEffect.ResolvePayload -> {
-                        coroutineScope.launch {
-                            when (val paymentResult = paymentRepository.resolveScanPayload(effect.payload)) {
-                                is PaymentRepositoryResult.ResolutionSuccess -> {
-                                    walletStateModel = walletStateModel.withResolvedPayment(paymentResult.resolution)
-                                }
-                                is PaymentRepositoryResult.Failure -> {
-                                    walletStateModel = walletStateModel.withResolveFailure(paymentResult.message)
-                                }
-                                else -> Unit
-                            }
-                        }
-                    }
-                    is WalletEffect.ConfirmPayment -> {
-                        coroutineScope.launch {
-                            val amount = effect.amountInput?.toDoubleOrNull()
-                            if (effect.amountInput != null && amount == null) {
-                                walletStateModel = walletStateModel.withConfirmFailure("Amount must be a valid decimal value.")
-                                return@launch
-                            }
-                            when (
-                                val paymentResult = paymentRepository.confirmPayment(
-                                    sessionId = effect.sessionId,
-                                    amount = amount,
-                                    note = effect.note,
+                                selectedConversationId = resolvedConversationId
+                                currentRoute = AppRoute.Chat
+                                conversationThreadsState = synchronizeActiveConversation(
+                                    state = conversationThreadsState,
+                                    conversationId = resolvedConversationId,
+                                    conversationRepository = conversationRepository,
                                 )
-                            ) {
-                                is PaymentRepositoryResult.ConfirmationSuccess -> {
-                                    walletStateModel = walletStateModel.withConfirmedPayment(paymentResult.receipt)
+                            }
+                        }
+
+                        is ContactsEffect.AddFriend -> {
+                            coroutineScope.launch {
+                                when (val friendResult = friendRepository.sendFriendRequest(effect.friendAccountId)) {
+                                    is FriendRepositoryResult.FriendRequestSuccess -> {
+                                        val refreshed = friendRepository.listFriendRequests()
+                                        contactsStateModel = contactsStateModel.copy(
+                                            statusMessage = friendResult.message ?: "Friend request sent.",
+                                            isStatusError = false,
+                                        )
+                                        if (refreshed is FriendRepositoryResult.RequestsSuccess) {
+                                            friendRequestsSnapshot = refreshed.snapshot
+                                        }
+                                    }
+
+                                    is FriendRepositoryResult.Failure -> {
+                                        contactsStateModel = contactsStateModel.copy(
+                                            statusMessage = friendResult.message,
+                                            isStatusError = true,
+                                        )
+                                    }
+
+                                    else -> Unit
                                 }
-                                is PaymentRepositoryResult.Failure -> {
-                                    walletStateModel = walletStateModel.withConfirmFailure(paymentResult.message)
+                            }
+                        }
+
+                        ContactsEffect.OpenNewFriends -> currentRoute = AppRoute.NewFriends
+
+                        ContactsEffect.NavigateBackToInbox -> openTopLevelRoute(AppRoute.Inbox)
+                        null -> Unit
+                    }
+                },
+                modifier = Modifier.padding(innerPadding),
+            )
+        }
+
+        AppRoute.NewFriends -> AuthenticatedShell(
+            currentRoute = AppRoute.Contacts,
+            onTabSelected = ::openTopLevelRoute,
+        ) { innerPadding ->
+            NewFriendsScreen(
+                state = newFriendsUiState,
+                onAction = { action ->
+                    when (action) {
+                        NewFriendsAction.NavigateBack -> currentRoute = AppRoute.Contacts
+                        is NewFriendsAction.Accept -> {
+                            coroutineScope.launch {
+                                when (val result = friendRepository.acceptFriendRequest(action.requestId)) {
+                                    is FriendRepositoryResult.FriendsSuccess -> {
+                                        friendRequestsStatusMessage = result.message ?: "Friend request accepted."
+                                        friendRequestsStatusError = false
+                                        when (val refreshedFriends = friendRepository.listFriends()) {
+                                            is FriendRepositoryResult.FriendsSuccess -> friends = refreshedFriends.friends
+                                            else -> Unit
+                                        }
+                                        when (val refreshedRequests = friendRepository.listFriendRequests()) {
+                                            is FriendRepositoryResult.RequestsSuccess -> friendRequestsSnapshot = refreshedRequests.snapshot
+                                            else -> Unit
+                                        }
+                                        if (appSessionState.isAuthenticated) {
+                                            conversationThreadsState = conversationRepository.loadOrCreateConversationThreads(
+                                                accountId = appSessionState.accountId,
+                                                currentUserDisplayName = appSessionState.displayName,
+                                            )
+                                        }
+                                    }
+                                    is FriendRepositoryResult.Failure -> {
+                                        friendRequestsStatusMessage = result.message
+                                        friendRequestsStatusError = true
+                                    }
+                                    else -> Unit
                                 }
-                                else -> Unit
+                            }
+                        }
+                        is NewFriendsAction.Reject -> {
+                            coroutineScope.launch {
+                                when (val result = friendRepository.rejectFriendRequest(action.requestId)) {
+                                    is FriendRepositoryResult.FriendRequestSuccess -> {
+                                        friendRequestsStatusMessage = result.message ?: "Friend request rejected."
+                                        friendRequestsStatusError = false
+                                        when (val refreshedRequests = friendRepository.listFriendRequests()) {
+                                            is FriendRepositoryResult.RequestsSuccess -> friendRequestsSnapshot = refreshedRequests.snapshot
+                                            else -> Unit
+                                        }
+                                    }
+                                    is FriendRepositoryResult.Failure -> {
+                                        friendRequestsStatusMessage = result.message
+                                        friendRequestsStatusError = true
+                                    }
+                                    else -> Unit
+                                }
+                            }
+                        }
+                        is NewFriendsAction.Ignore -> {
+                            coroutineScope.launch {
+                                when (val result = friendRepository.ignoreFriendRequest(action.requestId)) {
+                                    is FriendRepositoryResult.FriendRequestSuccess -> {
+                                        friendRequestsStatusMessage = result.message ?: "Friend request ignored."
+                                        friendRequestsStatusError = false
+                                        when (val refreshedRequests = friendRepository.listFriendRequests()) {
+                                            is FriendRepositoryResult.RequestsSuccess -> friendRequestsSnapshot = refreshedRequests.snapshot
+                                            else -> Unit
+                                        }
+                                    }
+                                    is FriendRepositoryResult.Failure -> {
+                                        friendRequestsStatusMessage = result.message
+                                        friendRequestsStatusError = true
+                                    }
+                                    else -> Unit
+                                }
                             }
                         }
                     }
-                    WalletEffect.LoadPaymentHistory -> {
+                },
+                modifier = Modifier.padding(innerPadding),
+            )
+        }
+
+        AppRoute.CallSession -> AuthenticatedShell(
+            currentRoute = currentRoute,
+            onTabSelected = ::openTopLevelRoute,
+        ) { innerPadding ->
+            CallSessionScreen(
+                state = callSessionUiState,
+                onAction = { action ->
+                    callSessionState = reduceCallSessionState(callSessionState, action)
+                    if (action == CallSessionAction.EndCall) {
+                        callSessionJob?.cancel()
                         coroutineScope.launch {
-                            when (val paymentResult = paymentRepository.listPayments()) {
-                                is PaymentRepositoryResult.HistorySuccess -> {
-                                    walletStateModel = walletStateModel.withHistoryLoaded(paymentResult.history)
-                                }
-                                is PaymentRepositoryResult.Failure -> {
-                                    walletStateModel = walletStateModel.withHistoryFailure(paymentResult.message)
-                                }
-                                else -> Unit
-                            }
+                            delay(300)
+                            currentRoute = AppRoute.Chat
                         }
                     }
-                    is WalletEffect.LoadPaymentReceipt -> {
-                        coroutineScope.launch {
-                            when (val paymentResult = paymentRepository.getPaymentReceipt(effect.paymentId)) {
-                                is PaymentRepositoryResult.ReceiptSuccess -> {
-                                    walletStateModel = walletStateModel.withReceiptLoaded(paymentResult.receipt)
+                },
+                modifier = Modifier.padding(innerPadding),
+            )
+        }
+
+        AppRoute.Wallet -> AuthenticatedShell(
+            currentRoute = currentRoute,
+            onTabSelected = ::openTopLevelRoute,
+        ) { innerPadding ->
+            WalletScreen(
+                state = walletUiState,
+                permissionRequestPending = walletStateModel.shouldRequestCameraPermission,
+                onAction = { action ->
+                    val result = reduceWalletState(
+                        currentState = walletStateModel,
+                        action = action,
+                    )
+                    walletStateModel = result.state
+
+                    when (val effect = result.effect) {
+                        WalletEffect.NavigateBackToInbox -> openTopLevelRoute(AppRoute.Inbox)
+                        WalletEffect.LoadWalletSummary -> {
+                            coroutineScope.launch {
+                                when (val paymentResult = paymentRepository.getWalletSummary()) {
+                                    is PaymentRepositoryResult.WalletSummarySuccess -> {
+                                        walletStateModel = walletStateModel.withWalletSummaryLoaded(paymentResult.summary)
+                                    }
+                                    is PaymentRepositoryResult.Failure -> {
+                                        walletStateModel = walletStateModel.withWalletSummaryFailure(paymentResult.message)
+                                    }
+                                    else -> Unit
                                 }
-                                is PaymentRepositoryResult.Failure -> {
-                                    walletStateModel = walletStateModel.withReceiptFailure(paymentResult.message)
-                                }
-                                else -> Unit
                             }
                         }
+                        is WalletEffect.ResolvePayload -> {
+                            coroutineScope.launch {
+                                when (val paymentResult = paymentRepository.resolveScanPayload(effect.payload)) {
+                                    is PaymentRepositoryResult.ResolutionSuccess -> {
+                                        walletStateModel = walletStateModel.withResolvedPayment(paymentResult.resolution)
+                                    }
+                                    is PaymentRepositoryResult.Failure -> {
+                                        walletStateModel = walletStateModel.withResolveFailure(paymentResult.message)
+                                    }
+                                    else -> Unit
+                                }
+                            }
+                        }
+                        is WalletEffect.ConfirmPayment -> {
+                            coroutineScope.launch {
+                                val amount = effect.amountInput?.toDoubleOrNull()
+                                if (effect.amountInput != null && amount == null) {
+                                    walletStateModel = walletStateModel.withConfirmFailure("Amount must be a valid decimal value.")
+                                    return@launch
+                                }
+                                when (
+                                    val paymentResult = paymentRepository.confirmPayment(
+                                        sessionId = effect.sessionId,
+                                        amount = amount,
+                                        note = effect.note,
+                                    )
+                                ) {
+                                    is PaymentRepositoryResult.ConfirmationSuccess -> {
+                                        walletStateModel = walletStateModel.withConfirmedPayment(paymentResult.receipt)
+                                    }
+                                    is PaymentRepositoryResult.Failure -> {
+                                        walletStateModel = walletStateModel.withConfirmFailure(paymentResult.message)
+                                    }
+                                    else -> Unit
+                                }
+                            }
+                        }
+                        WalletEffect.LoadPaymentHistory -> {
+                            coroutineScope.launch {
+                                when (val paymentResult = paymentRepository.listPayments()) {
+                                    is PaymentRepositoryResult.HistorySuccess -> {
+                                        walletStateModel = walletStateModel.withHistoryLoaded(paymentResult.history)
+                                    }
+                                    is PaymentRepositoryResult.Failure -> {
+                                        walletStateModel = walletStateModel.withHistoryFailure(paymentResult.message)
+                                    }
+                                    else -> Unit
+                                }
+                            }
+                        }
+                        is WalletEffect.LoadPaymentReceipt -> {
+                            coroutineScope.launch {
+                                when (val paymentResult = paymentRepository.getPaymentReceipt(effect.paymentId)) {
+                                    is PaymentRepositoryResult.ReceiptSuccess -> {
+                                        walletStateModel = walletStateModel.withReceiptLoaded(paymentResult.receipt)
+                                    }
+                                    is PaymentRepositoryResult.Failure -> {
+                                        walletStateModel = walletStateModel.withReceiptFailure(paymentResult.message)
+                                    }
+                                    else -> Unit
+                                }
+                            }
+                        }
+                        null -> Unit
                     }
-                    null -> Unit
-                }
-            }
-        )
+                },
+                modifier = Modifier.padding(innerPadding),
+            )
+        }
+
+        AppRoute.Me -> AuthenticatedShell(
+            currentRoute = currentRoute,
+            onTabSelected = ::openTopLevelRoute,
+        ) { innerPadding ->
+            MeScreen(
+                state = meUiState,
+                onSignOut = ::signOutToEntry,
+                modifier = Modifier.padding(innerPadding),
+            )
+        }
 
         AppRoute.Chat -> {
             val resolvedChatUiState = chatUiState
             val resolvedChatState = chatState
 
             if (resolvedChatUiState == null || resolvedChatState == null) {
-                InboxScreen(
-                    state = inboxState,
-                    onAction = { action ->
-                        when (action) {
-                            is InboxAction.OpenConversation -> {
-                                conversationThreadsState = conversationRepository.markConversationAsRead(
-                                    state = conversationThreadsState,
-                                    conversationId = action.conversationId,
-                                )
-                                selectedConversationId = action.conversationId
-                                currentRoute = AppRoute.Chat
-                                coroutineScope.launch {
-                                    conversationThreadsState = synchronizeActiveConversation(
+                AuthenticatedShell(
+                    currentRoute = AppRoute.Inbox,
+                    onTabSelected = ::openTopLevelRoute,
+                ) { innerPadding ->
+                    InboxScreen(
+                        state = inboxState,
+                        onAction = { action ->
+                            when (action) {
+                                is InboxAction.OpenConversation -> {
+                                    conversationThreadsState = conversationRepository.markConversationAsRead(
                                         state = conversationThreadsState,
                                         conversationId = action.conversationId,
-                                        conversationRepository = conversationRepository,
                                     )
-                                }
-                            }
-
-							InboxAction.OpenContacts -> currentRoute = AppRoute.Contacts
-
-							InboxAction.OpenWallet -> {
-								walletStateModel = walletStateModel.withCurrentAccount(appSessionState.accountId)
-								currentRoute = AppRoute.Wallet
-							}
-
-							InboxAction.SignOutToHud -> {
-								val signedOutState = appShellCoordinator.createSignedOutState(previewThreadsState)
-                                appSessionState = AppSessionState()
-                                authFormState = signedOutState.authFormState
-                                registerFormState = signedOutState.registerFormState
-								contactsStateModel = signedOutState.contactsState
-								callSessionJob?.cancel()
-								callSessionState = signedOutState.callSessionState
-								walletStateModel = WalletState()
-								hydratedConversationAccountId = null
-								conversationThreadsState = signedOutState.conversationThreadsState
-								selectedConversationId = signedOutState.selectedConversationId
-                                currentRoute = AppRoute.Home
-                            }
-                        }
-                    }
-                )
-            } else {
-                ChatScreen(
-                    state = resolvedChatUiState,
-                    onAction = { action ->
-                        val result = reduceChatState(
-                            currentState = resolvedChatState,
-                            action = action,
-                        )
-                        conversationThreadsState = conversationRepository.updateConversationFromChatState(
-                            state = conversationThreadsState,
-                            updatedState = result.state,
-                        )
-
-                        when (result.effect) {
-                            ChatEffect.NavigateBackToInbox -> currentRoute = AppRoute.Inbox
-                            is ChatEffect.AddMember -> {
-                                coroutineScope.launch {
-                                    conversationThreadsState = conversationRepository.addConversationMember(
-                                        state = conversationThreadsState,
-                                        conversationId = result.effect.conversationId,
-                                        memberAccountId = result.effect.memberAccountId,
-                                    )
-                                    conversationThreadsState = conversationRepository.refreshConversationDetail(
-                                        state = conversationThreadsState,
-                                        conversationId = result.effect.conversationId,
-                                    )
-                                }
-                            }
-                            is ChatEffect.StartCall -> {
-                                callSessionState = createInitialCallSessionState(
-                                    conversationId = result.effect.conversationId,
-                                    contactDisplayName = result.effect.contactDisplayName,
-                                    mode = if (result.effect.mode == ChatCallMode.Video) {
-                                        CallSessionMode.Video
-                                    } else {
-                                        CallSessionMode.Audio
-                                    },
-                                )
-                                callSessionJob?.cancel()
-                                callSessionJob = coroutineScope.launch {
-                                    delay(800)
-                                    if (callSessionState.status == CallSessionStatus.Connecting) {
-                                        callSessionState = callSessionState.copy(status = CallSessionStatus.Active)
-                                    }
-                                    while (callSessionState.status == CallSessionStatus.Active && currentRoute == AppRoute.CallSession) {
-                                        delay(1000)
-                                        callSessionState = callSessionState.copy(
-                                            durationLabel = incrementCallDurationLabel(callSessionState.durationLabel)
-                                        )
-                                    }
-                                }
-                                currentRoute = AppRoute.CallSession
-                            }
-                            is ChatEffect.DispatchOutgoingMessages -> {
-                                coroutineScope.launch {
-                                    val outgoingMessages = result.state.messages
-                                        .filter { it.id in result.effect.messageIds }
-                                    val conversationId = result.effect.conversationId
-                                    var firstFailureMessage: String? = null
-
-                                    outgoingMessages.forEach { outgoingMessage ->
-                                        val sendResult = dispatchOutgoingChatMessage(
+                                    selectedConversationId = action.conversationId
+                                    currentRoute = AppRoute.Chat
+                                    coroutineScope.launch {
+                                        conversationThreadsState = synchronizeActiveConversation(
                                             state = conversationThreadsState,
-                                            conversationId = conversationId,
-                                            message = outgoingMessage,
+                                            conversationId = action.conversationId,
                                             conversationRepository = conversationRepository,
-                                            mediaRepository = mediaRepository,
                                         )
-                                        conversationThreadsState = sendResult.state
-                                        if (firstFailureMessage == null) {
-                                            firstFailureMessage = sendResult.failureMessage
+                                    }
+                                }
+
+                                InboxAction.OpenContacts -> openTopLevelRoute(AppRoute.Contacts)
+                                InboxAction.OpenWallet -> openTopLevelRoute(AppRoute.Wallet)
+                                InboxAction.SignOutToHud -> signOutToEntry()
+                            }
+                        },
+                        modifier = Modifier.padding(innerPadding),
+                    )
+                }
+            } else {
+                AuthenticatedShell(
+                    currentRoute = currentRoute,
+                    onTabSelected = ::openTopLevelRoute,
+                ) { innerPadding ->
+                    ChatScreen(
+                        state = resolvedChatUiState,
+                        onAction = { action ->
+                            val result = reduceChatState(
+                                currentState = resolvedChatState,
+                                action = action,
+                            )
+                            conversationThreadsState = conversationRepository.updateConversationFromChatState(
+                                state = conversationThreadsState,
+                                updatedState = result.state,
+                            )
+
+                            when (result.effect) {
+                                ChatEffect.NavigateBackToInbox -> openTopLevelRoute(AppRoute.Inbox)
+                                is ChatEffect.StartCall -> {
+                                    callSessionState = createInitialCallSessionState(
+                                        conversationId = result.effect.conversationId,
+                                        contactDisplayName = result.effect.contactDisplayName,
+                                        mode = if (result.effect.mode == ChatCallMode.Video) {
+                                            CallSessionMode.Video
+                                        } else {
+                                            CallSessionMode.Audio
+                                        },
+                                    )
+                                    callSessionJob?.cancel()
+                                    callSessionJob = coroutineScope.launch {
+                                        delay(800)
+                                        if (callSessionState.status == CallSessionStatus.Connecting) {
+                                            callSessionState = callSessionState.copy(status = CallSessionStatus.Active)
+                                        }
+                                        while (callSessionState.status == CallSessionStatus.Active && currentRoute == AppRoute.CallSession) {
+                                            delay(1000)
+                                            callSessionState = callSessionState.copy(
+                                                durationLabel = incrementCallDurationLabel(callSessionState.durationLabel)
+                                            )
                                         }
                                     }
+                                    currentRoute = AppRoute.CallSession
+                                }
+                                is ChatEffect.DispatchOutgoingMessages -> {
+                                    coroutineScope.launch {
+                                        val outgoingMessages = result.state.messages
+                                            .filter { it.id in result.effect.messageIds }
+                                        val conversationId = result.effect.conversationId
+                                        var firstFailureMessage: String? = null
 
-                                    if (firstFailureMessage != null) {
-                                        chatStatusMessage = firstFailureMessage
-                                        chatStatusError = true
+                                        outgoingMessages.forEach { outgoingMessage ->
+                                            val sendResult = dispatchOutgoingChatMessage(
+                                                state = conversationThreadsState,
+                                                conversationId = conversationId,
+                                                message = outgoingMessage,
+                                                conversationRepository = conversationRepository,
+                                                mediaRepository = mediaRepository,
+                                            )
+                                            conversationThreadsState = sendResult.state
+                                            if (firstFailureMessage == null) {
+                                                firstFailureMessage = sendResult.failureMessage
+                                            }
+                                        }
+
+                                        if (firstFailureMessage != null) {
+                                            chatStatusMessage = firstFailureMessage
+                                            chatStatusError = true
+                                        }
                                     }
                                 }
+                                null -> Unit
                             }
-                            null -> Unit
-                        }
 
-                        if (action is ChatAction.DownloadAttachment) {
-                            coroutineScope.launch {
-                                when (val downloadResult = mediaRepository.downloadAttachment(
-                                    action.attachmentId,
-                                    action.fileName,
-                                )) {
-                                    is MediaRepositoryResult.DownloadSuccess -> {
-                                        chatStatusMessage = "Saved to ${downloadResult.savedPath}"
-                                        chatStatusError = false
-                                    }
-                                    is MediaRepositoryResult.Failure -> {
-                                        chatStatusMessage = downloadResult.message
-                                        chatStatusError = true
-                                    }
-                                    else -> Unit
-                                }
-                            }
-                        }
-
-                        if (action is ChatAction.RecallMessage) {
-                            val recallableMessage = resolvedChatState.messages.firstOrNull { message ->
-                                message.id == action.messageId &&
-                                    message.isFromCurrentUser &&
-                                    (message.deliveryStatus == ChatMessageDeliveryStatus.Sent ||
-                                        message.deliveryStatus == ChatMessageDeliveryStatus.Delivered)
-                            }
-                            if (recallableMessage != null) {
+                            if (action is ChatAction.DownloadAttachment) {
                                 coroutineScope.launch {
-                                    conversationThreadsState = conversationRepository.recallMessage(
-                                        state = conversationThreadsState,
-                                        conversationId = resolvedChatState.conversationId,
-                                        messageId = action.messageId,
-                                    )
+                                    when (val downloadResult = mediaRepository.downloadAttachment(
+                                        action.attachmentId,
+                                        action.fileName,
+                                    )) {
+                                        is MediaRepositoryResult.DownloadSuccess -> {
+                                            chatStatusMessage = "Saved to ${downloadResult.savedPath}"
+                                            chatStatusError = false
+                                        }
+                                        is MediaRepositoryResult.Failure -> {
+                                            chatStatusMessage = downloadResult.message
+                                            chatStatusError = true
+                                        }
+                                        else -> Unit
+                                    }
                                 }
                             }
-                        }
-                    }
+
+                            if (action is ChatAction.RecallMessage) {
+                                val recallableMessage = resolvedChatState.messages.firstOrNull { message ->
+                                    message.id == action.messageId &&
+                                        message.isFromCurrentUser &&
+                                        (message.deliveryStatus == ChatMessageDeliveryStatus.Sent ||
+                                            message.deliveryStatus == ChatMessageDeliveryStatus.Delivered)
+                                }
+                                if (recallableMessage != null) {
+                                    coroutineScope.launch {
+                                        conversationThreadsState = conversationRepository.recallMessage(
+                                            state = conversationThreadsState,
+                                            conversationId = resolvedChatState.conversationId,
+                                            messageId = action.messageId,
+                                        )
+                                    }
+                                }
+                            }
+                        },
+                        modifier = Modifier.padding(innerPadding),
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AppLaunchPlaceholder() {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(ImBackground),
+        contentAlignment = Alignment.Center,
+    ) {
+        Surface(
+            shape = RoundedCornerShape(28.dp),
+            color = ImSurfaceElevated.copy(alpha = 0.96f),
+        ) {
+            Column(
+                modifier = Modifier.padding(horizontal = 28.dp, vertical = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(
+                    text = "ARGUS",
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = ImTextPrimary,
+                )
+                Text(
+                    text = "Loading your IM shell...",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = ImTextSecondary,
+                )
+                Text(
+                    text = "Cached session first, network validation second.",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = ImGreen,
                 )
             }
         }
@@ -992,6 +1280,18 @@ private fun incrementCallDurationLabel(
     val nextMinutes = totalSeconds / 60
     val nextSeconds = totalSeconds % 60
     return "%02d:%02d".format(nextMinutes, nextSeconds)
+}
+
+private fun isSseAuthFailure(throwable: Throwable): Boolean {
+    var current: Throwable? = throwable
+    while (current != null) {
+        val message = current.message.orEmpty()
+        if (message.contains("HTTP 401", ignoreCase = true) || message.contains("HTTP 403", ignoreCase = true)) {
+            return true
+        }
+        current = current.cause
+    }
+    return false
 }
 
 private fun isMediaPlaceholderBody(body: String): Boolean {

@@ -50,48 +50,21 @@ class AppShellCoordinator(
             )
         }
 
-        return when (val restoredSession = authRepository.restoreSession(persistedSession.accessToken)) {
-            is AuthRepositoryResult.Success -> {
-                val session = createAuthenticatedSession(
-                    accountId = restoredSession.session.accountId,
-                    displayName = restoredSession.session.displayName,
-                    accessToken = restoredSession.session.accessToken,
-                )
-                val threads = conversationRepository.loadOrCreateConversationThreads(
-                    accountId = session.accountId,
-                    currentUserDisplayName = session.displayName,
-                )
-                AppHydrationState(
-                    session = session,
-                    conversationThreadsState = threads,
-                    hydratedConversationAccountId = session.accountId,
-                )
-            }
-
-            is AuthRepositoryResult.Failure -> {
-                if (
-                    restoredSession.kind == AuthFailureKind.UNAUTHORIZED ||
-                    restoredSession.code == "INVALID_CREDENTIALS"
-                ) {
-                    sessionRepository.clearSession()
-                    AppHydrationState(
-                        session = AppSessionState(),
-                        conversationThreadsState = previewThreadsState,
-                        hydratedConversationAccountId = null,
-                    )
-                } else {
-                    val threads = conversationRepository.loadOrCreateConversationThreads(
-                        accountId = persistedSession.accountId,
-                        currentUserDisplayName = persistedSession.displayName,
-                    )
-                    AppHydrationState(
-                        session = persistedSession,
-                        conversationThreadsState = threads,
-                        hydratedConversationAccountId = persistedSession.accountId,
-                    )
-                }
-            }
-        }
+        val session = createAuthenticatedSession(
+            accountId = persistedSession.accountId,
+            displayName = persistedSession.displayName,
+            accessToken = persistedSession.accessToken,
+            refreshToken = persistedSession.refreshToken,
+        )
+        val threads = conversationRepository.loadOrCreateConversationThreads(
+            accountId = session.accountId,
+            currentUserDisplayName = session.displayName,
+        )
+        return AppHydrationState(
+            session = session,
+            conversationThreadsState = threads,
+            hydratedConversationAccountId = session.accountId,
+        )
     }
 
     suspend fun persistSession(

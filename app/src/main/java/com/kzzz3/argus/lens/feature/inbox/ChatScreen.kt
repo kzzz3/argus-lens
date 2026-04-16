@@ -17,13 +17,18 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.kzzz3.argus.lens.ui.theme.ArguslensTheme
+import com.kzzz3.argus.lens.ui.theme.ImBlue
+import com.kzzz3.argus.lens.ui.theme.ImGreen
+import com.kzzz3.argus.lens.ui.theme.ImSurfaceElevated
+import com.kzzz3.argus.lens.ui.theme.ImTextMuted
+import com.kzzz3.argus.lens.ui.theme.ImTextPrimary
+import com.kzzz3.argus.lens.ui.theme.ImTextSecondary
 
 @Composable
 fun ChatScreen(
@@ -43,20 +48,12 @@ fun ChatScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color(0xFF0D1620),
-                        Color(0xFF182635),
-                    )
-                )
-            )
-            .padding(20.dp),
+            .padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         Surface(
-            shape = RoundedCornerShape(24.dp),
-            color = Color(0x1629FFB2)
+            shape = RoundedCornerShape(28.dp),
+            color = ImSurfaceElevated.copy(alpha = 0.95f)
         ) {
             Column(
                 modifier = Modifier
@@ -67,38 +64,14 @@ fun ChatScreen(
                 Text(
                     text = state.conversationTitle,
                     style = MaterialTheme.typography.headlineSmall,
-                    color = Color.White,
+                    color = ImTextPrimary,
                     fontWeight = FontWeight.SemiBold
                 )
                 Text(
                     text = state.conversationSubtitle,
                     style = MaterialTheme.typography.bodyLarge,
-                    color = Color(0xFFD8EBFB)
+                    color = ImTextSecondary
                 )
-                if (state.memberSummary.isNotBlank()) {
-                    Text(
-                        text = state.memberSummary,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color(0xFFAAC9E3)
-                    )
-                }
-                if (state.isGroupConversation) {
-                    OutlinedTextField(
-                        value = state.draftMemberAccountId,
-                        onValueChange = { onAction(ChatAction.UpdateDraftMemberAccountId(it)) },
-                        modifier = Modifier.fillMaxWidth(),
-                        label = { Text(text = state.addMemberLabel) },
-                        placeholder = { Text(text = state.addMemberPlaceholder) },
-                        maxLines = 1,
-                    )
-                    Button(
-                        onClick = { onAction(ChatAction.SubmitAddMember) },
-                        enabled = state.isAddMemberEnabled,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(text = state.addMemberActionLabel)
-                    }
-                }
                 state.statusMessage?.let { message ->
                     Surface(
                         shape = RoundedCornerShape(16.dp),
@@ -109,7 +82,7 @@ fun ChatScreen(
                             text = message,
                             modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
                             style = MaterialTheme.typography.bodyMedium,
-                            color = if (state.isStatusError) Color(0xFFFFC2BA) else Color(0xFFDFFBF1),
+                            color = ImTextPrimary,
                         )
                     }
                 }
@@ -120,13 +93,13 @@ fun ChatScreen(
                 ) {
                     ComposerActionChip(
                         label = state.audioCallActionLabel,
-                        accentColor = Color(0xFF7AF5C9),
+                        accentColor = ImGreen,
                         onClick = { onAction(ChatAction.StartAudioCall) },
                         modifier = Modifier.weight(1f)
                     )
                     ComposerActionChip(
                         label = state.videoCallActionLabel,
-                        accentColor = Color(0xFF83C9FF),
+                        accentColor = ImBlue,
                         onClick = { onAction(ChatAction.StartVideoCall) },
                         modifier = Modifier.weight(1f)
                     )
@@ -143,7 +116,7 @@ fun ChatScreen(
             ) {
                 Text(
                     text = state.emptyStateLabel,
-                    color = Color(0xFFAAC9E3),
+                    color = ImTextMuted,
                     textAlign = TextAlign.Center,
                     style = MaterialTheme.typography.bodyLarge,
                 )
@@ -164,8 +137,8 @@ fun ChatScreen(
         }
 
         Surface(
-            shape = RoundedCornerShape(20.dp),
-            color = Color(0x122D4258),
+            shape = RoundedCornerShape(24.dp),
+            color = ImSurfaceElevated.copy(alpha = 0.92f),
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(
@@ -177,13 +150,13 @@ fun ChatScreen(
                 Text(
                     text = state.composerTitle,
                     style = MaterialTheme.typography.titleMedium,
-                    color = Color.White,
+                    color = ImTextPrimary,
                     fontWeight = FontWeight.Medium
                 )
                 Text(
                     text = state.composerHint,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color(0xFFAEC7DC)
+                    color = ImTextSecondary
                 )
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -191,13 +164,13 @@ fun ChatScreen(
                 ) {
                     ComposerActionChip(
                         label = state.imageActionLabel,
-                        accentColor = Color(0xFF83C9FF),
+                        accentColor = ImBlue,
                         onClick = { onAction(ChatAction.AddImageAttachment) },
                         modifier = Modifier.weight(1f)
                     )
                     ComposerActionChip(
                         label = state.videoActionLabel,
-                        accentColor = Color(0xFFB59BFF),
+                        accentColor = Color(0xFF8F7BFF),
                         onClick = { onAction(ChatAction.AddVideoAttachment) },
                         modifier = Modifier.weight(1f)
                     )
@@ -548,13 +521,6 @@ private fun ChatScreenPreview() {
             state = ChatUiState(
                 conversationTitle = "Zhang San",
                 conversationSubtitle = "1:1 direct chat",
-                memberSummary = "Argus Tester, Zhang San",
-                draftMemberAccountId = "",
-                addMemberLabel = "Add group member",
-                addMemberPlaceholder = "Type a friend account ID",
-                addMemberActionLabel = "Invite member",
-                isAddMemberEnabled = false,
-                isGroupConversation = false,
                 statusMessage = null,
                 isStatusError = false,
                 messages = listOf(

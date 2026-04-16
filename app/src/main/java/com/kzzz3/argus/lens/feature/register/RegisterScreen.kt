@@ -17,13 +17,16 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.kzzz3.argus.lens.ui.theme.ArguslensTheme
+import com.kzzz3.argus.lens.ui.theme.ImBlue
+import com.kzzz3.argus.lens.ui.theme.ImGreen
+import com.kzzz3.argus.lens.ui.theme.ImSurfaceElevated
+import com.kzzz3.argus.lens.ui.theme.ImTextPrimary
+import com.kzzz3.argus.lens.ui.theme.ImTextSecondary
 
 @Composable
 fun RegisterScreen(
@@ -34,64 +37,67 @@ fun RegisterScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color(0xFF0E1420),
-                        Color(0xFF182437),
-                    )
-                )
-            )
+            .background(MaterialTheme.colorScheme.background)
             .padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Surface(
-            shape = RoundedCornerShape(24.dp),
-            color = Color(0x1FFFFFFF)
+            shape = RoundedCornerShape(28.dp),
+            color = ImSurfaceElevated.copy(alpha = 0.96f),
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                    .padding(22.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 Text(
                     text = state.title,
                     style = MaterialTheme.typography.headlineSmall,
-                    color = Color.White,
-                    fontWeight = FontWeight.SemiBold
+                    color = ImTextPrimary,
                 )
                 Text(
                     text = state.subtitle,
                     style = MaterialTheme.typography.bodyLarge,
-                    color = Color(0xFFDCEBFA)
+                    color = ImTextSecondary,
                 )
+                Surface(
+                    shape = RoundedCornerShape(18.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f),
+                ) {
+                    Text(
+                        text = "Create your account once, then the app can reopen from cache and validate in the background like a real IM client.",
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = ImTextSecondary,
+                    )
+                }
             }
         }
 
         Surface(
-            shape = RoundedCornerShape(20.dp),
-            color = Color(0x1429FFB2)
+            shape = RoundedCornerShape(24.dp),
+            color = ImSurfaceElevated.copy(alpha = 0.94f),
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 RegisterField(
                     value = state.displayName,
                     label = "Display name",
                     placeholder = "Enter display name",
                     error = state.displayNameError,
-                    onValueChange = { onAction(RegisterAction.ChangeDisplayName(it)) }
+                    onValueChange = { onAction(RegisterAction.ChangeDisplayName(it)) },
                 )
                 RegisterField(
                     value = state.account,
                     label = "Account",
                     placeholder = "Enter username or email",
                     error = state.accountError,
-                    onValueChange = { onAction(RegisterAction.ChangeAccount(it)) }
+                    onValueChange = { onAction(RegisterAction.ChangeAccount(it)) },
                 )
                 RegisterField(
                     value = state.password,
@@ -110,12 +116,18 @@ fun RegisterScreen(
                     password = true,
                 )
 
-                if (state.submitResult != null) {
-                    Text(
-                        text = state.submitResult,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color(0xFFB8D9F4)
-                    )
+                state.submitResult?.takeIf { it.isNotBlank() }?.let {
+                    Surface(
+                        shape = RoundedCornerShape(16.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f),
+                    ) {
+                        Text(
+                            text = it,
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = ImTextSecondary,
+                        )
+                    }
                 }
 
                 Button(
@@ -123,24 +135,20 @@ fun RegisterScreen(
                     enabled = state.isSubmitEnabled,
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF7AF5C9),
-                        contentColor = Color(0xFF062118),
-                        disabledContainerColor = Color(0xCC4E6A61),
-                        disabledContentColor = Color(0xFFF2FFFA)
-                    )
+                        containerColor = ImGreen,
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
+                    ),
                 ) {
-                    Text(text = state.primaryActionLabel)
+                    Text(text = state.primaryActionLabel, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
 
                 OutlinedButton(
                     onClick = { onAction(RegisterAction.NavigateBackToLogin) },
                     modifier = Modifier.fillMaxWidth(),
-                    border = BorderStroke(1.dp, Color(0xFF9AD0FF)),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = Color(0xFFF4FAFF)
-                    )
+                    border = BorderStroke(1.dp, ImBlue.copy(alpha = 0.45f)),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = ImTextPrimary),
                 ) {
-                    Text(text = state.secondaryActionLabel)
+                    Text(text = state.secondaryActionLabel, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
         }
@@ -167,11 +175,11 @@ private fun RegisterField(
         visualTransformation = if (password) PasswordVisualTransformation() else androidx.compose.ui.text.input.VisualTransformation.None,
     )
 
-    if (error != null) {
+    error?.let {
         Text(
-            text = error,
+            text = it,
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.error
+            color = MaterialTheme.colorScheme.error,
         )
     }
 }
@@ -183,7 +191,7 @@ private fun RegisterScreenPreview() {
         RegisterScreen(
             state = RegisterUiState(
                 title = "Create account",
-                subtitle = "We build a stage-1 registration shell before connecting to a real backend.",
+                subtitle = "Set up your Argus identity before entering the IM shell.",
                 displayName = "",
                 account = "",
                 password = "",
@@ -198,7 +206,7 @@ private fun RegisterScreenPreview() {
                 primaryActionLabel = "Create account",
                 secondaryActionLabel = "Back to login",
             ),
-            onAction = {}
+            onAction = {},
         )
     }
 }

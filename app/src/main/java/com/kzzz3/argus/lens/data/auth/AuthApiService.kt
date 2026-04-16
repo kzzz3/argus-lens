@@ -12,6 +12,11 @@ interface AuthApiService {
         @Header("Authorization") authorizationHeader: String,
     ): Response<AuthSuccessResponse>
 
+    @POST("api/v1/auth/refresh")
+    suspend fun refresh(
+        @Body request: RefreshTokenRequestBody,
+    ): Response<AuthSuccessResponse>
+
     @POST("api/v1/auth/login")
     suspend fun login(
         @Body request: LoginRequestBody,

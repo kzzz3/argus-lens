@@ -1,5 +1,6 @@
 package com.kzzz3.argus.lens.feature.auth
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -8,23 +9,26 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Button
-import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import com.kzzz3.argus.lens.ui.theme.ArguslensTheme
+import com.kzzz3.argus.lens.ui.theme.ImBlue
+import com.kzzz3.argus.lens.ui.theme.ImGreen
+import com.kzzz3.argus.lens.ui.theme.ImSurfaceElevated
+import com.kzzz3.argus.lens.ui.theme.ImTextPrimary
+import com.kzzz3.argus.lens.ui.theme.ImTextSecondary
 
 @Composable
 fun AuthEntryScreen(
@@ -35,73 +39,57 @@ fun AuthEntryScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color(0xFF10141D),
-                        Color(0xFF151E2E),
-                    )
-                )
-            )
+            .background(MaterialTheme.colorScheme.background)
             .padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Surface(
-            shape = RoundedCornerShape(24.dp),
-            color = Color(0x1FFFFFFF)
-        ) {
+        Surface(shape = RoundedCornerShape(18.dp), color = ImSurfaceElevated.copy(alpha = 0.96f)) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                    .padding(22.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 Text(
                     text = state.title,
                     style = MaterialTheme.typography.headlineSmall,
-                    color = Color.White,
-                    fontWeight = FontWeight.SemiBold
+                    color = ImTextPrimary,
+                    fontWeight = FontWeight.SemiBold,
                 )
                 Text(
                     text = state.subtitle,
                     style = MaterialTheme.typography.bodyLarge,
-                    color = Color(0xFFE1EBF5)
+                    color = ImTextSecondary,
                 )
-                Text(
-                    text = "Learning goal: understand route switching before adding real login state.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color(0xFFAAC0D5)
-                )
-
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     AuthModeButton(
                         label = "Password",
                         selected = state.selectedMode == AuthLoginMode.Password,
                         onClick = { onAction(AuthEntryAction.ChangeMode(AuthLoginMode.Password)) },
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
                     )
                     AuthModeButton(
                         label = "Code",
                         selected = state.selectedMode == AuthLoginMode.VerificationCode,
                         onClick = { onAction(AuthEntryAction.ChangeMode(AuthLoginMode.VerificationCode)) },
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
                     )
                 }
             }
         }
 
         Surface(
-            shape = RoundedCornerShape(20.dp),
-            color = Color(0x1429FFB2)
+            shape = RoundedCornerShape(24.dp),
+            color = ImSurfaceElevated.copy(alpha = 0.94f),
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 if (state.selectedMode == AuthLoginMode.Password) {
                     OutlinedTextField(
@@ -114,11 +102,11 @@ fun AuthEntryScreen(
                         singleLine = true,
                     )
 
-                    if (state.accountError != null) {
+                    state.accountError?.let {
                         Text(
-                            text = state.accountError,
+                            text = it,
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.error
+                            color = MaterialTheme.colorScheme.error,
                         )
                     }
 
@@ -133,20 +121,26 @@ fun AuthEntryScreen(
                         visualTransformation = PasswordVisualTransformation(),
                     )
 
-                    if (state.passwordError != null) {
+                    state.passwordError?.let {
                         Text(
-                            text = state.passwordError,
+                            text = it,
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.error
+                            color = MaterialTheme.colorScheme.error,
                         )
                     }
 
-                    if (state.submitResult != null) {
-                        Text(
-                            text = state.submitResult,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = Color(0xFFB8D9F4)
-                        )
+                    state.submitResult?.takeIf { it.isNotBlank() }?.let {
+                        Surface(
+                            shape = RoundedCornerShape(16.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f),
+                        ) {
+                            Text(
+                                text = it,
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = ImTextSecondary,
+                            )
+                        }
                     }
 
                     Button(
@@ -154,54 +148,46 @@ fun AuthEntryScreen(
                         enabled = state.isPrimaryActionEnabled,
                         modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF7AF5C9),
-                            contentColor = Color(0xFF062118),
-                            disabledContainerColor = Color(0xCC4E6A61),
-                            disabledContentColor = Color(0xFFF2FFFA)
-                        )
+                            containerColor = ImGreen,
+                            contentColor = MaterialTheme.colorScheme.onPrimary,
+                        ),
                     ) {
-                        Text(text = state.primaryActionLabel)
+                        Text(text = state.primaryActionLabel, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
 
                     OutlinedButton(
                         onClick = { onAction(AuthEntryAction.NavigateToRegister) },
                         modifier = Modifier.fillMaxWidth(),
-                        border = BorderStroke(1.dp, Color(0xFF7AF5C9)),
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = Color(0xFFDFFFF3)
-                        )
+                        border = BorderStroke(1.dp, ImGreen.copy(alpha = 0.45f)),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = ImTextPrimary),
                     ) {
-                        Text(text = state.registerActionLabel)
+                        Text(text = state.registerActionLabel, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                 } else {
-                    Text(
-                        text = "Verification code login is reserved for the next step. For now we only build account/password login.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color(0xFFE1EBF5)
-                    )
-                    OutlinedButton(
-                        onClick = {},
-                        enabled = false,
-                        modifier = Modifier.fillMaxWidth(),
-                        border = BorderStroke(1.dp, Color(0xFF89A7BD)),
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            disabledContentColor = Color(0xFFE3EEF8)
-                        )
+                    Surface(
+                        shape = RoundedCornerShape(18.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f),
                     ) {
-                        Text(text = "Verification code module coming soon")
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            Text(
+                                text = "Verification code sign-in is reserved for a later pass.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = ImTextPrimary,
+                            )
+                            Text(
+                                text = "Password sign-in is the active path for this build.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = ImTextSecondary,
+                            )
+                        }
                     }
                 }
 
-                OutlinedButton(
-                    onClick = { onAction(AuthEntryAction.NavigateBack) },
-                    modifier = Modifier.fillMaxWidth(),
-                    border = BorderStroke(1.dp, Color(0xFF9AD0FF)),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = Color(0xFFF4FAFF)
-                    )
-                ) {
-                    Text(text = state.secondaryActionLabel)
-                }
             }
         }
     }
@@ -219,22 +205,20 @@ private fun AuthModeButton(
             onClick = onClick,
             modifier = modifier,
             colors = ButtonDefaults.buttonColors(
-                containerColor = Color(0xFF9AD0FF),
-                contentColor = Color(0xFF062038)
-            )
+                containerColor = ImBlue,
+                contentColor = MaterialTheme.colorScheme.onSecondary,
+            ),
         ) {
-            Text(text = label)
+            Text(text = label, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     } else {
         OutlinedButton(
             onClick = onClick,
             modifier = modifier,
-            border = BorderStroke(1.dp, Color(0xFF7EA8C7)),
-            colors = ButtonDefaults.outlinedButtonColors(
-                contentColor = Color(0xFFEAF6FF)
-            )
+            border = BorderStroke(1.dp, ImBlue.copy(alpha = 0.35f)),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = ImTextPrimary),
         ) {
-            Text(text = label)
+            Text(text = label, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }
@@ -245,8 +229,8 @@ private fun AuthEntryScreenPreview() {
     ArguslensTheme {
         AuthEntryScreen(
             state = AuthEntryUiState(
-                title = "Stage 1 Login Entry",
-                subtitle = "We start with a fake login shell before touching real networking.",
+                title = "Welcome back",
+                subtitle = "Sign in to restore your chats, contacts, wallet, and profile shell.",
                 selectedMode = AuthLoginMode.Password,
                 account = "",
                 password = "",
@@ -257,9 +241,8 @@ private fun AuthEntryScreenPreview() {
                 isPrimaryActionEnabled = false,
                 primaryActionLabel = "Sign in with password",
                 registerActionLabel = "Create new account",
-                secondaryActionLabel = "Back to HUD"
             ),
-            onAction = {}
+            onAction = {},
         )
     }
 }

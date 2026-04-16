@@ -7,7 +7,6 @@ import com.kzzz3.argus.lens.data.auth.AuthRepositoryResult
 import com.kzzz3.argus.lens.data.auth.AuthSession
 import com.kzzz3.argus.lens.data.conversation.ConversationRepository
 import com.kzzz3.argus.lens.data.session.SessionRepository
-import com.kzzz3.argus.lens.feature.contacts.ConversationCreationMode
 import com.kzzz3.argus.lens.feature.inbox.ChatMessageAttachment
 import com.kzzz3.argus.lens.feature.inbox.ChatState
 import com.kzzz3.argus.lens.feature.inbox.ConversationThreadsState
@@ -60,7 +59,7 @@ class AppShellCoordinatorTest {
     }
 
     @Test
-    fun hydrateAppState_withUnauthorizedFailure_clearsSessionAndFallsBackToPreview() = runBlocking {
+    fun hydrateAppState_withCachedSession_entersShellBeforeValidationCompletes() = runBlocking {
         val persistedSession = AppSessionState(
             isAuthenticated = true,
             accountId = "argus_tester",
@@ -88,15 +87,15 @@ class AppShellCoordinatorTest {
                 )
             ),
             sessionRepository = sessionRepository,
-            conversationRepository = FakeConversationRepository(ConversationThreadsState()),
+            conversationRepository = FakeConversationRepository(previewThreads),
         )
 
         val result = coordinator.hydrateAppState(previewThreadsState = previewThreads)
 
-        assertEquals(AppSessionState(), result.session)
+        assertEquals(persistedSession, result.session)
         assertEquals(previewThreads, result.conversationThreadsState)
-        assertEquals(null, result.hydratedConversationAccountId)
-        assertTrue(sessionRepository.cleared)
+        assertEquals("argus_tester", result.hydratedConversationAccountId)
+        assertTrue(!sessionRepository.cleared)
     }
 
     private class FakeAuthRepository(
@@ -104,12 +103,40 @@ class AppShellCoordinatorTest {
     ) : AuthRepository {
         override suspend fun restoreSession(accessToken: String): AuthRepositoryResult = restoreResult
 
+        override suspend fun refreshSession(refreshToken: String): AuthRepositoryResult {
+            return AuthRepositoryResult.Success(
+                AuthSession(
+                    accountId = "tester",
+                    displayName = "tester",
+                    accessToken = "token",
+                    refreshToken = "refresh-token",
+                    message = "refreshed",
+                )
+            )
+        }
+
         override suspend fun login(account: String, password: String): AuthRepositoryResult {
-            return AuthRepositoryResult.Success(AuthSession(account, account, "token", "ok"))
+            return AuthRepositoryResult.Success(
+                AuthSession(
+                    accountId = account,
+                    displayName = account,
+                    accessToken = "token",
+                    refreshToken = "refresh-token",
+                    message = "ok",
+                )
+            )
         }
 
         override suspend fun register(displayName: String, account: String, password: String): AuthRepositoryResult {
-            return AuthRepositoryResult.Success(AuthSession(account, displayName, "token", "ok"))
+            return AuthRepositoryResult.Success(
+                AuthSession(
+                    accountId = account,
+                    displayName = displayName,
+                    accessToken = "token",
+                    refreshToken = "refresh-token",
+                    message = "ok",
+                )
+            )
         }
     }
 
@@ -140,17 +167,13 @@ class AppShellCoordinatorTest {
         override suspend fun clearConversationThreads(accountId: String) = Unit
         override suspend fun refreshConversationMessages(state: ConversationThreadsState, conversationId: String): ConversationThreadsState = state
         override suspend fun refreshConversationDetail(state: ConversationThreadsState, conversationId: String): ConversationThreadsState = state
-        override suspend fun addConversationMember(state: ConversationThreadsState, conversationId: String, memberAccountId: String): ConversationThreadsState = state
         override suspend fun sendMessage(state: ConversationThreadsState, conversationId: String, localMessageId: String, body: String, attachment: ChatMessageAttachment?): ConversationThreadsState = state
         override suspend fun acknowledgeMessageDelivery(state: ConversationThreadsState, conversationId: String, messageId: String): ConversationThreadsState = state
         override suspend fun acknowledgeMessageRead(state: ConversationThreadsState, conversationId: String, messageId: String): ConversationThreadsState = state
         override suspend fun recallMessage(state: ConversationThreadsState, conversationId: String, messageId: String): ConversationThreadsState = state
         override suspend fun markConversationReadRemote(state: ConversationThreadsState, conversationId: String): ConversationThreadsState = state
-        override suspend fun createConversationRemote(state: ConversationThreadsState, displayName: String, mode: ConversationCreationMode): ConversationThreadsState = state
         override fun markConversationAsRead(state: ConversationThreadsState, conversationId: String): ConversationThreadsState = state
         override fun updateConversationFromChatState(state: ConversationThreadsState, updatedState: ChatState): ConversationThreadsState = state
-        override fun createConversation(state: ConversationThreadsState, displayName: String, mode: ConversationCreationMode): ConversationThreadsState = state
-        override fun resolveConversationId(state: ConversationThreadsState, displayName: String): String = ""
         override fun resolveOutgoingMessages(state: ConversationThreadsState, conversationId: String, messageIds: List<String>): ConversationThreadsState = state
         override fun resolveDeliveredMessages(state: ConversationThreadsState, conversationId: String, messageIds: List<String>): ConversationThreadsState = state
     }

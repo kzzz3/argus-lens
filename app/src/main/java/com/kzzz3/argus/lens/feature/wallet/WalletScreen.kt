@@ -18,29 +18,47 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.MoreHoriz
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.kzzz3.argus.lens.feature.scan.QrScannerPreview
 import com.kzzz3.argus.lens.feature.scan.cameraPermissionName
 import com.kzzz3.argus.lens.feature.scan.hasCameraPermission
+import com.kzzz3.argus.lens.ui.theme.ImBlue
+import com.kzzz3.argus.lens.ui.theme.ImGold
+import com.kzzz3.argus.lens.ui.theme.ImGreen
+import com.kzzz3.argus.lens.ui.theme.ImSurfaceElevated
+import com.kzzz3.argus.lens.ui.theme.ImTextMuted
+import com.kzzz3.argus.lens.ui.theme.ImTextPrimary
+import com.kzzz3.argus.lens.ui.theme.ImTextSecondary
+import com.kzzz3.argus.lens.ui.shell.AppTopHeader
 
-private val WalletPanelColor = Color(0x142D4258)
-private val WalletPrimaryAccent = Color(0xFF5BE7C4)
-private val WalletPositiveAccent = Color(0xFF72F1B8)
-private val WalletNegativeAccent = Color(0xFFFFA27D)
-private val WalletSecondaryText = Color(0xFFD8EBFB)
-private val WalletMutedText = Color(0xFFAAC9E3)
+private val WalletPanelColor = ImSurfaceElevated.copy(alpha = 0.94f)
+private val WalletPrimaryAccent = ImGreen
+private val WalletPositiveAccent = ImGreen
+private val WalletNegativeAccent = Color(0xFFFF8A65)
+private val WalletSecondaryText = ImTextSecondary
+private val WalletMutedText = ImTextMuted
 
 @Composable
 fun WalletScreen(
@@ -79,90 +97,81 @@ fun WalletScreen(
 
     Column(
         modifier = modifier
-            .fillMaxSize()
-            .background(
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color(0xFF07131E),
-                        Color(0xFF10304A),
-                    )
-                )
-            )
-            .verticalScroll(rememberScrollState())
-            .padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+            .fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(0.dp),
     ) {
-        WalletHeader(state)
-        WalletStatusBanner(state)
-
-        when (state.page) {
-            WalletPage.Overview -> WalletOverviewPanel(state, onAction)
-            WalletPage.PayScanner -> {
-                WalletScannerPanel(state, onAction)
-                WalletManualPanel(state, onAction)
-            }
-            WalletPage.PayReview -> WalletReviewPanel(state, onAction)
-            WalletPage.PayResult -> WalletResultPanel(state, onAction)
-            WalletPage.Collect -> WalletCollectPanel(state, onAction)
-            WalletPage.History -> WalletHistoryPanel(state, onAction)
-            WalletPage.ReceiptDetail -> WalletReceiptPanel(state, onAction)
-        }
-
-        Button(
-            onClick = { onAction(WalletAction.NavigateBack) },
-            modifier = Modifier.fillMaxWidth(),
+        WalletHeader(state, onAction)
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Text(text = state.backActionLabel)
+            WalletStatusBanner(state)
+
+            when (state.page) {
+                WalletPage.Overview -> WalletOverviewPanel(state, onAction)
+                WalletPage.PayScanner -> {
+                    WalletScannerPanel(state, onAction)
+                    WalletManualPanel(state, onAction)
+                }
+                WalletPage.PayReview -> WalletReviewPanel(state, onAction)
+                WalletPage.PayResult -> WalletResultPanel(state, onAction)
+                WalletPage.Collect -> WalletCollectPanel(state, onAction)
+                WalletPage.History -> WalletHistoryPanel(state, onAction)
+                WalletPage.ReceiptDetail -> WalletReceiptPanel(state, onAction)
+            }
+
+            if (state.page != WalletPage.Overview) {
+                Button(
+                    onClick = { onAction(WalletAction.NavigateBack) },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(text = state.backActionLabel)
+                }
+            }
         }
     }
 }
 
 @Composable
-private fun WalletHeader(state: WalletUiState) {
-    Surface(
-        shape = RoundedCornerShape(24.dp),
-        color = Color(0x1A9AD0FF),
-        border = BorderStroke(1.dp, Color(0x339AD0FF)),
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            Text(
-                text = state.title,
-                style = MaterialTheme.typography.headlineSmall,
-                color = Color.White,
-                fontWeight = FontWeight.SemiBold,
-            )
-            Text(
-                text = state.subtitle,
-                style = MaterialTheme.typography.bodyLarge,
-                color = WalletSecondaryText,
-            )
-            state.summary?.let { summary ->
-                Surface(
-                    shape = RoundedCornerShape(16.dp),
-                    color = Color(0x1829FFB2),
-                ) {
-                    Column(
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-                        verticalArrangement = Arrangement.spacedBy(2.dp),
-                    ) {
-                        Text(
-                            text = "Available balance",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = WalletMutedText,
-                        )
-                        Text(
-                            text = "${summary.currency} ${summary.balance}",
-                            style = MaterialTheme.typography.titleLarge,
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold,
-                        )
-                    }
+private fun WalletHeader(state: WalletUiState, onAction: (WalletAction) -> Unit) {
+    var menuExpanded by remember { mutableStateOf(false) }
+
+    AppTopHeader(title = state.title) {
+        Box {
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.surface,
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.75f)),
+            ) {
+                IconButton(onClick = { menuExpanded = true }) {
+                    Icon(
+                        imageVector = Icons.Rounded.MoreHoriz,
+                        contentDescription = "Wallet actions",
+                        tint = ImTextPrimary,
+                    )
                 }
+            }
+            DropdownMenu(
+                expanded = menuExpanded,
+                onDismissRequest = { menuExpanded = false },
+            ) {
+                DropdownMenuItem(
+                    text = { Text("History") },
+                    onClick = {
+                        menuExpanded = false
+                        onAction(WalletAction.OpenTransactionHistory)
+                    },
+                )
+                DropdownMenuItem(
+                    text = { Text(state.refreshActionLabel) },
+                    onClick = {
+                        menuExpanded = false
+                        onAction(WalletAction.RefreshWalletSummary)
+                    },
+                )
             }
         }
     }
@@ -173,14 +182,14 @@ private fun WalletStatusBanner(state: WalletUiState) {
     state.statusMessage?.let { message ->
         Surface(
             shape = RoundedCornerShape(16.dp),
-            color = if (state.isStatusError) Color(0x33FF6F61) else Color(0x267AF5C9),
+            color = if (state.isStatusError) MaterialTheme.colorScheme.errorContainer else WalletPrimaryAccent.copy(alpha = 0.16f),
             modifier = Modifier.fillMaxWidth(),
         ) {
             Text(
                 text = message,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
                 style = MaterialTheme.typography.bodyMedium,
-                color = Color.White,
+                color = ImTextPrimary,
             )
         }
     }
@@ -199,23 +208,7 @@ private fun WalletOverviewPanel(state: WalletUiState, onAction: (WalletAction) -
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text(
-                text = "Wallet overview",
-                style = MaterialTheme.typography.titleLarge,
-                color = Color.White,
-                fontWeight = FontWeight.SemiBold,
-            )
-            if (state.isLoadingSummary && state.summary == null) {
-                Text(
-                    text = "Loading wallet summary...",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = WalletSecondaryText,
-                )
-            } else {
-                state.summary?.let { summary ->
-                    WalletSummaryHero(summary)
-                }
-            }
+            WalletSummaryHero(summary = state.summary, isLoading = state.isLoadingSummary)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -230,28 +223,9 @@ private fun WalletOverviewPanel(state: WalletUiState, onAction: (WalletAction) -
                 WalletActionCard(
                     title = state.collectActionLabel,
                     subtitle = "Render your own QR code so someone else can transfer to you.",
-                    highlightColor = Color(0xFF9AD0FF),
+                    highlightColor = ImBlue,
                     modifier = Modifier.weight(1f),
                     onClick = { onAction(WalletAction.OpenCollectQr) },
-                )
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                WalletActionCard(
-                    title = "History",
-                    subtitle = "Open every incoming and outgoing transfer receipt.",
-                    highlightColor = Color(0xFFE7C86C),
-                    modifier = Modifier.weight(1f),
-                    onClick = { onAction(WalletAction.OpenTransactionHistory) },
-                )
-                WalletActionCard(
-                    title = state.refreshActionLabel,
-                    subtitle = "Reload the latest wallet balance from the backend.",
-                    highlightColor = WalletMutedText,
-                    modifier = Modifier.weight(1f),
-                    onClick = { onAction(WalletAction.RefreshWalletSummary) },
                 )
             }
         }
@@ -346,8 +320,8 @@ private fun WalletReviewPanel(state: WalletUiState, onAction: (WalletAction) -> 
     val resolution = state.resolution ?: return
     Surface(
         shape = RoundedCornerShape(20.dp),
-        color = Color(0x1529FFB2),
-        border = BorderStroke(1.dp, Color(0x265BE7C4)),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.75f),
+        border = BorderStroke(1.dp, WalletPrimaryAccent.copy(alpha = 0.24f)),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(
@@ -365,7 +339,7 @@ private fun WalletReviewPanel(state: WalletUiState, onAction: (WalletAction) -> 
             Text(
                 text = resolution.recipientDisplayName,
                 style = MaterialTheme.typography.titleLarge,
-                color = Color.White,
+                color = ImTextPrimary,
                 fontWeight = FontWeight.SemiBold,
             )
             Text(
@@ -420,8 +394,8 @@ private fun WalletResultPanel(state: WalletUiState, onAction: (WalletAction) -> 
     val receipt = state.completedPayment ?: return
     Surface(
         shape = RoundedCornerShape(20.dp),
-        color = Color(0x1A29FFB2),
-        border = BorderStroke(1.dp, Color(0x265BE7C4)),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.75f),
+        border = BorderStroke(1.dp, WalletPrimaryAccent.copy(alpha = 0.24f)),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(
@@ -433,7 +407,7 @@ private fun WalletResultPanel(state: WalletUiState, onAction: (WalletAction) -> 
             Text(
                 text = "${receipt.direction.name.lowercase().replaceFirstChar { it.uppercase() }} · ${receipt.currency} ${receipt.amount}",
                 style = MaterialTheme.typography.titleLarge,
-                color = Color.White,
+                color = ImTextPrimary,
                 fontWeight = FontWeight.SemiBold,
             )
             Text(
@@ -443,7 +417,7 @@ private fun WalletResultPanel(state: WalletUiState, onAction: (WalletAction) -> 
                     "From ${receipt.payerDisplayName}"
                 },
                 style = MaterialTheme.typography.bodyMedium,
-                color = Color(0xFFDCEBFA),
+                color = WalletSecondaryText,
             )
             WalletDirectionBadge(
                 text = if (receipt.direction == WalletTransferDirection.Sent) "Money sent" else "Money received",
@@ -518,7 +492,7 @@ private fun WalletCollectPanel(state: WalletUiState, onAction: (WalletAction) ->
             Text(
                 text = "Collect with your wallet QR",
                 style = MaterialTheme.typography.titleLarge,
-                color = Color.White,
+                color = ImTextPrimary,
                 fontWeight = FontWeight.SemiBold,
             )
             state.summary?.let { summary ->
@@ -579,7 +553,7 @@ private fun WalletCollectPanel(state: WalletUiState, onAction: (WalletAction) ->
                             else -> "Fixed request for CNY ${state.collectAmountDraft} with note: ${state.collectNoteDraft}"
                         },
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Color.White,
+                        color = ImTextPrimary,
                     )
                     Text(
                         text = state.collectPayload.ifBlank { "—" },
@@ -625,27 +599,25 @@ private fun WalletHistoryPanel(state: WalletUiState, onAction: (WalletAction) ->
             Text(
                 text = "Transfer history",
                 style = MaterialTheme.typography.titleLarge,
-                color = Color.White,
+                color = ImTextPrimary,
                 fontWeight = FontWeight.SemiBold,
             )
             if (state.isHistoryLoading) {
-                Text(
-                    text = "Loading transfer history...",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = WalletSecondaryText,
+                WalletInlineStatusCard(
+                    title = "Loading transfer history",
+                    supporting = "Checking the network and cached records for your latest wallet activity.",
                 )
             } else if (state.historyItems.isEmpty()) {
-                Text(
-                    text = "No wallet transfers yet.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = WalletSecondaryText,
+                WalletInlineStatusCard(
+                    title = "No transfer history yet",
+                    supporting = "When you send or receive money, the receipt list will appear here and remain available offline.",
                 )
             } else {
                 state.historyItems.forEach { item ->
                     Surface(
                         shape = RoundedCornerShape(18.dp),
-                        color = Color(0x1029FFB2),
-                        border = BorderStroke(1.dp, Color(0x2629FFB2)),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)),
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable { onAction(WalletAction.OpenReceiptDetail(item.paymentId)) },
@@ -671,11 +643,11 @@ private fun WalletHistoryPanel(state: WalletUiState, onAction: (WalletAction) ->
                                     fontWeight = FontWeight.SemiBold,
                                 )
                             }
-                            Text(
-                                text = item.counterpartyDisplayName,
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = Color.White,
-                            )
+                                Text(
+                                    text = item.counterpartyDisplayName,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = ImTextPrimary,
+                                )
                             Text(
                                 text = "${item.status} · ${item.paidAt}",
                                 style = MaterialTheme.typography.bodySmall,
@@ -711,14 +683,13 @@ private fun WalletReceiptPanel(state: WalletUiState, onAction: (WalletAction) ->
             Text(
                 text = "Transfer receipt",
                 style = MaterialTheme.typography.titleLarge,
-                color = Color.White,
+                color = ImTextPrimary,
                 fontWeight = FontWeight.SemiBold,
             )
             if (state.isReceiptLoading && receipt == null) {
-                Text(
-                    text = "Loading receipt details...",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = WalletSecondaryText,
+                WalletInlineStatusCard(
+                    title = "Loading receipt details",
+                    supporting = "Fetching the latest receipt details or falling back to your cached copy.",
                 )
             } else if (receipt != null) {
                 WalletDirectionBadge(
@@ -738,6 +709,11 @@ private fun WalletReceiptPanel(state: WalletUiState, onAction: (WalletAction) ->
                 ReceiptLine("Status", receipt.status)
                 ReceiptLine("Processed at", receipt.paidAt)
                 ReceiptLine("Note", receipt.note.ifBlank { "—" })
+            } else {
+                WalletInlineStatusCard(
+                    title = "Receipt unavailable",
+                    supporting = "This receipt is not available yet. Try refreshing when the network is back.",
+                )
             }
             Button(
                 onClick = { onAction(WalletAction.OpenTransactionHistory) },
@@ -750,11 +726,18 @@ private fun WalletReceiptPanel(state: WalletUiState, onAction: (WalletAction) ->
 }
 
 @Composable
-private fun WalletSummaryHero(summary: WalletSummaryUi) {
+private fun WalletSummaryHero(summary: WalletSummaryUi?, isLoading: Boolean) {
+    val currencyText = summary?.currency ?: "CNY"
+    val balanceText = summary?.balance ?: if (isLoading) "Loading" else "--"
+    val identityText = when {
+        summary != null -> "${summary.displayName} · ${summary.accountId}"
+        isLoading -> "Cached wallet summary is loading..."
+        else -> "Wallet summary unavailable offline."
+    }
     Surface(
         shape = RoundedCornerShape(20.dp),
-        color = Color(0x1029FFB2),
-        border = BorderStroke(1.dp, Color(0x2629FFB2)),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.78f),
+        border = BorderStroke(1.dp, WalletPrimaryAccent.copy(alpha = 0.24f)),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(
@@ -769,14 +752,42 @@ private fun WalletSummaryHero(summary: WalletSummaryUi) {
                 color = WalletMutedText,
             )
             Text(
-                text = "${summary.currency} ${summary.balance}",
+                text = "$currencyText $balanceText",
                 style = MaterialTheme.typography.headlineMedium,
-                color = Color.White,
+                color = ImTextPrimary,
                 fontWeight = FontWeight.Bold,
             )
             Text(
-                text = "${summary.displayName} · ${summary.accountId}",
+                text = identityText,
                 style = MaterialTheme.typography.bodyMedium,
+                color = WalletSecondaryText,
+            )
+        }
+    }
+}
+
+@Composable
+private fun WalletInlineStatusCard(title: String, supporting: String) {
+    Surface(
+        shape = RoundedCornerShape(18.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                color = ImTextPrimary,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = supporting,
+                style = MaterialTheme.typography.bodySmall,
                 color = WalletSecondaryText,
             )
         }
@@ -806,8 +817,10 @@ private fun WalletActionCard(
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleMedium,
-                color = Color.White,
+                color = ImTextPrimary,
                 fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
             Text(
                 text = subtitle,
@@ -824,7 +837,7 @@ private fun WalletSectionIntro(title: String, subtitle: String) {
         Text(
             text = title,
             style = MaterialTheme.typography.titleMedium,
-            color = Color.White,
+            color = ImTextPrimary,
             fontWeight = FontWeight.SemiBold,
         )
         Text(
@@ -845,7 +858,7 @@ private fun WalletDirectionBadge(text: String, accentColor: Color = WalletPrimar
             text = text,
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
             style = MaterialTheme.typography.labelMedium,
-            color = Color.White,
+            color = ImTextPrimary,
             fontWeight = FontWeight.Medium,
         )
     }
@@ -860,8 +873,8 @@ private fun WalletStatStrip(
 ) {
     Surface(
         shape = RoundedCornerShape(16.dp),
-        color = Color(0x102D4258),
-        border = BorderStroke(1.dp, Color(0x223D5F7B)),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.6f)),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Row(
@@ -898,7 +911,7 @@ private fun WalletStatItem(label: String, value: String, modifier: Modifier = Mo
         Text(
             text = value,
             style = MaterialTheme.typography.titleSmall,
-            color = Color.White,
+            color = ImTextPrimary,
             fontWeight = FontWeight.SemiBold,
         )
     }
@@ -915,7 +928,7 @@ private fun ReceiptLine(label: String, value: String) {
         Text(
             text = value,
             style = MaterialTheme.typography.bodyLarge,
-            color = Color.White,
+            color = ImTextPrimary,
         )
     }
 }

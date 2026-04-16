@@ -4,7 +4,6 @@ import android.content.Context
 import com.kzzz3.argus.lens.data.conversation.ConversationRepository
 import com.kzzz3.argus.lens.data.conversation.applyLocalMessageStatus
 import com.kzzz3.argus.lens.data.conversation.clearConversationUnreadCount
-import com.kzzz3.argus.lens.feature.contacts.ConversationCreationMode
 import com.kzzz3.argus.lens.feature.inbox.ChatMessageDeliveryStatus
 import com.kzzz3.argus.lens.feature.inbox.ChatMessageAttachment
 import com.kzzz3.argus.lens.feature.inbox.ChatMessageItem
@@ -188,14 +187,6 @@ class LocalConversationRepository(
         return state
     }
 
-    override suspend fun addConversationMember(
-        state: ConversationThreadsState,
-        conversationId: String,
-        memberAccountId: String,
-    ): ConversationThreadsState {
-        return state
-    }
-
     override suspend fun sendMessage(
         state: ConversationThreadsState,
         conversationId: String,
@@ -250,14 +241,6 @@ class LocalConversationRepository(
         )
     }
 
-    override suspend fun createConversationRemote(
-        state: ConversationThreadsState,
-        displayName: String,
-        mode: ConversationCreationMode,
-    ): ConversationThreadsState {
-        return createConversation(state, displayName, mode)
-    }
-
     override fun markConversationAsRead(
         state: ConversationThreadsState,
         conversationId: String,
@@ -287,39 +270,6 @@ class LocalConversationRepository(
                 }
             }
         )
-    }
-
-    override fun createConversation(
-        state: ConversationThreadsState,
-        displayName: String,
-        mode: ConversationCreationMode,
-    ): ConversationThreadsState {
-        val normalizedName = displayName.trim()
-        if (normalizedName.isEmpty()) return state
-
-        val existingThread = state.threads.firstOrNull { it.title.equals(normalizedName, ignoreCase = true) }
-        if (existingThread != null) return state
-
-        val nextThread = InboxConversationThread(
-            id = createConversationId(normalizedName, state.threads.size + 1),
-            title = normalizedName,
-            subtitle = if (mode == ConversationCreationMode.Group) {
-                "New local group conversation"
-            } else {
-                "New local conversation"
-            },
-            unreadCount = 0,
-            messages = emptyList(),
-        )
-        return state.copy(threads = listOf(nextThread) + state.threads)
-    }
-
-    override fun resolveConversationId(
-        state: ConversationThreadsState,
-        displayName: String,
-    ): String {
-        val normalizedName = displayName.trim()
-        return state.threads.firstOrNull { it.title.equals(normalizedName, ignoreCase = true) }?.id.orEmpty()
     }
 
     override fun resolveOutgoingMessages(
@@ -424,14 +374,3 @@ private fun shouldFailOutgoingMessage(
     return message.body.startsWith("[Video]") || message.body.contains("#fail", ignoreCase = true)
 }
 
-private fun createConversationId(
-    displayName: String,
-    ordinal: Int,
-): String {
-    val slug = displayName
-        .lowercase()
-        .replace(Regex("[^a-z0-9]+"), "-")
-        .trim('-')
-        .ifEmpty { "local-contact" }
-    return "conv-$slug-$ordinal"
-}

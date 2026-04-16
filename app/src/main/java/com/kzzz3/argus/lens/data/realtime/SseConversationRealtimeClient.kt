@@ -31,6 +31,8 @@ class SseConversationRealtimeClient(
                     .addPathSegments("api/v1/conversations/events")
                     .build(),
             )
+            .addHeader("Accept", "text/event-stream")
+            .addHeader("Cache-Control", "no-cache")
             .addHeader("Authorization", "Bearer $accessToken")
         if (!lastEventId.isNullOrBlank()) {
             requestBuilder.addHeader("Last-Event-ID", lastEventId)

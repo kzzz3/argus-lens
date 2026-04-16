@@ -5,12 +5,13 @@ import kotlinx.parcelize.Parcelize
 
 @Parcelize
 enum class AppRoute: Parcelable {
-    Home,
     AuthEntry,
     RegisterEntry,
     Inbox,
     Contacts,
+    NewFriends,
     Wallet,
+    Me,
     CallSession,
     Chat;
 }

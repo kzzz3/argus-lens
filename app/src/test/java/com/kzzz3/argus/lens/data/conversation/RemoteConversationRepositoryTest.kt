@@ -2,7 +2,6 @@ package com.kzzz3.argus.lens.data.conversation
 
 import com.kzzz3.argus.lens.app.session.AppSessionState
 import com.kzzz3.argus.lens.data.session.SessionRepository
-import com.kzzz3.argus.lens.feature.contacts.ConversationCreationMode
 import com.kzzz3.argus.lens.feature.inbox.ChatMessageAttachment
 import com.kzzz3.argus.lens.feature.inbox.ChatMessageItem
 import com.kzzz3.argus.lens.feature.inbox.ChatState
@@ -170,17 +169,6 @@ class RemoteConversationRepositoryTest {
             authorizationHeader: String,
         ): Response<List<RemoteConversationSummary>> = Response.success(emptyList())
 
-        override suspend fun createConversation(
-            authorizationHeader: String,
-            request: CreateConversationRequest,
-        ): Response<RemoteConversationSummary> = error("Not used in test")
-
-        override suspend fun addConversationMember(
-            conversationId: String,
-            authorizationHeader: String,
-            request: AddConversationMemberRequest,
-        ): Response<RemoteConversationDetail> = error("Not used in test")
-
         override suspend fun getConversationDetail(
             conversationId: String,
             authorizationHeader: String,
@@ -237,17 +225,13 @@ class RemoteConversationRepositoryTest {
         override suspend fun clearConversationThreads(accountId: String) = Unit
         override suspend fun refreshConversationMessages(state: ConversationThreadsState, conversationId: String): ConversationThreadsState = state
         override suspend fun refreshConversationDetail(state: ConversationThreadsState, conversationId: String): ConversationThreadsState = state
-        override suspend fun addConversationMember(state: ConversationThreadsState, conversationId: String, memberAccountId: String): ConversationThreadsState = state
         override suspend fun sendMessage(state: ConversationThreadsState, conversationId: String, localMessageId: String, body: String, attachment: ChatMessageAttachment?): ConversationThreadsState = state
         override suspend fun acknowledgeMessageDelivery(state: ConversationThreadsState, conversationId: String, messageId: String): ConversationThreadsState = state
         override suspend fun acknowledgeMessageRead(state: ConversationThreadsState, conversationId: String, messageId: String): ConversationThreadsState = state
         override suspend fun recallMessage(state: ConversationThreadsState, conversationId: String, messageId: String): ConversationThreadsState = state
         override suspend fun markConversationReadRemote(state: ConversationThreadsState, conversationId: String): ConversationThreadsState = state
-        override suspend fun createConversationRemote(state: ConversationThreadsState, displayName: String, mode: ConversationCreationMode): ConversationThreadsState = state
         override fun markConversationAsRead(state: ConversationThreadsState, conversationId: String): ConversationThreadsState = state
         override fun updateConversationFromChatState(state: ConversationThreadsState, updatedState: ChatState): ConversationThreadsState = state
-        override fun createConversation(state: ConversationThreadsState, displayName: String, mode: ConversationCreationMode): ConversationThreadsState = state
-        override fun resolveConversationId(state: ConversationThreadsState, displayName: String): String = ""
         override fun resolveOutgoingMessages(state: ConversationThreadsState, conversationId: String, messageIds: List<String>): ConversationThreadsState = state
         override fun resolveDeliveredMessages(state: ConversationThreadsState, conversationId: String, messageIds: List<String>): ConversationThreadsState = state
     }

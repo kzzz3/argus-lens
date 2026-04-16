@@ -18,5 +18,4 @@ data class AuthEntryUiState(
     val isPrimaryActionEnabled: Boolean,
     val primaryActionLabel: String,
     val registerActionLabel: String,
-    val secondaryActionLabel: String,
 )

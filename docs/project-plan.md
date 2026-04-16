@@ -14,7 +14,7 @@ The app evolves in two clear stages:
 Lens behaves like a standard mobile IM and payment client:
 
 - login and conversation entry
-- contact list and chat timeline
+- contact list, New Friends entry, and direct-chat timeline
 - text, image, voice, and video messages
 - 1v1 audio/video call entry
 - wallet pay/collect flows and peer transfer initiation
@@ -32,11 +32,11 @@ Lens becomes the Android simulator of smart glasses:
 ## 3. User Experience Responsibilities
 
 ### 3.1 Stage 1 baseline UX
-- chat list, session page, and media composer
+- chat list, direct-chat session page, and media composer
 - press-to-talk or hold-to-record voice interaction
 - image/video picking and capture entry
 - call launch and in-call controls
-- wallet page, QR pay scanner, collect QR, and transfer confirmation flows
+- contacts page with New Friends request handling, wallet page, QR pay scanner, collect QR, and transfer confirmation flows
 
 ### 3.2 Stage 2 wearable UX
 - translucent HUD instead of full-screen phone-first UI
@@ -50,7 +50,7 @@ Lens becomes the Android simulator of smart glasses:
 
 ### Functional modules
 - authentication and device enrollment
-- contacts and conversations
+- contacts, friend requests, and direct conversations
 - text/media composer
 - voice capture and send
 - RTC session entry and signaling client
@@ -126,7 +126,7 @@ Lens becomes the Android simulator of smart glasses:
 ## 7.1 Stage 1 — WeChat Baseline Features
 
 ### IM baseline
-- single chat and group chat timeline
+- direct-chat timeline
 - local draft and resend queue
 - message status: sending / sent / delivered / failed / recalled
 - unread cursor alignment with Sync-Key or timeline diff
@@ -222,7 +222,7 @@ Lens becomes the Android simulator of smart glasses:
 - [x] Local-first auth shell with explicit `AUTH_MODE` boundary (`LOCAL` / `REMOTE`)
 - [x] Login and registration screens with reducer-driven validation and submission flow
 - [x] Inbox shell, contacts shell, chat shell, and call shell are all in place
-- [x] Single-chat and group-chat local creation entry is in place
+- [x] Single-chat shell and contact-driven direct-chat entry are in place
 - [x] Chat composer supports text, image, video, and voice draft paths
 - [x] Voice draft recording shell includes timer/cancel/finish behavior
 - [x] Call shell includes local connecting/active/ended lifecycle and timer UX

@@ -33,8 +33,8 @@ fun createAuthEntryUiState(
     val passwordError = rawPasswordError?.takeIf { shouldShowPasswordError }
 
     return AuthEntryUiState(
-        title = "Stage 1 Login Entry",
-        subtitle = "This step wires the password login flow to the stage-1 auth API.",
+        title = "Welcome back",
+        subtitle = "Sign in to enter your chats, contacts, wallet, and profile immediately.",
         selectedMode = formState.mode,
         account = formState.account,
         password = formState.password,
@@ -45,6 +45,5 @@ fun createAuthEntryUiState(
         isPrimaryActionEnabled = isPasswordLoginSubmittable(formState) && !formState.isSubmitting,
         primaryActionLabel = if (formState.isSubmitting) "Signing in..." else "Sign in with password",
         registerActionLabel = "Create new account",
-        secondaryActionLabel = "Back to HUD"
     )
 }

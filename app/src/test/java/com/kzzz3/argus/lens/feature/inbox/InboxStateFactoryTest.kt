@@ -16,6 +16,7 @@ class InboxStateFactoryTest {
                 accessToken = "token",
             ),
             realtimeStatusLabel = "live",
+            shellStatusLabel = "Online",
             threads = listOf(
                 InboxConversationThread(
                     id = "conv-1",
@@ -50,6 +51,7 @@ class InboxStateFactoryTest {
                 accessToken = "token",
             ),
             realtimeStatusLabel = "live",
+            shellStatusLabel = "Online",
             threads = listOf(
                 InboxConversationThread(
                     id = "conv-2",
@@ -85,9 +87,10 @@ class InboxStateFactoryTest {
             ),
             threads = emptyList(),
             realtimeStatusLabel = "recovering",
+            shellStatusLabel = "Offline",
         )
 
-        assertEquals("Account ID: argus_tester. Realtime: recovering.", uiState.sessionSummary)
+        assertEquals("Account ID: argus_tester. Shell: Offline · Realtime: recovering.", uiState.sessionSummary)
     }
 
     @Test
@@ -99,6 +102,7 @@ class InboxStateFactoryTest {
                 accessToken = "token",
             ),
             realtimeStatusLabel = "live",
+            shellStatusLabel = "Online",
             threads = listOf(
                 InboxConversationThread(
                     id = "conv-file",
@@ -139,6 +143,7 @@ class InboxStateFactoryTest {
                 accessToken = "token",
             ),
             realtimeStatusLabel = "live",
+            shellStatusLabel = "Online",
             threads = listOf(
                 InboxConversationThread(
                     id = "conv-3",

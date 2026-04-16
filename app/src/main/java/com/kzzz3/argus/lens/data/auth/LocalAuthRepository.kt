@@ -8,7 +8,21 @@ class LocalAuthRepository : AuthRepository {
                 accountId = normalizedAccountId,
                 displayName = normalizedAccountId,
                 accessToken = accessToken,
+                refreshToken = createLocalRefreshToken(normalizedAccountId),
                 message = "Local session restored.",
+            )
+        )
+    }
+
+    override suspend fun refreshSession(refreshToken: String): AuthRepositoryResult {
+        val normalizedAccountId = refreshToken.removePrefix("local-refresh-token-").ifBlank { "argus-user" }
+        return AuthRepositoryResult.Success(
+            session = AuthSession(
+                accountId = normalizedAccountId,
+                displayName = normalizedAccountId,
+                accessToken = createLocalAccessToken(normalizedAccountId),
+                refreshToken = createLocalRefreshToken(normalizedAccountId),
+                message = "Local access token refreshed.",
             )
         )
     }
@@ -22,6 +36,7 @@ class LocalAuthRepository : AuthRepository {
                 accountId = trimmedAccount,
                 displayName = resolvedDisplayName,
                 accessToken = createLocalAccessToken(trimmedAccount),
+                refreshToken = createLocalRefreshToken(trimmedAccount),
                 message = "Local login success. Network auth is temporarily bypassed.",
             )
         )
@@ -40,6 +55,7 @@ class LocalAuthRepository : AuthRepository {
                 accountId = trimmedAccount,
                 displayName = resolvedDisplayName,
                 accessToken = createLocalAccessToken(trimmedAccount),
+                refreshToken = createLocalRefreshToken(trimmedAccount),
                 message = "Local registration success. Network auth is temporarily bypassed.",
             )
         )
@@ -51,4 +67,11 @@ private fun createLocalAccessToken(
 ): String {
     val normalizedAccountId = accountId.trim().ifEmpty { "argus-user" }
     return "local-token-$normalizedAccountId"
+}
+
+private fun createLocalRefreshToken(
+    accountId: String,
+): String {
+    val normalizedAccountId = accountId.trim().ifEmpty { "argus-user" }
+    return "local-refresh-token-$normalizedAccountId"
 }

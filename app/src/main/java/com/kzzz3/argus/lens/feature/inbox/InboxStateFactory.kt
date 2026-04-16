@@ -6,19 +6,21 @@ fun createInboxUiState(
     sessionState: AppSessionState,
     threads: List<InboxConversationThread>,
     realtimeStatusLabel: String,
+    shellStatusLabel: String,
 ): InboxUiState {
     return InboxUiState(
-        title = "Stage-1 Inbox",
-        subtitle = "This module now renders a real local conversation list instead of the old placeholder.",
+        title = "Chats",
+        subtitle = "A focused IM inbox with cached entry, faster shell load, and denser conversation cards.",
+        shellStatusLabel = shellStatusLabel,
         sessionLabel = if (sessionState.isAuthenticated) {
             "Signed in as ${sessionState.displayName}"
         } else {
             "No active session"
         },
         sessionSummary = if (sessionState.isAuthenticated) {
-            "Account ID: ${sessionState.accountId}. Realtime: $realtimeStatusLabel."
+            "Account ID: ${sessionState.accountId}. Shell: $shellStatusLabel · Realtime: $realtimeStatusLabel."
         } else {
-            "Session is empty. Realtime: $realtimeStatusLabel."
+            "Session is empty. Shell: $shellStatusLabel · Realtime: $realtimeStatusLabel."
         },
         conversations = threads.map { thread ->
             val latestMessage = thread.messages.lastOrNull()
@@ -54,8 +56,5 @@ fun createInboxUiState(
                 latestMessageStatusColorToken = statusColorToken,
             )
         },
-        contactsActionLabel = "Open contacts",
-        walletActionLabel = "Open wallet",
-        primaryActionLabel = "Sign out to HUD",
     )
 }

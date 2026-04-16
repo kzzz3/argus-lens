@@ -14,19 +14,6 @@ interface ConversationApiService {
         @Header("Authorization") authorizationHeader: String,
     ): Response<List<RemoteConversationSummary>>
 
-    @POST("api/v1/conversations")
-    suspend fun createConversation(
-        @Header("Authorization") authorizationHeader: String,
-        @Body request: CreateConversationRequest,
-    ): Response<RemoteConversationSummary>
-
-    @POST("api/v1/conversations/{conversationId}/members")
-    suspend fun addConversationMember(
-        @retrofit2.http.Path("conversationId") conversationId: String,
-        @Header("Authorization") authorizationHeader: String,
-        @Body request: AddConversationMemberRequest,
-    ): Response<RemoteConversationDetail>
-
     @GET("api/v1/conversations/{conversationId}")
     suspend fun getConversationDetail(
         @retrofit2.http.Path("conversationId") conversationId: String,

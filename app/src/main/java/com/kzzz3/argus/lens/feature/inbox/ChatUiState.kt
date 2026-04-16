@@ -3,13 +3,6 @@ package com.kzzz3.argus.lens.feature.inbox
 data class ChatUiState(
     val conversationTitle: String,
     val conversationSubtitle: String,
-    val memberSummary: String,
-    val draftMemberAccountId: String,
-    val addMemberLabel: String,
-    val addMemberPlaceholder: String,
-    val addMemberActionLabel: String,
-    val isAddMemberEnabled: Boolean,
-    val isGroupConversation: Boolean,
     val statusMessage: String?,
     val isStatusError: Boolean,
     val messages: List<ChatMessageItem>,

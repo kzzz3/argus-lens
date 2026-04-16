@@ -20,44 +20,15 @@ fun reduceContactsState(
             effect = ContactsEffect.NavigateBackToInbox,
         )
 
-        is ContactsAction.UpdateDraftConversationName -> ContactsReducerResult(
-            state = currentState.copy(draftConversationName = action.value),
-            effect = null,
+        ContactsAction.OpenNewFriends -> ContactsReducerResult(
+            state = currentState,
+            effect = ContactsEffect.OpenNewFriends,
         )
 
         is ContactsAction.UpdateDraftFriendAccountId -> ContactsReducerResult(
             state = currentState.copy(draftFriendAccountId = action.value),
             effect = null,
         )
-
-        ContactsAction.ToggleCreationMode -> ContactsReducerResult(
-            state = currentState.copy(
-                creationMode = if (currentState.creationMode == ConversationCreationMode.Direct) {
-                    ConversationCreationMode.Group
-                } else {
-                    ConversationCreationMode.Direct
-                }
-            ),
-            effect = null,
-        )
-
-        ContactsAction.CreateConversation -> {
-            val trimmedName = currentState.draftConversationName.trim()
-            if (trimmedName.isEmpty()) {
-                ContactsReducerResult(
-                    state = currentState,
-                    effect = null,
-                )
-            } else {
-                ContactsReducerResult(
-                    state = currentState.copy(draftConversationName = ""),
-                    effect = ContactsEffect.CreateConversation(
-                        displayName = trimmedName,
-                        mode = currentState.creationMode,
-                    ),
-                )
-            }
-        }
 
         ContactsAction.SubmitAddFriend -> {
             val trimmedFriendAccountId = currentState.draftFriendAccountId.trim()

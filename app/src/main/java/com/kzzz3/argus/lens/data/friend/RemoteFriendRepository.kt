@@ -21,7 +21,7 @@ class RemoteFriendRepository(
             if (!response.isSuccessful) {
                 parseFailure(response.code(), response.errorBody()?.string().orEmpty())
             } else {
-                FriendRepositoryResult.Success(
+                FriendRepositoryResult.FriendsSuccess(
                     friends = response.body().orEmpty().map { it.toEntry() }
                 )
             }
@@ -30,14 +30,14 @@ class RemoteFriendRepository(
         }
     }
 
-    override suspend fun addFriend(friendAccountId: String): FriendRepositoryResult {
+    override suspend fun sendFriendRequest(friendAccountId: String): FriendRepositoryResult {
         val token = sessionRepository.loadSession().accessToken
         if (token.isBlank()) {
             return FriendRepositoryResult.Failure("INVALID_CREDENTIALS", "No active session token.")
         }
 
         return try {
-            val response = friendApiService.addFriend(
+            val response = friendApiService.sendFriendRequest(
                 authorizationHeader = "Bearer $token",
                 request = AddFriendRequestBody(friendAccountId.trim()),
             )
@@ -45,9 +45,97 @@ class RemoteFriendRepository(
                 parseFailure(response.code(), response.errorBody()?.string().orEmpty())
             } else {
                 val created = response.body() ?: return FriendRepositoryResult.Failure("EMPTY_FRIEND_RESPONSE", "Friend service returned an empty response.")
-                FriendRepositoryResult.Success(
-                    friends = listOf(created.toEntry()),
-                    message = "Friend added successfully.",
+                FriendRepositoryResult.FriendRequestSuccess(
+                    request = created.toRequestEntry(),
+                    message = "Friend request sent.",
+                )
+            }
+        } catch (_: IOException) {
+            FriendRepositoryResult.Failure("NETWORK_UNAVAILABLE", "Cannot reach friend service.")
+        }
+    }
+
+    override suspend fun listFriendRequests(): FriendRepositoryResult {
+        val token = sessionRepository.loadSession().accessToken
+        if (token.isBlank()) {
+            return FriendRepositoryResult.Failure("INVALID_CREDENTIALS", "No active session token.")
+        }
+
+        return try {
+            val response = friendApiService.listFriendRequests("Bearer $token")
+            if (!response.isSuccessful) {
+                parseFailure(response.code(), response.errorBody()?.string().orEmpty())
+            } else {
+                val body = response.body() ?: return FriendRepositoryResult.Failure("EMPTY_REQUESTS_RESPONSE", "Friend service returned an empty response.")
+                FriendRepositoryResult.RequestsSuccess(
+                    snapshot = FriendRequestsSnapshot(
+                        incoming = body.incoming.map { it.toRequestEntry() },
+                        outgoing = body.outgoing.map { it.toRequestEntry() },
+                    ),
+                )
+            }
+        } catch (_: IOException) {
+            FriendRepositoryResult.Failure("NETWORK_UNAVAILABLE", "Cannot reach friend service.")
+        }
+    }
+
+    override suspend fun acceptFriendRequest(requestId: String): FriendRepositoryResult {
+        val token = sessionRepository.loadSession().accessToken
+        if (token.isBlank()) {
+            return FriendRepositoryResult.Failure("INVALID_CREDENTIALS", "No active session token.")
+        }
+
+        return try {
+            val response = friendApiService.acceptFriendRequest(requestId.trim(), "Bearer $token")
+            if (!response.isSuccessful) {
+                parseFailure(response.code(), response.errorBody()?.string().orEmpty())
+            } else {
+                val accepted = response.body() ?: return FriendRepositoryResult.Failure("EMPTY_FRIEND_RESPONSE", "Friend service returned an empty response.")
+                FriendRepositoryResult.FriendsSuccess(
+                    friends = listOf(accepted.toEntry()),
+                    message = "Friend request accepted.",
+                )
+            }
+        } catch (_: IOException) {
+            FriendRepositoryResult.Failure("NETWORK_UNAVAILABLE", "Cannot reach friend service.")
+        }
+    }
+
+    override suspend fun rejectFriendRequest(requestId: String): FriendRepositoryResult {
+        return resolveRequestMutation(
+            requestId = requestId,
+            mutation = { token -> friendApiService.rejectFriendRequest(requestId.trim(), "Bearer $token") },
+            successMessage = "Friend request rejected.",
+        )
+    }
+
+    override suspend fun ignoreFriendRequest(requestId: String): FriendRepositoryResult {
+        return resolveRequestMutation(
+            requestId = requestId,
+            mutation = { token -> friendApiService.ignoreFriendRequest(requestId.trim(), "Bearer $token") },
+            successMessage = "Friend request ignored.",
+        )
+    }
+
+    private suspend fun resolveRequestMutation(
+        requestId: String,
+        mutation: suspend (String) -> retrofit2.Response<FriendRequestResponse>,
+        successMessage: String,
+    ): FriendRepositoryResult {
+        val token = sessionRepository.loadSession().accessToken
+        if (token.isBlank()) {
+            return FriendRepositoryResult.Failure("INVALID_CREDENTIALS", "No active session token.")
+        }
+
+        return try {
+            val response = mutation(token)
+            if (!response.isSuccessful) {
+                parseFailure(response.code(), response.errorBody()?.string().orEmpty())
+            } else {
+                val updated = response.body() ?: return FriendRepositoryResult.Failure("EMPTY_FRIEND_RESPONSE", "Friend service returned an empty response.")
+                FriendRepositoryResult.FriendRequestSuccess(
+                    request = updated.toRequestEntry(),
+                    message = successMessage,
                 )
             }
         } catch (_: IOException) {
@@ -65,5 +153,16 @@ class RemoteFriendRepository(
 
     private fun FriendResponse.toEntry(): FriendEntry {
         return FriendEntry(accountId = accountId, displayName = displayName, note = note)
+    }
+
+    private fun FriendRequestResponse.toRequestEntry(): FriendRequestEntry {
+        return FriendRequestEntry(
+            requestId = requestId,
+            accountId = accountId,
+            displayName = displayName,
+            direction = direction,
+            status = status,
+            note = note,
+        )
     }
 }

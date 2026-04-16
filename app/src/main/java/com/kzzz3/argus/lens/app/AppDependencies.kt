@@ -44,8 +44,8 @@ fun rememberAppDependencies(
     val mediaRepository = remember(sessionRepository, context) {
         createMediaRepository(sessionRepository, context)
     }
-    val paymentRepository = remember(sessionRepository) {
-        createPaymentRepository(sessionRepository)
+    val paymentRepository = remember(sessionRepository, context) {
+        createPaymentRepository(context, sessionRepository)
     }
     val realtimeClient = remember { createConversationRealtimeClient() }
     val appShellCoordinator = remember(authRepository, sessionRepository, conversationRepository) {

@@ -14,6 +14,12 @@ class RetrofitAuthRepository(
         }
     }
 
+    override suspend fun refreshSession(refreshToken: String): AuthRepositoryResult {
+        return executeRequest {
+            authApiService.refresh(RefreshTokenRequestBody(refreshToken = refreshToken))
+        }
+    }
+
     override suspend fun login(account: String, password: String): AuthRepositoryResult {
         return executeRequest {
             authApiService.login(LoginRequestBody(account = account, password = password))
@@ -49,6 +55,7 @@ class RetrofitAuthRepository(
                             accountId = body.accountId,
                             displayName = body.displayName,
                             accessToken = body.accessToken,
+                            refreshToken = body.refreshToken.orEmpty(),
                             message = body.message,
                         )
                     )

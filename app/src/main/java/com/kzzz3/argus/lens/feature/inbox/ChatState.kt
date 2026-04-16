@@ -4,8 +4,6 @@ data class ChatState(
     val conversationId: String,
     val conversationTitle: String,
     val conversationSubtitle: String,
-    val memberSummary: String = "",
-    val draftMemberAccountId: String = "",
     val currentUserDisplayName: String,
     val messages: List<ChatMessageItem>,
     val draftMessage: String = "",

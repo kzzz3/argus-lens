@@ -6,10 +6,33 @@ data class FriendEntry(
     val note: String,
 )
 
+data class FriendRequestEntry(
+    val requestId: String,
+    val accountId: String,
+    val displayName: String,
+    val direction: String,
+    val status: String,
+    val note: String,
+)
+
+data class FriendRequestsSnapshot(
+    val incoming: List<FriendRequestEntry>,
+    val outgoing: List<FriendRequestEntry>,
+)
+
 sealed interface FriendRepositoryResult {
-    data class Success(
+    data class FriendsSuccess(
         val friends: List<FriendEntry>,
         val message: String? = null,
+    ) : FriendRepositoryResult
+
+    data class FriendRequestSuccess(
+        val request: FriendRequestEntry,
+        val message: String? = null,
+    ) : FriendRepositoryResult
+
+    data class RequestsSuccess(
+        val snapshot: FriendRequestsSnapshot,
     ) : FriendRepositoryResult
 
     data class Failure(
@@ -20,5 +43,9 @@ sealed interface FriendRepositoryResult {
 
 interface FriendRepository {
     suspend fun listFriends(): FriendRepositoryResult
-    suspend fun addFriend(friendAccountId: String): FriendRepositoryResult
+    suspend fun sendFriendRequest(friendAccountId: String): FriendRepositoryResult
+    suspend fun listFriendRequests(): FriendRepositoryResult
+    suspend fun acceptFriendRequest(requestId: String): FriendRepositoryResult
+    suspend fun rejectFriendRequest(requestId: String): FriendRepositoryResult
+    suspend fun ignoreFriendRequest(requestId: String): FriendRepositoryResult
 }
