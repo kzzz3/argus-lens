@@ -179,8 +179,10 @@ fun ArgusLensApp() {
     var realtimeReconnectGeneration by remember { mutableStateOf(0) }
     var realtimeReconnectJob by remember { mutableStateOf<Job?>(null) }
     var sessionRefreshJob by remember { mutableStateOf<Job?>(null) }
+    var walletRequestGeneration by remember { mutableStateOf(0) }
     var activeRealtimeConnectionId by remember { mutableStateOf("") }
     val realtimeEventMutex = remember { Mutex() }
+    val walletRequestJobs = remember { mutableSetOf<Job>() }
     var friends by remember { mutableStateOf<List<FriendEntry>>(emptyList()) }
     var conversationThreadsState by remember {
         mutableStateOf(previewThreadsState)
@@ -364,11 +366,37 @@ fun ArgusLensApp() {
         currentRoute = route
     }
 
+    fun invalidateWalletRequests() {
+        walletRequestGeneration += 1
+        walletRequestJobs.toList().forEach { it.cancel() }
+        walletRequestJobs.clear()
+    }
+
+    fun isActiveWalletRequest(accountId: String, generation: Int): Boolean {
+        return generation == walletRequestGeneration &&
+            appSessionState.isAuthenticated &&
+            accountId.isNotBlank() &&
+            appSessionState.accountId == accountId
+    }
+
+    fun launchWalletRequest(block: suspend (String, Int) -> Unit) {
+        val requestAccountId = appSessionState.accountId
+        val requestGeneration = walletRequestGeneration
+        val job = coroutineScope.launch {
+            block(requestAccountId, requestGeneration)
+        }
+        walletRequestJobs += job
+        job.invokeOnCompletion {
+            walletRequestJobs.remove(job)
+        }
+    }
+
     fun signOutToEntry(message: String? = null) {
         val signedOutState = appShellCoordinator.createSignedOutState(previewThreadsState)
         val signedOutAccountId = appSessionState.accountId
         sessionRefreshJob?.cancel()
         sessionRefreshJob = null
+        invalidateWalletRequests()
         paymentRepository.clearLocalData(signedOutAccountId)
         appSessionState = AppSessionState()
         authFormState = signedOutState.authFormState.copy(submitResult = message)
@@ -624,6 +652,7 @@ fun ArgusLensApp() {
                                         accessToken = authResult.session.accessToken,
                                         refreshToken = authResult.session.refreshToken,
                                     )
+                                    invalidateWalletRequests()
                                     hydratedConversationAccountId = null
                                     callSessionJob?.cancel()
                                 val signedInState = appShellCoordinator.handleSignedIn(appSessionState)
@@ -681,6 +710,7 @@ fun ArgusLensApp() {
                                         accessToken = authResult.session.accessToken,
                                         refreshToken = authResult.session.refreshToken,
                                     )
+                                    invalidateWalletRequests()
                                     hydratedConversationAccountId = null
                                     callSessionJob?.cancel()
                                     val signedInState = appShellCoordinator.handleSignedIn(appSessionState)
@@ -965,37 +995,47 @@ fun ArgusLensApp() {
                     when (val effect = result.effect) {
                         WalletEffect.NavigateBackToInbox -> openTopLevelRoute(AppRoute.Inbox)
                         WalletEffect.LoadWalletSummary -> {
-                            coroutineScope.launch {
+                            launchWalletRequest { requestAccountId, requestGeneration ->
                                 when (val paymentResult = paymentRepository.getWalletSummary()) {
                                     is PaymentRepositoryResult.WalletSummarySuccess -> {
-                                        walletStateModel = walletStateModel.withWalletSummaryLoaded(paymentResult.summary)
+                                        if (isActiveWalletRequest(requestAccountId, requestGeneration)) {
+                                            walletStateModel = walletStateModel.withWalletSummaryLoaded(paymentResult.summary)
+                                        }
                                     }
                                     is PaymentRepositoryResult.Failure -> {
-                                        walletStateModel = walletStateModel.withWalletSummaryFailure(paymentResult.message)
+                                        if (isActiveWalletRequest(requestAccountId, requestGeneration)) {
+                                            walletStateModel = walletStateModel.withWalletSummaryFailure(paymentResult.message)
+                                        }
                                     }
                                     else -> Unit
                                 }
                             }
                         }
                         is WalletEffect.ResolvePayload -> {
-                            coroutineScope.launch {
+                            launchWalletRequest { requestAccountId, requestGeneration ->
                                 when (val paymentResult = paymentRepository.resolveScanPayload(effect.payload)) {
                                     is PaymentRepositoryResult.ResolutionSuccess -> {
-                                        walletStateModel = walletStateModel.withResolvedPayment(paymentResult.resolution)
+                                        if (isActiveWalletRequest(requestAccountId, requestGeneration)) {
+                                            walletStateModel = walletStateModel.withResolvedPayment(paymentResult.resolution)
+                                        }
                                     }
                                     is PaymentRepositoryResult.Failure -> {
-                                        walletStateModel = walletStateModel.withResolveFailure(paymentResult.message)
+                                        if (isActiveWalletRequest(requestAccountId, requestGeneration)) {
+                                            walletStateModel = walletStateModel.withResolveFailure(paymentResult.message)
+                                        }
                                     }
                                     else -> Unit
                                 }
                             }
                         }
                         is WalletEffect.ConfirmPayment -> {
-                            coroutineScope.launch {
+                            launchWalletRequest { requestAccountId, requestGeneration ->
                                 val amount = effect.amountInput?.toDoubleOrNull()
                                 if (effect.amountInput != null && amount == null) {
-                                    walletStateModel = walletStateModel.withConfirmFailure("Amount must be a valid decimal value.")
-                                    return@launch
+                                    if (isActiveWalletRequest(requestAccountId, requestGeneration)) {
+                                        walletStateModel = walletStateModel.withConfirmFailure("Amount must be a valid decimal value.")
+                                    }
+                                    return@launchWalletRequest
                                 }
                                 when (
                                     val paymentResult = paymentRepository.confirmPayment(
@@ -1005,36 +1045,48 @@ fun ArgusLensApp() {
                                     )
                                 ) {
                                     is PaymentRepositoryResult.ConfirmationSuccess -> {
-                                        walletStateModel = walletStateModel.withConfirmedPayment(paymentResult.receipt)
+                                        if (isActiveWalletRequest(requestAccountId, requestGeneration)) {
+                                            walletStateModel = walletStateModel.withConfirmedPayment(paymentResult.receipt)
+                                        }
                                     }
                                     is PaymentRepositoryResult.Failure -> {
-                                        walletStateModel = walletStateModel.withConfirmFailure(paymentResult.message)
+                                        if (isActiveWalletRequest(requestAccountId, requestGeneration)) {
+                                            walletStateModel = walletStateModel.withConfirmFailure(paymentResult.message)
+                                        }
                                     }
                                     else -> Unit
                                 }
                             }
                         }
                         WalletEffect.LoadPaymentHistory -> {
-                            coroutineScope.launch {
+                            launchWalletRequest { requestAccountId, requestGeneration ->
                                 when (val paymentResult = paymentRepository.listPayments()) {
                                     is PaymentRepositoryResult.HistorySuccess -> {
-                                        walletStateModel = walletStateModel.withHistoryLoaded(paymentResult.history)
+                                        if (isActiveWalletRequest(requestAccountId, requestGeneration)) {
+                                            walletStateModel = walletStateModel.withHistoryLoaded(paymentResult.history)
+                                        }
                                     }
                                     is PaymentRepositoryResult.Failure -> {
-                                        walletStateModel = walletStateModel.withHistoryFailure(paymentResult.message)
+                                        if (isActiveWalletRequest(requestAccountId, requestGeneration)) {
+                                            walletStateModel = walletStateModel.withHistoryFailure(paymentResult.message)
+                                        }
                                     }
                                     else -> Unit
                                 }
                             }
                         }
                         is WalletEffect.LoadPaymentReceipt -> {
-                            coroutineScope.launch {
+                            launchWalletRequest { requestAccountId, requestGeneration ->
                                 when (val paymentResult = paymentRepository.getPaymentReceipt(effect.paymentId)) {
                                     is PaymentRepositoryResult.ReceiptSuccess -> {
-                                        walletStateModel = walletStateModel.withReceiptLoaded(paymentResult.receipt)
+                                        if (isActiveWalletRequest(requestAccountId, requestGeneration)) {
+                                            walletStateModel = walletStateModel.withReceiptLoaded(paymentResult.receipt)
+                                        }
                                     }
                                     is PaymentRepositoryResult.Failure -> {
-                                        walletStateModel = walletStateModel.withReceiptFailure(paymentResult.message)
+                                        if (isActiveWalletRequest(requestAccountId, requestGeneration)) {
+                                            walletStateModel = walletStateModel.withReceiptFailure(paymentResult.message)
+                                        }
                                     }
                                     else -> Unit
                                 }
