@@ -21,7 +21,7 @@ fun createWalletUiState(state: WalletState): WalletUiState {
 
     return WalletUiState(
         page = state.page,
-        shouldLoadSummary = state.summary == null && !state.isLoadingSummary,
+        shouldLoadSummary = state.summary == null && !state.isLoadingSummary && !state.hasAttemptedSummaryLoad,
         title = title,
         subtitle = subtitle,
         statusMessage = state.statusMessage,

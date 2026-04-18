@@ -76,6 +76,18 @@ class WalletReducerTest {
     }
 
     @Test
+    fun walletSummaryFailure_stopsAutomaticReloadUntilManualRetry() {
+        val failedState = WalletState()
+            .withWalletSummaryLoading()
+            .withWalletSummaryFailure("offline")
+
+        val uiState = createWalletUiState(failedState)
+
+        assertFalse(uiState.shouldLoadSummary)
+        assertTrue(failedState.hasAttemptedSummaryLoad)
+    }
+
+    @Test
     fun historyLoaded_mapsCounterpartyFromViewerPerspective() {
         val updated = WalletState(currentAccountId = "tester").withHistoryLoaded(
             listOf(

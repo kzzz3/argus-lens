@@ -34,7 +34,9 @@ class CachedPaymentRepository(
     override suspend fun confirmPayment(sessionId: String, amount: Double?, note: String): PaymentRepositoryResult {
         return when (val result = remoteRepository.confirmPayment(sessionId, amount, note)) {
             is PaymentRepositoryResult.ConfirmationSuccess -> {
-                cacheReceiptAndHistory(result.receipt, sessionRepository.loadSession().accountId)
+                val session = sessionRepository.loadSession()
+                cacheReceiptAndHistory(result.receipt, session.accountId)
+                cacheWalletSummary(result.receipt, session.accountId, session.displayName)
                 result
             }
             else -> result
@@ -97,4 +99,29 @@ class CachedPaymentRepository(
             ),
         )
     }
+
+    private fun cacheWalletSummary(
+        receipt: PaymentReceipt,
+        currentAccountId: String,
+        currentDisplayName: String,
+    ) {
+        createCachedWalletSummary(receipt, currentAccountId, currentDisplayName)?.let(walletSummaryStore::save)
+    }
+}
+
+fun createCachedWalletSummary(
+    receipt: PaymentReceipt,
+    currentAccountId: String,
+    currentDisplayName: String,
+): WalletSummary? {
+    if (currentAccountId.isBlank()) return null
+    val isPayer = receipt.payerAccountId == currentAccountId
+    return WalletSummary(
+        accountId = currentAccountId,
+        displayName = currentDisplayName.ifBlank {
+            if (isPayer) receipt.payerDisplayName else receipt.recipientDisplayName
+        },
+        balance = if (isPayer) receipt.payerBalanceAfter else receipt.recipientBalanceAfter,
+        currency = receipt.currency,
+    )
 }

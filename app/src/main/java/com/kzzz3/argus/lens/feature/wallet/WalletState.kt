@@ -29,6 +29,7 @@ data class WalletState(
     val page: WalletPage = WalletPage.Overview,
     val cameraPermissionGranted: Boolean = false,
     val shouldRequestCameraPermission: Boolean = false,
+    val hasAttemptedSummaryLoad: Boolean = false,
     val isLoadingSummary: Boolean = false,
     val summary: WalletSummaryUi? = null,
     val manualPayload: String = "",
@@ -101,12 +102,16 @@ fun WalletState.withCurrentAccount(accountId: String): WalletState {
     return if (accountId.isBlank() || accountId == currentAccountId) {
         this
     } else {
-        copy(currentAccountId = accountId)
+        copy(
+            currentAccountId = accountId,
+            hasAttemptedSummaryLoad = false,
+        )
     }
 }
 
 fun WalletState.withWalletSummaryLoading(): WalletState {
     return copy(
+        hasAttemptedSummaryLoad = true,
         isLoadingSummary = true,
         statusMessage = null,
         isStatusError = false,
@@ -116,6 +121,7 @@ fun WalletState.withWalletSummaryLoading(): WalletState {
 fun WalletState.withWalletSummaryLoaded(summary: WalletSummary): WalletState {
     return copy(
         currentAccountId = summary.accountId,
+        hasAttemptedSummaryLoad = true,
         isLoadingSummary = false,
         summary = WalletSummaryUi(
             accountId = summary.accountId,
