@@ -378,6 +378,10 @@ fun ArgusLensApp() {
         hydratedConversationAccountId = null
         conversationThreadsState = signedOutState.conversationThreadsState
         selectedConversationId = signedOutState.selectedConversationId
+        friends = emptyList()
+        friendRequestsSnapshot = FriendRequestsSnapshot(emptyList(), emptyList())
+        friendRequestsStatusMessage = null
+        friendRequestsStatusError = false
         currentRoute = AppRoute.AuthEntry
     }
 
