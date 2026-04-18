@@ -95,3 +95,9 @@ The current development backend initializes wallets lazily with:
 - initial balance: `1000.00`
 
 This is a development-stage convenience baseline, not a final production funding design.
+
+## Local cache and logout behavior
+
+- The wallet layer may reuse cached summary, history, and receipt data when the network is unavailable.
+- A signed-in session only auto-attempts the wallet summary bootstrap once per wallet entry; after a failure, the user must retry explicitly.
+- Signing out clears the local wallet cache for the current device session so the next account does not inherit another user's payment data.
