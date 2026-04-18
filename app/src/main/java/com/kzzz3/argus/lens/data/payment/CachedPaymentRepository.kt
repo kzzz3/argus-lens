@@ -5,8 +5,8 @@ import com.kzzz3.argus.lens.data.session.SessionRepository
 class CachedPaymentRepository(
     private val remoteRepository: PaymentRepository,
     private val sessionRepository: SessionRepository,
-    private val walletSummaryStore: LocalWalletSummaryStore,
-    private val walletDetailsStore: LocalWalletDetailsStore,
+    private val walletSummaryStore: WalletSummaryCache,
+    private val walletDetailsStore: WalletDetailsCache,
 ) : PaymentRepository {
     override suspend fun getWalletSummary(): PaymentRepositoryResult {
         return when (val result = remoteRepository.getWalletSummary()) {
@@ -79,6 +79,12 @@ class CachedPaymentRepository(
             }
             else -> result
         }
+    }
+
+    override fun clearLocalData(accountId: String) {
+        walletSummaryStore.clear(accountId)
+        walletDetailsStore.clearAccount(accountId)
+        walletDetailsStore.clearAll()
     }
 
     private fun cacheReceiptAndHistory(receipt: PaymentReceipt, currentAccountId: String) {

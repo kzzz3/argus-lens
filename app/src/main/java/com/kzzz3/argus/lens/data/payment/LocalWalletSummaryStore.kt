@@ -4,10 +4,10 @@ import android.content.Context
 
 class LocalWalletSummaryStore(
     context: Context,
-) {
+) : WalletSummaryCache {
     private val preferences = context.applicationContext.getSharedPreferences("argus-lens-wallet-summary", Context.MODE_PRIVATE)
 
-    fun load(accountId: String): WalletSummary? {
+    override fun load(accountId: String): WalletSummary? {
         if (accountId.isBlank()) return null
         val prefix = accountId.trim() + ":"
         val displayName = preferences.getString(prefix + DISPLAY_NAME_KEY, null) ?: return null
@@ -21,7 +21,7 @@ class LocalWalletSummaryStore(
         )
     }
 
-    fun save(summary: WalletSummary) {
+    override fun save(summary: WalletSummary) {
         val prefix = summary.accountId.trim() + ":"
         preferences.edit()
             .putString(prefix + DISPLAY_NAME_KEY, summary.displayName)
@@ -30,9 +30,27 @@ class LocalWalletSummaryStore(
             .apply()
     }
 
+    override fun clear(accountId: String) {
+        if (accountId.isBlank()) return
+        val prefix = accountId.trim() + ":"
+        preferences.edit()
+            .remove(prefix + DISPLAY_NAME_KEY)
+            .remove(prefix + CURRENCY_KEY)
+            .remove(prefix + BALANCE_KEY)
+            .apply()
+    }
+
     private companion object {
         const val DISPLAY_NAME_KEY = "display_name"
         const val CURRENCY_KEY = "currency"
         const val BALANCE_KEY = "balance"
     }
+}
+
+interface WalletSummaryCache {
+    fun load(accountId: String): WalletSummary?
+
+    fun save(summary: WalletSummary)
+
+    fun clear(accountId: String)
 }

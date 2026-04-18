@@ -71,4 +71,6 @@ interface PaymentRepository {
     suspend fun listPayments(): PaymentRepositoryResult
 
     suspend fun getPaymentReceipt(paymentId: String): PaymentRepositoryResult
+
+    fun clearLocalData(accountId: String) {}
 }
