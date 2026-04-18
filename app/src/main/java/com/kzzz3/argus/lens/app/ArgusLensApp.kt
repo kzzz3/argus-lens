@@ -366,8 +366,10 @@ fun ArgusLensApp() {
 
     fun signOutToEntry(message: String? = null) {
         val signedOutState = appShellCoordinator.createSignedOutState(previewThreadsState)
+        val signedOutAccountId = appSessionState.accountId
         sessionRefreshJob?.cancel()
         sessionRefreshJob = null
+        paymentRepository.clearLocalData(signedOutAccountId)
         appSessionState = AppSessionState()
         authFormState = signedOutState.authFormState.copy(submitResult = message)
         registerFormState = signedOutState.registerFormState
