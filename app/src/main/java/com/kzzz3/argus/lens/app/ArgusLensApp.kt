@@ -373,10 +373,12 @@ fun ArgusLensApp() {
     }
 
     fun isActiveWalletRequest(accountId: String, generation: Int): Boolean {
-        return generation == walletRequestGeneration &&
-            appSessionState.isAuthenticated &&
-            accountId.isNotBlank() &&
-            appSessionState.accountId == accountId
+        return shouldApplyWalletRequestResult(
+            currentSession = appSessionState,
+            requestAccountId = accountId,
+            requestGeneration = generation,
+            activeGeneration = walletRequestGeneration,
+        )
     }
 
     fun launchWalletRequest(block: suspend (String, Int) -> Unit) {
@@ -1264,6 +1266,18 @@ fun ArgusLensApp() {
             }
         }
     }
+}
+
+internal fun shouldApplyWalletRequestResult(
+    currentSession: AppSessionState,
+    requestAccountId: String,
+    requestGeneration: Int,
+    activeGeneration: Int,
+): Boolean {
+    return requestGeneration == activeGeneration &&
+        currentSession.isAuthenticated &&
+        requestAccountId.isNotBlank() &&
+        currentSession.accountId == requestAccountId
 }
 
 @Composable
