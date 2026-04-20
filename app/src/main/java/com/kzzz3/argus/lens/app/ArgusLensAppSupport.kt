@@ -3,6 +3,8 @@ package com.kzzz3.argus.lens.app
 import com.kzzz3.argus.lens.app.session.AppSessionState
 import com.kzzz3.argus.lens.app.session.createAuthenticatedSession
 import com.kzzz3.argus.lens.data.auth.AuthSession
+import com.kzzz3.argus.lens.data.conversation.buildDirectConversationId
+import com.kzzz3.argus.lens.data.friend.FriendEntry
 import com.kzzz3.argus.lens.data.friend.FriendRequestsSnapshot
 import com.kzzz3.argus.lens.feature.auth.AuthFormState
 import com.kzzz3.argus.lens.feature.contacts.ContactsState
@@ -23,6 +25,13 @@ internal data class FriendRequestStatusState(
     val snapshot: FriendRequestsSnapshot,
     val message: String?,
     val isError: Boolean,
+)
+
+internal data class DirectConversationTarget(
+    val conversationId: String,
+    val requiresRefresh: Boolean,
+    val requiresPlaceholder: Boolean,
+    val placeholderTitle: String,
 )
 
 internal fun shouldApplyWalletRequestResult(
@@ -133,4 +142,44 @@ internal fun createFriendRequestStatusState(
         message = message,
         isError = isError,
     )
+}
+
+internal fun resolveDirectConversationTarget(
+    currentAccountId: String,
+    requestedConversationId: String,
+    friends: List<FriendEntry>,
+    existingThreadIds: Set<String>,
+): DirectConversationTarget {
+    if (requestedConversationId in existingThreadIds) {
+        return DirectConversationTarget(
+            conversationId = requestedConversationId,
+            requiresRefresh = false,
+            requiresPlaceholder = false,
+            placeholderTitle = requestedConversationId,
+        )
+    }
+
+    val matchingFriend = friends.firstOrNull { friend ->
+        friend.accountId == requestedConversationId ||
+            buildDirectConversationId(currentAccountId, friend.accountId) == requestedConversationId
+    }
+    val preferredConversationId = matchingFriend?.let { friend ->
+        buildDirectConversationId(currentAccountId, friend.accountId)
+    }
+
+    return if (matchingFriend != null && preferredConversationId != null) {
+        DirectConversationTarget(
+            conversationId = preferredConversationId,
+            requiresRefresh = true,
+            requiresPlaceholder = false,
+            placeholderTitle = matchingFriend.displayName,
+        )
+    } else {
+        DirectConversationTarget(
+            conversationId = requestedConversationId,
+            requiresRefresh = false,
+            requiresPlaceholder = true,
+            placeholderTitle = requestedConversationId,
+        )
+    }
 }

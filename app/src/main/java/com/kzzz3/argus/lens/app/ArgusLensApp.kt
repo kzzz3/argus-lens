@@ -786,28 +786,26 @@ fun ArgusLensApp() {
                     when (val effect = result.effect) {
                         is ContactsEffect.OpenConversation -> {
                             coroutineScope.launch {
-                                val existingThread = conversationThreads.firstOrNull { it.id == effect.conversationId }
-                                val resolvedConversationId = if (existingThread != null) {
+                                val target = resolveDirectConversationTarget(
+                                    currentAccountId = appSessionState.accountId,
+                                    requestedConversationId = effect.conversationId,
+                                    friends = friends,
+                                    existingThreadIds = conversationThreads.map { it.id }.toSet(),
+                                )
+                                val resolvedConversationId = if (!target.requiresRefresh && !target.requiresPlaceholder) {
                                     conversationThreadsState = conversationRepository.markConversationAsRead(
                                         state = conversationThreadsState,
-                                        conversationId = effect.conversationId,
+                                        conversationId = target.conversationId,
                                     )
-                                    effect.conversationId
+                                    target.conversationId
                                 } else {
-                                    val matchingFriend = friends.firstOrNull { friend ->
-                                        friend.accountId == effect.conversationId ||
-                                            buildDirectConversationId(appSessionState.accountId, friend.accountId) == effect.conversationId
-                                    }
-                                    val preferredConversationId = matchingFriend?.let { friend ->
-                                        buildDirectConversationId(appSessionState.accountId, friend.accountId)
-                                    }
-                                    val refreshedConversationId = if (appSessionState.isAuthenticated && matchingFriend != null) {
+                                    val refreshedConversationId = if (appSessionState.isAuthenticated && target.requiresRefresh) {
                                         conversationThreadsState = conversationRepository.loadOrCreateConversationThreads(
                                             accountId = appSessionState.accountId,
                                             currentUserDisplayName = appSessionState.displayName,
                                         )
                                         conversationThreadsState.threads.firstOrNull { thread ->
-                                            thread.id == preferredConversationId
+                                            thread.id == target.conversationId
                                         }?.id
                                     } else {
                                         null
@@ -819,14 +817,12 @@ fun ArgusLensApp() {
                                         )
                                         refreshedConversationId
                                     } else {
-                                        val displayName = matchingFriend?.displayName ?: effect.conversationId
-                                        val deterministicConversationId = preferredConversationId ?: effect.conversationId
                                         conversationThreadsState = ensureDirectConversationPlaceholder(
                                             state = conversationThreadsState,
-                                            conversationId = deterministicConversationId,
-                                            title = displayName,
+                                            conversationId = target.conversationId,
+                                            title = target.placeholderTitle,
                                         )
-                                        deterministicConversationId
+                                        target.conversationId
                                     }
                                 }
                                 selectedConversationId = resolvedConversationId

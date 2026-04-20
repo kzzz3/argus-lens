@@ -4,6 +4,7 @@ import com.kzzz3.argus.lens.feature.auth.AuthFormState
 import com.kzzz3.argus.lens.feature.contacts.ContactsState
 import com.kzzz3.argus.lens.feature.register.RegisterFormState
 import com.kzzz3.argus.lens.data.auth.AuthSession
+import com.kzzz3.argus.lens.data.friend.FriendEntry
 import com.kzzz3.argus.lens.data.friend.FriendRequestsSnapshot
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -133,6 +134,50 @@ class ArgusLensAppFunctionTest {
         assertEquals(snapshot, state.snapshot)
         assertEquals("Friend request accepted.", state.message)
         assertFalse(state.isError)
+    }
+
+    @Test
+    fun resolveDirectConversationTarget_prefersExistingThread() {
+        val target = resolveDirectConversationTarget(
+            currentAccountId = "tester",
+            requestedConversationId = "conv-existing",
+            friends = listOf(FriendEntry("lisi", "Li Si", "friend")),
+            existingThreadIds = setOf("conv-existing"),
+        )
+
+        assertEquals("conv-existing", target.conversationId)
+        assertEquals(false, target.requiresRefresh)
+        assertEquals(false, target.requiresPlaceholder)
+    }
+
+    @Test
+    fun resolveDirectConversationTarget_usesFriendConversationIdWhenKnownFriendMatches() {
+        val target = resolveDirectConversationTarget(
+            currentAccountId = "tester",
+            requestedConversationId = "lisi",
+            friends = listOf(FriendEntry("lisi", "Li Si", "friend")),
+            existingThreadIds = emptySet(),
+        )
+
+        assertTrue(target.conversationId.contains("lisi"))
+        assertEquals(true, target.requiresRefresh)
+        assertEquals(false, target.requiresPlaceholder)
+        assertEquals("Li Si", target.placeholderTitle)
+    }
+
+    @Test
+    fun resolveDirectConversationTarget_fallsBackToPlaceholderForUnknownConversation() {
+        val target = resolveDirectConversationTarget(
+            currentAccountId = "tester",
+            requestedConversationId = "unknown-id",
+            friends = emptyList(),
+            existingThreadIds = emptySet(),
+        )
+
+        assertEquals("unknown-id", target.conversationId)
+        assertEquals(false, target.requiresRefresh)
+        assertEquals(true, target.requiresPlaceholder)
+        assertEquals("unknown-id", target.placeholderTitle)
     }
 
     private fun sampleConversationThreadsState() =
