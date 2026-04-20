@@ -98,6 +98,11 @@ data class WalletHistoryItemUi(
     val paidAt: String,
 ) : Parcelable
 
+data class WalletTransferMetadata(
+    val direction: WalletTransferDirection,
+    val counterpartyDisplayName: String,
+)
+
 fun WalletState.withCurrentAccount(accountId: String): WalletState {
     return if (accountId.isBlank() || accountId == currentAccountId) {
         this
@@ -271,11 +276,17 @@ fun WalletState.withReceiptFailure(message: String): WalletState {
 }
 
 private fun PaymentReceipt.toReceiptUi(currentAccountId: String): WalletReceiptUi {
+    val metadata = resolveWalletTransferMetadata(
+        currentAccountId = currentAccountId,
+        payerAccountId = payerAccountId,
+        payerDisplayName = payerDisplayName,
+        recipientDisplayName = recipientDisplayName,
+    )
     return WalletReceiptUi(
         paymentId = paymentId,
         scanSessionId = scanSessionId,
         status = status,
-        direction = toDirection(currentAccountId),
+        direction = metadata.direction,
         payerAccountId = payerAccountId,
         payerDisplayName = payerDisplayName,
         payerBalanceAfter = payerBalanceAfter.toCurrencyText(),
@@ -298,26 +309,48 @@ fun PaymentReceipt.viewerBalanceAfter(currentAccountId: String): Double {
 }
 
 fun PaymentReceipt.toDirection(currentAccountId: String): WalletTransferDirection {
-    return if (payerAccountId == currentAccountId) {
-        WalletTransferDirection.Sent
-    } else {
-        WalletTransferDirection.Received
-    }
+    return resolveWalletTransferMetadata(
+        currentAccountId = currentAccountId,
+        payerAccountId = payerAccountId,
+        payerDisplayName = payerDisplayName,
+        recipientDisplayName = recipientDisplayName,
+    ).direction
 }
 
 fun PaymentHistoryEntry.toDirection(currentAccountId: String): WalletTransferDirection {
-    return if (payerAccountId == currentAccountId) {
-        WalletTransferDirection.Sent
-    } else {
-        WalletTransferDirection.Received
-    }
+    return resolveWalletTransferMetadata(
+        currentAccountId = currentAccountId,
+        payerAccountId = payerAccountId,
+        payerDisplayName = payerDisplayName,
+        recipientDisplayName = recipientDisplayName,
+    ).direction
 }
 
 fun PaymentHistoryEntry.counterpartyDisplayName(currentAccountId: String): String {
+    return resolveWalletTransferMetadata(
+        currentAccountId = currentAccountId,
+        payerAccountId = payerAccountId,
+        payerDisplayName = payerDisplayName,
+        recipientDisplayName = recipientDisplayName,
+    ).counterpartyDisplayName
+}
+
+fun resolveWalletTransferMetadata(
+    currentAccountId: String,
+    payerAccountId: String,
+    payerDisplayName: String,
+    recipientDisplayName: String,
+): WalletTransferMetadata {
     return if (payerAccountId == currentAccountId) {
-        recipientDisplayName
+        WalletTransferMetadata(
+            direction = WalletTransferDirection.Sent,
+            counterpartyDisplayName = recipientDisplayName,
+        )
     } else {
-        payerDisplayName
+        WalletTransferMetadata(
+            direction = WalletTransferDirection.Received,
+            counterpartyDisplayName = payerDisplayName,
+        )
     }
 }
 

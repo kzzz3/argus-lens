@@ -2,11 +2,17 @@ package com.kzzz3.argus.lens.app
 
 import com.kzzz3.argus.lens.feature.auth.AuthFormState
 import com.kzzz3.argus.lens.feature.contacts.ContactsState
+import com.kzzz3.argus.lens.feature.wallet.WalletTransferDirection
 import com.kzzz3.argus.lens.feature.wallet.WalletState
+import com.kzzz3.argus.lens.feature.wallet.counterpartyDisplayName
+import com.kzzz3.argus.lens.feature.wallet.resolveWalletTransferMetadata
+import com.kzzz3.argus.lens.feature.wallet.toDirection
 import com.kzzz3.argus.lens.feature.register.RegisterFormState
 import com.kzzz3.argus.lens.data.auth.AuthSession
 import com.kzzz3.argus.lens.data.friend.FriendEntry
 import com.kzzz3.argus.lens.data.friend.FriendRequestsSnapshot
+import com.kzzz3.argus.lens.data.payment.PaymentHistoryEntry
+import com.kzzz3.argus.lens.data.payment.PaymentReceipt
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -204,6 +210,66 @@ class ArgusLensAppFunctionTest {
         }
 
         assertEquals("Current", updatedState.statusMessage)
+    }
+
+    @Test
+    fun resolveWalletTransferMetadata_returnsSentForPayer() {
+        val metadata = resolveWalletTransferMetadata(
+            currentAccountId = "tester",
+            payerAccountId = "tester",
+            payerDisplayName = "Tester",
+            recipientDisplayName = "Li Si",
+        )
+
+        assertEquals(WalletTransferDirection.Sent, metadata.direction)
+        assertEquals("Li Si", metadata.counterpartyDisplayName)
+    }
+
+    @Test
+    fun resolveWalletTransferMetadata_returnsReceivedForRecipient() {
+        val metadata = resolveWalletTransferMetadata(
+            currentAccountId = "tester",
+            payerAccountId = "wangwu",
+            payerDisplayName = "Wang Wu",
+            recipientDisplayName = "Tester",
+        )
+
+        assertEquals(WalletTransferDirection.Received, metadata.direction)
+        assertEquals("Wang Wu", metadata.counterpartyDisplayName)
+    }
+
+    @Test
+    fun paymentReceiptAndHistoryEntry_shareWalletTransferResolution() {
+        val receipt = PaymentReceipt(
+            paymentId = "payment-1",
+            scanSessionId = "scan-1",
+            status = "SUCCESS",
+            payerAccountId = "tester",
+            payerDisplayName = "Tester",
+            payerBalanceAfter = 100.0,
+            recipientAccountId = "lisi",
+            recipientDisplayName = "Li Si",
+            recipientBalanceAfter = 150.0,
+            amount = 50.0,
+            currency = "CNY",
+            note = "Lunch",
+            paidAt = "2026-04-20T12:00:00Z",
+        )
+        val history = PaymentHistoryEntry(
+            paymentId = "payment-1",
+            payerAccountId = "tester",
+            payerDisplayName = "Tester",
+            recipientAccountId = "lisi",
+            recipientDisplayName = "Li Si",
+            amount = 50.0,
+            currency = "CNY",
+            status = "SUCCESS",
+            paidAt = "2026-04-20T12:00:00Z",
+        )
+
+        assertEquals(WalletTransferDirection.Sent, receipt.toDirection("tester"))
+        assertEquals(WalletTransferDirection.Sent, history.toDirection("tester"))
+        assertEquals("Li Si", history.counterpartyDisplayName("tester"))
     }
 
     private fun sampleConversationThreadsState() =
