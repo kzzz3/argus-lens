@@ -123,9 +123,9 @@ private fun CallSessionScreenPreview() {
         CallSessionScreen(
             state = CallSessionUiState(
                 title = "Zhang San",
-                subtitle = "Stage-1 local call shell",
+                subtitle = "Call controls stay ready while the session connects and syncs.",
                 modeLabel = "Video call",
-                statusLabel = "Connecting locally...",
+                statusLabel = "Connecting call...",
                 durationLabel = "00:00",
                 muteActionLabel = "Mute",
                 speakerActionLabel = "Speaker off",

@@ -5,10 +5,10 @@ fun createCallSessionUiState(
 ): CallSessionUiState {
     return CallSessionUiState(
         title = state.contactDisplayName,
-        subtitle = "Stage-1 local call shell",
+        subtitle = "Call controls stay ready while the session connects and syncs.",
         modeLabel = if (state.mode == CallSessionMode.Video) "Video call" else "Audio call",
         statusLabel = when (state.status) {
-            CallSessionStatus.Connecting -> "Connecting locally..."
+            CallSessionStatus.Connecting -> "Connecting call..."
             CallSessionStatus.Active -> "Call active"
             CallSessionStatus.Ended -> "Call ended"
         },

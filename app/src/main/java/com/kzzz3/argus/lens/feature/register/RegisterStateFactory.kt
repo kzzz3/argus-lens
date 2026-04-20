@@ -38,7 +38,7 @@ fun createRegisterUiState(formState: RegisterFormState): RegisterUiState {
 
     return RegisterUiState(
         title = "Create account",
-        subtitle = "This step wires registration to the stage-1 auth API.",
+        subtitle = "Create your account to sign in, restore your session, and continue into Argus.",
         displayName = formState.displayName,
         account = formState.account,
         password = formState.password,
