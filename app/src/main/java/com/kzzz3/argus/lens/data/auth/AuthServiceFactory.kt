@@ -18,12 +18,26 @@ fun createAuthRepository(
     }
 }
 
-fun resolveAuthMode(): AuthMode {
-    return runCatching {
-        AuthMode.valueOf(BuildConfig.AUTH_MODE)
-    }.getOrElse {
-        AuthMode.LOCAL
+fun createAuthRepositoryOrUnavailable(
+    mode: AuthMode?,
+): AuthRepository {
+    return when (mode) {
+        AuthMode.LOCAL -> createLocalAuthRepository()
+        AuthMode.REMOTE -> createRemoteAuthRepository()
+        null -> UnavailableAuthRepository()
     }
+}
+
+fun resolveAuthMode(): AuthMode {
+    return resolveAuthModeOrNull() ?: AuthMode.REMOTE
+}
+
+fun resolveAuthModeOrNull(
+    rawMode: String = BuildConfig.AUTH_MODE,
+): AuthMode? {
+    return runCatching {
+        AuthMode.valueOf(rawMode)
+    }.getOrNull()
 }
 
 fun createLocalAuthRepository(): AuthRepository {
@@ -37,5 +51,35 @@ fun createRemoteAuthRepository(): AuthRepository {
     return RetrofitAuthRepository(
         authApiService = retrofit.create(AuthApiService::class.java),
         gson = gson,
+    )
+}
+
+class UnavailableAuthRepository : AuthRepository {
+    override suspend fun restoreSession(accessToken: String): AuthRepositoryResult {
+        return unavailableAuthResult()
+    }
+
+    override suspend fun refreshSession(refreshToken: String): AuthRepositoryResult {
+        return unavailableAuthResult()
+    }
+
+    override suspend fun login(account: String, password: String): AuthRepositoryResult {
+        return unavailableAuthResult()
+    }
+
+    override suspend fun register(
+        displayName: String,
+        account: String,
+        password: String,
+    ): AuthRepositoryResult {
+        return unavailableAuthResult()
+    }
+}
+
+private fun unavailableAuthResult(): AuthRepositoryResult.Failure {
+    return AuthRepositoryResult.Failure(
+        code = "AUTH_MODE_UNAVAILABLE",
+        message = "Auth is unavailable because the app auth mode is misconfigured. Check BuildConfig.AUTH_MODE.",
+        kind = AuthFailureKind.SERVER,
     )
 }

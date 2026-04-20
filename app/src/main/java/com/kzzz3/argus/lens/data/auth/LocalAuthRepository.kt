@@ -37,7 +37,7 @@ class LocalAuthRepository : AuthRepository {
                 displayName = resolvedDisplayName,
                 accessToken = createLocalAccessToken(trimmedAccount),
                 refreshToken = createLocalRefreshToken(trimmedAccount),
-                message = "Local login success. Network auth is temporarily bypassed.",
+                message = "Local preview sign-in complete.",
             )
         )
     }
@@ -56,7 +56,7 @@ class LocalAuthRepository : AuthRepository {
                 displayName = resolvedDisplayName,
                 accessToken = createLocalAccessToken(trimmedAccount),
                 refreshToken = createLocalRefreshToken(trimmedAccount),
-                message = "Local registration success. Network auth is temporarily bypassed.",
+                message = "Local preview registration complete.",
             )
         )
     }
