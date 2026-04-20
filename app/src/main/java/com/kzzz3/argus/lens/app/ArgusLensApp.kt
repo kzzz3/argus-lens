@@ -135,7 +135,7 @@ fun ArgusLensApp() {
     val realtimeClient = dependencies.realtimeClient
     val appShellCoordinator = dependencies.appShellCoordinator
     val previewThreadsState = remember {
-        conversationRepository.createPreviewState(currentUserDisplayName = "Argus Tester")
+        conversationRepository.createPreviewState(currentUserDisplayName = DEFAULT_PREVIEW_DISPLAY_NAME)
     }
     val initialSessionSnapshot = remember(context) { createLocalSessionSnapshot(context) }
     var currentRoute by rememberSaveable {
@@ -198,7 +198,7 @@ fun ArgusLensApp() {
         createRegisterUiState(registerFormState)
     }
     val sessionDisplayName = remember(appSessionState.displayName) {
-        appSessionState.displayName.ifBlank { "Argus Tester" }
+        resolvePreviewDisplayName(appSessionState.displayName)
     }
     val shellStatusLabel = remember(appSessionState.isAuthenticated, realtimeConnectionState) {
         when {
@@ -320,7 +320,7 @@ fun ArgusLensApp() {
         if (initialSessionSnapshot.isAuthenticated && initialSessionSnapshot.accountId.isNotBlank()) {
             conversationThreadsState = conversationRepository.loadOrCreateConversationThreads(
                 accountId = initialSessionSnapshot.accountId,
-                currentUserDisplayName = initialSessionSnapshot.displayName.ifBlank { "Argus Tester" },
+                currentUserDisplayName = resolvePreviewDisplayName(initialSessionSnapshot.displayName),
             )
             hydratedConversationAccountId = initialSessionSnapshot.accountId
             currentRoute = AppRoute.Inbox
@@ -428,11 +428,9 @@ fun ArgusLensApp() {
         }
         val refreshResult = authRepository.refreshSession(refreshToken)
         if (refreshResult is AuthRepositoryResult.Success) {
-            appSessionState = createAuthenticatedSession(
-                accountId = refreshResult.session.accountId,
-                displayName = refreshResult.session.displayName,
-                accessToken = refreshResult.session.accessToken,
-                refreshToken = refreshResult.session.refreshToken.ifBlank { appSessionState.refreshToken },
+            appSessionState = createSessionFromAuthSession(
+                session = refreshResult.session,
+                fallbackRefreshToken = appSessionState.refreshToken,
             )
         }
         return refreshResult
@@ -449,11 +447,9 @@ fun ArgusLensApp() {
                 }
                 when (val refreshResult = authRepository.refreshSession(appSessionState.refreshToken)) {
                     is AuthRepositoryResult.Success -> {
-                        appSessionState = createAuthenticatedSession(
-                            accountId = refreshResult.session.accountId,
-                            displayName = refreshResult.session.displayName,
-                            accessToken = refreshResult.session.accessToken,
-                            refreshToken = refreshResult.session.refreshToken.ifBlank { appSessionState.refreshToken },
+                        appSessionState = createSessionFromAuthSession(
+                            session = refreshResult.session,
+                            fallbackRefreshToken = appSessionState.refreshToken,
                         )
                     }
                     is AuthRepositoryResult.Failure -> {
@@ -642,30 +638,32 @@ fun ArgusLensApp() {
                                     account = result.effect.account,
                                     password = result.effect.password,
                                 )
-                            ) {
+                                ) {
                                 is AuthRepositoryResult.Success -> {
-                                    authFormState = authFormState.copy(
-                                        isSubmitting = false,
+                                    authFormState = completeAuthForm(
+                                        formState = authFormState,
                                         submitResult = authResult.session.message,
                                     )
-                                    appSessionState = createAuthenticatedSession(
-                                        accountId = authResult.session.accountId,
-                                        displayName = authResult.session.displayName,
-                                        accessToken = authResult.session.accessToken,
-                                        refreshToken = authResult.session.refreshToken,
-                                    )
+                                    appSessionState = createSessionFromAuthSession(authResult.session)
                                     invalidateWalletRequests()
                                     hydratedConversationAccountId = null
                                     callSessionJob?.cancel()
-                                val signedInState = appShellCoordinator.handleSignedIn(appSessionState)
-                                callSessionState = signedInState.callSessionState
-                                walletStateModel = WalletState()
-                                conversationThreadsState = signedInState.conversationThreadsState
-                                hydratedConversationAccountId = signedInState.hydratedConversationAccountId
-                                selectedConversationId = signedInState.selectedConversationId
-                                realtimeReconnectGeneration += 1
-                                currentRoute = AppRoute.Inbox
-                            }   
+                                    val signedInState = appShellCoordinator.handleSignedIn(appSessionState)
+                                    val postAuthUiState = createPostAuthUiState(
+                                        signedInState = signedInState,
+                                        accountId = authResult.session.accountId,
+                                    )
+                                    callSessionState = postAuthUiState.callSessionState
+                                    walletStateModel = WalletState()
+                                    conversationThreadsState = postAuthUiState.conversationThreadsState
+                                    hydratedConversationAccountId = postAuthUiState.hydratedConversationAccountId
+                                    selectedConversationId = postAuthUiState.selectedConversationId
+                                    authFormState = postAuthUiState.nextAuthFormState.copy(
+                                        submitResult = authResult.session.message,
+                                    )
+                                    realtimeReconnectGeneration += postAuthUiState.realtimeReconnectIncrement
+                                    currentRoute = AppRoute.Inbox
+                                }
 
                                 is AuthRepositoryResult.Failure -> {
                                     authFormState = authFormState.copy(
@@ -700,29 +698,28 @@ fun ArgusLensApp() {
                                     account = result.effect.account,
                                     password = result.effect.password,
                                 )
-                            ) {
+                                ) {
                                 is AuthRepositoryResult.Success -> {
-                                    registerFormState = registerFormState.copy(
-                                        isSubmitting = false,
+                                    registerFormState = completeRegistrationForm(
+                                        formState = registerFormState,
                                         submitResult = authResult.session.message,
                                     )
-                                    appSessionState = createAuthenticatedSession(
-                                        accountId = authResult.session.accountId,
-                                        displayName = authResult.session.displayName,
-                                        accessToken = authResult.session.accessToken,
-                                        refreshToken = authResult.session.refreshToken,
-                                    )
+                                    appSessionState = createSessionFromAuthSession(authResult.session)
                                     invalidateWalletRequests()
                                     hydratedConversationAccountId = null
                                     callSessionJob?.cancel()
                                     val signedInState = appShellCoordinator.handleSignedIn(appSessionState)
-                                    callSessionState = signedInState.callSessionState
-                                    conversationThreadsState = signedInState.conversationThreadsState
-                                    hydratedConversationAccountId = signedInState.hydratedConversationAccountId
-                                    selectedConversationId = signedInState.selectedConversationId
+                                    val postAuthUiState = createPostAuthUiState(
+                                        signedInState = signedInState,
+                                        accountId = authResult.session.accountId,
+                                    )
+                                    callSessionState = postAuthUiState.callSessionState
+                                    conversationThreadsState = postAuthUiState.conversationThreadsState
+                                    hydratedConversationAccountId = postAuthUiState.hydratedConversationAccountId
+                                    selectedConversationId = postAuthUiState.selectedConversationId
                                     walletStateModel = WalletState()
-                                    authFormState = AuthFormState(account = authResult.session.accountId)
-                                    realtimeReconnectGeneration += 1
+                                    authFormState = postAuthUiState.nextAuthFormState
+                                    realtimeReconnectGeneration += postAuthUiState.realtimeReconnectIncrement
                                     currentRoute = AppRoute.Inbox
                                 }
 

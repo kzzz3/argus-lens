@@ -1,6 +1,21 @@
 package com.kzzz3.argus.lens.app
 
 import com.kzzz3.argus.lens.app.session.AppSessionState
+import com.kzzz3.argus.lens.app.session.createAuthenticatedSession
+import com.kzzz3.argus.lens.data.auth.AuthSession
+import com.kzzz3.argus.lens.feature.auth.AuthFormState
+import com.kzzz3.argus.lens.feature.register.RegisterFormState
+
+internal const val DEFAULT_PREVIEW_DISPLAY_NAME = "Argus Tester"
+
+internal data class PostAuthUiState(
+    val callSessionState: com.kzzz3.argus.lens.feature.call.CallSessionState,
+    val conversationThreadsState: com.kzzz3.argus.lens.feature.inbox.ConversationThreadsState,
+    val hydratedConversationAccountId: String,
+    val selectedConversationId: String,
+    val nextAuthFormState: AuthFormState,
+    val realtimeReconnectIncrement: Int = 1,
+)
 
 internal fun shouldApplyWalletRequestResult(
     currentSession: AppSessionState,
@@ -38,4 +53,53 @@ internal fun isSseAuthFailure(throwable: Throwable): Boolean {
         current = current.cause
     }
     return false
+}
+
+internal fun createSessionFromAuthSession(
+    session: AuthSession,
+    fallbackRefreshToken: String = "",
+): AppSessionState {
+    return createAuthenticatedSession(
+        accountId = session.accountId,
+        displayName = session.displayName,
+        accessToken = session.accessToken,
+        refreshToken = session.refreshToken.ifBlank { fallbackRefreshToken },
+    )
+}
+
+internal fun resolvePreviewDisplayName(displayName: String): String {
+    return displayName.ifBlank { DEFAULT_PREVIEW_DISPLAY_NAME }
+}
+
+internal fun completeRegistrationForm(
+    formState: RegisterFormState,
+    submitResult: String,
+): RegisterFormState {
+    return formState.copy(
+        isSubmitting = false,
+        submitResult = submitResult,
+    )
+}
+
+internal fun completeAuthForm(
+    formState: AuthFormState,
+    submitResult: String,
+): AuthFormState {
+    return formState.copy(
+        isSubmitting = false,
+        submitResult = submitResult,
+    )
+}
+
+internal fun createPostAuthUiState(
+    signedInState: AppSignedInState,
+    accountId: String,
+): PostAuthUiState {
+    return PostAuthUiState(
+        callSessionState = signedInState.callSessionState,
+        conversationThreadsState = signedInState.conversationThreadsState,
+        hydratedConversationAccountId = signedInState.hydratedConversationAccountId,
+        selectedConversationId = signedInState.selectedConversationId,
+        nextAuthFormState = AuthFormState(account = accountId),
+    )
 }

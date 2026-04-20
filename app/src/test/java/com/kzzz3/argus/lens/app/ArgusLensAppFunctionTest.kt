@@ -1,5 +1,8 @@
 package com.kzzz3.argus.lens.app
 
+import com.kzzz3.argus.lens.feature.auth.AuthFormState
+import com.kzzz3.argus.lens.feature.register.RegisterFormState
+import com.kzzz3.argus.lens.data.auth.AuthSession
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -32,4 +35,78 @@ class ArgusLensAppFunctionTest {
     fun isSseAuthFailure_ignoresOtherFailures() {
         assertFalse(isSseAuthFailure(IllegalStateException("socket closed")))
     }
+
+    @Test
+    fun createSessionFromAuthSession_usesProvidedRefreshToken() {
+        val session = createSessionFromAuthSession(
+            AuthSession(
+                accountId = "tester",
+                displayName = "Argus Tester",
+                accessToken = "access-token",
+                refreshToken = "refresh-token",
+                message = "ok",
+            ),
+        )
+
+        assertTrue(session.isAuthenticated)
+        assertEquals("tester", session.accountId)
+        assertEquals("Argus Tester", session.displayName)
+        assertEquals("access-token", session.accessToken)
+        assertEquals("refresh-token", session.refreshToken)
+    }
+
+    @Test
+    fun createSessionFromAuthSession_keepsFallbackRefreshTokenWhenResponseIsBlank() {
+        val session = createSessionFromAuthSession(
+            AuthSession(
+                accountId = "tester",
+                displayName = "Argus Tester",
+                accessToken = "access-token",
+                refreshToken = "",
+                message = "ok",
+            ),
+            fallbackRefreshToken = "persisted-refresh",
+        )
+
+        assertEquals("persisted-refresh", session.refreshToken)
+    }
+
+    @Test
+    fun resolvePreviewDisplayName_returnsDefaultWhenBlank() {
+        assertEquals(DEFAULT_PREVIEW_DISPLAY_NAME, resolvePreviewDisplayName(""))
+        assertEquals("Li Si", resolvePreviewDisplayName("Li Si"))
+    }
+
+    @Test
+    fun createPostAuthUiState_resetsWalletAndReconnectsForLogin() {
+        val uiState = createPostAuthUiState(
+            signedInState = AppSignedInState(
+                conversationThreadsState = sampleConversationThreadsState(),
+                hydratedConversationAccountId = "tester",
+                callSessionState = com.kzzz3.argus.lens.feature.call.CallSessionState(),
+                selectedConversationId = "",
+            ),
+            accountId = "tester",
+        )
+
+        assertEquals(1, uiState.realtimeReconnectIncrement)
+        assertEquals("tester", uiState.nextAuthFormState.account)
+        assertEquals(null, uiState.nextAuthFormState.submitResult)
+        assertEquals(false, uiState.nextAuthFormState.isSubmitting)
+        assertEquals("tester", uiState.hydratedConversationAccountId)
+    }
+
+    @Test
+    fun completeRegistrationForm_stopsSubmittingAndKeepsAccount() {
+        val state = completeRegistrationForm(
+            formState = RegisterFormState(isSubmitting = true),
+            submitResult = "Created",
+        )
+
+        assertFalse(state.isSubmitting)
+        assertEquals("Created", state.submitResult)
+    }
+
+    private fun sampleConversationThreadsState() =
+        com.kzzz3.argus.lens.feature.inbox.ConversationThreadsState()
 }
