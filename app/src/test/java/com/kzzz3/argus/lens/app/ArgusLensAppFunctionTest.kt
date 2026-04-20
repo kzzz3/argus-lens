@@ -2,6 +2,7 @@ package com.kzzz3.argus.lens.app
 
 import com.kzzz3.argus.lens.feature.auth.AuthFormState
 import com.kzzz3.argus.lens.feature.contacts.ContactsState
+import com.kzzz3.argus.lens.feature.wallet.WalletState
 import com.kzzz3.argus.lens.feature.register.RegisterFormState
 import com.kzzz3.argus.lens.data.auth.AuthSession
 import com.kzzz3.argus.lens.data.friend.FriendEntry
@@ -178,6 +179,31 @@ class ArgusLensAppFunctionTest {
         assertEquals(false, target.requiresRefresh)
         assertEquals(true, target.requiresPlaceholder)
         assertEquals("unknown-id", target.placeholderTitle)
+    }
+
+    @Test
+    fun applyWalletRequestResult_updatesStateWhenRequestIsActive() {
+        val updatedState = applyWalletRequestResult(
+            currentState = WalletState(),
+            isActive = true,
+        ) {
+            it.copy(statusMessage = "Updated")
+        }
+
+        assertEquals("Updated", updatedState.statusMessage)
+    }
+
+    @Test
+    fun applyWalletRequestResult_keepsStateWhenRequestIsStale() {
+        val currentState = WalletState(statusMessage = "Current")
+        val updatedState = applyWalletRequestResult(
+            currentState = currentState,
+            isActive = false,
+        ) {
+            it.copy(statusMessage = "Updated")
+        }
+
+        assertEquals("Current", updatedState.statusMessage)
     }
 
     private fun sampleConversationThreadsState() =

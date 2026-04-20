@@ -9,6 +9,7 @@ import com.kzzz3.argus.lens.data.friend.FriendRequestsSnapshot
 import com.kzzz3.argus.lens.feature.auth.AuthFormState
 import com.kzzz3.argus.lens.feature.contacts.ContactsState
 import com.kzzz3.argus.lens.feature.register.RegisterFormState
+import com.kzzz3.argus.lens.feature.wallet.WalletState
 
 internal const val DEFAULT_PREVIEW_DISPLAY_NAME = "Argus Tester"
 
@@ -182,4 +183,12 @@ internal fun resolveDirectConversationTarget(
             placeholderTitle = requestedConversationId,
         )
     }
+}
+
+internal inline fun applyWalletRequestResult(
+    currentState: WalletState,
+    isActive: Boolean,
+    transform: (WalletState) -> WalletState,
+): WalletState {
+    return if (isActive) transform(currentState) else currentState
 }

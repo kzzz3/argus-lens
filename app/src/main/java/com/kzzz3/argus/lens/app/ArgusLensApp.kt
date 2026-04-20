@@ -1043,14 +1043,16 @@ fun ArgusLensApp() {
                             launchWalletRequest { requestAccountId, requestGeneration ->
                                 when (val paymentResult = paymentRepository.getWalletSummary()) {
                                     is PaymentRepositoryResult.WalletSummarySuccess -> {
-                                        if (isActiveWalletRequest(requestAccountId, requestGeneration)) {
-                                            walletStateModel = walletStateModel.withWalletSummaryLoaded(paymentResult.summary)
-                                        }
+                                        walletStateModel = applyWalletRequestResult(
+                                            currentState = walletStateModel,
+                                            isActive = isActiveWalletRequest(requestAccountId, requestGeneration),
+                                        ) { it.withWalletSummaryLoaded(paymentResult.summary) }
                                     }
                                     is PaymentRepositoryResult.Failure -> {
-                                        if (isActiveWalletRequest(requestAccountId, requestGeneration)) {
-                                            walletStateModel = walletStateModel.withWalletSummaryFailure(paymentResult.message)
-                                        }
+                                        walletStateModel = applyWalletRequestResult(
+                                            currentState = walletStateModel,
+                                            isActive = isActiveWalletRequest(requestAccountId, requestGeneration),
+                                        ) { it.withWalletSummaryFailure(paymentResult.message) }
                                     }
                                     else -> Unit
                                 }
@@ -1107,14 +1109,16 @@ fun ArgusLensApp() {
                             launchWalletRequest { requestAccountId, requestGeneration ->
                                 when (val paymentResult = paymentRepository.listPayments()) {
                                     is PaymentRepositoryResult.HistorySuccess -> {
-                                        if (isActiveWalletRequest(requestAccountId, requestGeneration)) {
-                                            walletStateModel = walletStateModel.withHistoryLoaded(paymentResult.history)
-                                        }
+                                        walletStateModel = applyWalletRequestResult(
+                                            currentState = walletStateModel,
+                                            isActive = isActiveWalletRequest(requestAccountId, requestGeneration),
+                                        ) { it.withHistoryLoaded(paymentResult.history) }
                                     }
                                     is PaymentRepositoryResult.Failure -> {
-                                        if (isActiveWalletRequest(requestAccountId, requestGeneration)) {
-                                            walletStateModel = walletStateModel.withHistoryFailure(paymentResult.message)
-                                        }
+                                        walletStateModel = applyWalletRequestResult(
+                                            currentState = walletStateModel,
+                                            isActive = isActiveWalletRequest(requestAccountId, requestGeneration),
+                                        ) { it.withHistoryFailure(paymentResult.message) }
                                     }
                                     else -> Unit
                                 }
@@ -1124,14 +1128,16 @@ fun ArgusLensApp() {
                             launchWalletRequest { requestAccountId, requestGeneration ->
                                 when (val paymentResult = paymentRepository.getPaymentReceipt(effect.paymentId)) {
                                     is PaymentRepositoryResult.ReceiptSuccess -> {
-                                        if (isActiveWalletRequest(requestAccountId, requestGeneration)) {
-                                            walletStateModel = walletStateModel.withReceiptLoaded(paymentResult.receipt)
-                                        }
+                                        walletStateModel = applyWalletRequestResult(
+                                            currentState = walletStateModel,
+                                            isActive = isActiveWalletRequest(requestAccountId, requestGeneration),
+                                        ) { it.withReceiptLoaded(paymentResult.receipt) }
                                     }
                                     is PaymentRepositoryResult.Failure -> {
-                                        if (isActiveWalletRequest(requestAccountId, requestGeneration)) {
-                                            walletStateModel = walletStateModel.withReceiptFailure(paymentResult.message)
-                                        }
+                                        walletStateModel = applyWalletRequestResult(
+                                            currentState = walletStateModel,
+                                            isActive = isActiveWalletRequest(requestAccountId, requestGeneration),
+                                        ) { it.withReceiptFailure(paymentResult.message) }
                                     }
                                     else -> Unit
                                 }
