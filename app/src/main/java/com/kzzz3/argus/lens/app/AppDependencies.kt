@@ -48,9 +48,8 @@ fun rememberAppDependencies(
         createPaymentRepository(context, sessionRepository)
     }
     val realtimeClient = remember { createConversationRealtimeClient() }
-    val appShellCoordinator = remember(authRepository, sessionRepository, conversationRepository) {
+    val appShellCoordinator = remember(sessionRepository, conversationRepository) {
         AppShellCoordinator(
-            authRepository = authRepository,
             sessionRepository = sessionRepository,
             conversationRepository = conversationRepository,
         )

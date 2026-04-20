@@ -1,10 +1,6 @@
 package com.kzzz3.argus.lens.app
 
 import com.kzzz3.argus.lens.app.session.AppSessionState
-import com.kzzz3.argus.lens.data.auth.AuthFailureKind
-import com.kzzz3.argus.lens.data.auth.AuthRepository
-import com.kzzz3.argus.lens.data.auth.AuthRepositoryResult
-import com.kzzz3.argus.lens.data.auth.AuthSession
 import com.kzzz3.argus.lens.data.conversation.ConversationRepository
 import com.kzzz3.argus.lens.data.session.SessionRepository
 import com.kzzz3.argus.lens.feature.inbox.ChatMessageAttachment
@@ -39,13 +35,6 @@ class AppShellCoordinatorTest {
         )
         val sessionRepository = FakeSessionRepository(persistedSession)
         val coordinator = AppShellCoordinator(
-            authRepository = FakeAuthRepository(
-                restoreResult = AuthRepositoryResult.Failure(
-                    code = "NETWORK_UNAVAILABLE",
-                    message = "offline",
-                    kind = AuthFailureKind.NETWORK,
-                )
-            ),
             sessionRepository = sessionRepository,
             conversationRepository = FakeConversationRepository(expectedThreads),
         )
@@ -79,13 +68,6 @@ class AppShellCoordinatorTest {
         )
         val sessionRepository = FakeSessionRepository(persistedSession)
         val coordinator = AppShellCoordinator(
-            authRepository = FakeAuthRepository(
-                restoreResult = AuthRepositoryResult.Failure(
-                    code = "INVALID_CREDENTIALS",
-                    message = "expired",
-                    kind = AuthFailureKind.UNAUTHORIZED,
-                )
-            ),
             sessionRepository = sessionRepository,
             conversationRepository = FakeConversationRepository(previewThreads),
         )
@@ -96,48 +78,6 @@ class AppShellCoordinatorTest {
         assertEquals(previewThreads, result.conversationThreadsState)
         assertEquals("argus_tester", result.hydratedConversationAccountId)
         assertTrue(!sessionRepository.cleared)
-    }
-
-    private class FakeAuthRepository(
-        private val restoreResult: AuthRepositoryResult,
-    ) : AuthRepository {
-        override suspend fun restoreSession(accessToken: String): AuthRepositoryResult = restoreResult
-
-        override suspend fun refreshSession(refreshToken: String): AuthRepositoryResult {
-            return AuthRepositoryResult.Success(
-                AuthSession(
-                    accountId = "tester",
-                    displayName = "tester",
-                    accessToken = "token",
-                    refreshToken = "refresh-token",
-                    message = "refreshed",
-                )
-            )
-        }
-
-        override suspend fun login(account: String, password: String): AuthRepositoryResult {
-            return AuthRepositoryResult.Success(
-                AuthSession(
-                    accountId = account,
-                    displayName = account,
-                    accessToken = "token",
-                    refreshToken = "refresh-token",
-                    message = "ok",
-                )
-            )
-        }
-
-        override suspend fun register(displayName: String, account: String, password: String): AuthRepositoryResult {
-            return AuthRepositoryResult.Success(
-                AuthSession(
-                    accountId = account,
-                    displayName = displayName,
-                    accessToken = "token",
-                    refreshToken = "refresh-token",
-                    message = "ok",
-                )
-            )
-        }
     }
 
     private class FakeSessionRepository(
