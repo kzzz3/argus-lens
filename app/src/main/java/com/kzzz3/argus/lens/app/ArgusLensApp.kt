@@ -844,9 +844,10 @@ fun ArgusLensApp() {
                                 when (val friendResult = friendRepository.sendFriendRequest(effect.friendAccountId)) {
                                     is FriendRepositoryResult.FriendRequestSuccess -> {
                                         val refreshed = friendRepository.listFriendRequests()
-                                        contactsStateModel = contactsStateModel.copy(
-                                            statusMessage = friendResult.message ?: "Friend request sent.",
-                                            isStatusError = false,
+                                        contactsStateModel = createContactsStatusUpdate(
+                                            currentState = contactsStateModel,
+                                            message = friendResult.message ?: "Friend request sent.",
+                                            isError = false,
                                         )
                                         if (refreshed is FriendRepositoryResult.RequestsSuccess) {
                                             friendRequestsSnapshot = refreshed.snapshot
@@ -854,9 +855,10 @@ fun ArgusLensApp() {
                                     }
 
                                     is FriendRepositoryResult.Failure -> {
-                                        contactsStateModel = contactsStateModel.copy(
-                                            statusMessage = friendResult.message,
-                                            isStatusError = true,
+                                        contactsStateModel = createContactsStatusUpdate(
+                                            currentState = contactsStateModel,
+                                            message = friendResult.message,
+                                            isError = true,
                                         )
                                     }
 
@@ -888,14 +890,25 @@ fun ArgusLensApp() {
                             coroutineScope.launch {
                                 when (val result = friendRepository.acceptFriendRequest(action.requestId)) {
                                     is FriendRepositoryResult.FriendsSuccess -> {
-                                        friendRequestsStatusMessage = result.message ?: "Friend request accepted."
-                                        friendRequestsStatusError = false
+                                        val statusState = createFriendRequestStatusState(
+                                            snapshot = friendRequestsSnapshot,
+                                            message = result.message ?: "Friend request accepted.",
+                                            isError = false,
+                                        )
+                                        friendRequestsStatusMessage = statusState.message
+                                        friendRequestsStatusError = statusState.isError
                                         when (val refreshedFriends = friendRepository.listFriends()) {
                                             is FriendRepositoryResult.FriendsSuccess -> friends = refreshedFriends.friends
                                             else -> Unit
                                         }
                                         when (val refreshedRequests = friendRepository.listFriendRequests()) {
-                                            is FriendRepositoryResult.RequestsSuccess -> friendRequestsSnapshot = refreshedRequests.snapshot
+                                            is FriendRepositoryResult.RequestsSuccess -> {
+                                                friendRequestsSnapshot = createFriendRequestStatusState(
+                                                    snapshot = refreshedRequests.snapshot,
+                                                    message = statusState.message,
+                                                    isError = statusState.isError,
+                                                ).snapshot
+                                            }
                                             else -> Unit
                                         }
                                         if (appSessionState.isAuthenticated) {
@@ -906,8 +919,13 @@ fun ArgusLensApp() {
                                         }
                                     }
                                     is FriendRepositoryResult.Failure -> {
-                                        friendRequestsStatusMessage = result.message
-                                        friendRequestsStatusError = true
+                                        val statusState = createFriendRequestStatusState(
+                                            snapshot = friendRequestsSnapshot,
+                                            message = result.message,
+                                            isError = true,
+                                        )
+                                        friendRequestsStatusMessage = statusState.message
+                                        friendRequestsStatusError = statusState.isError
                                     }
                                     else -> Unit
                                 }
@@ -917,16 +935,32 @@ fun ArgusLensApp() {
                             coroutineScope.launch {
                                 when (val result = friendRepository.rejectFriendRequest(action.requestId)) {
                                     is FriendRepositoryResult.FriendRequestSuccess -> {
-                                        friendRequestsStatusMessage = result.message ?: "Friend request rejected."
-                                        friendRequestsStatusError = false
+                                        val statusState = createFriendRequestStatusState(
+                                            snapshot = friendRequestsSnapshot,
+                                            message = result.message ?: "Friend request rejected.",
+                                            isError = false,
+                                        )
+                                        friendRequestsStatusMessage = statusState.message
+                                        friendRequestsStatusError = statusState.isError
                                         when (val refreshedRequests = friendRepository.listFriendRequests()) {
-                                            is FriendRepositoryResult.RequestsSuccess -> friendRequestsSnapshot = refreshedRequests.snapshot
+                                            is FriendRepositoryResult.RequestsSuccess -> {
+                                                friendRequestsSnapshot = createFriendRequestStatusState(
+                                                    snapshot = refreshedRequests.snapshot,
+                                                    message = statusState.message,
+                                                    isError = statusState.isError,
+                                                ).snapshot
+                                            }
                                             else -> Unit
                                         }
                                     }
                                     is FriendRepositoryResult.Failure -> {
-                                        friendRequestsStatusMessage = result.message
-                                        friendRequestsStatusError = true
+                                        val statusState = createFriendRequestStatusState(
+                                            snapshot = friendRequestsSnapshot,
+                                            message = result.message,
+                                            isError = true,
+                                        )
+                                        friendRequestsStatusMessage = statusState.message
+                                        friendRequestsStatusError = statusState.isError
                                     }
                                     else -> Unit
                                 }
@@ -936,16 +970,32 @@ fun ArgusLensApp() {
                             coroutineScope.launch {
                                 when (val result = friendRepository.ignoreFriendRequest(action.requestId)) {
                                     is FriendRepositoryResult.FriendRequestSuccess -> {
-                                        friendRequestsStatusMessage = result.message ?: "Friend request ignored."
-                                        friendRequestsStatusError = false
+                                        val statusState = createFriendRequestStatusState(
+                                            snapshot = friendRequestsSnapshot,
+                                            message = result.message ?: "Friend request ignored.",
+                                            isError = false,
+                                        )
+                                        friendRequestsStatusMessage = statusState.message
+                                        friendRequestsStatusError = statusState.isError
                                         when (val refreshedRequests = friendRepository.listFriendRequests()) {
-                                            is FriendRepositoryResult.RequestsSuccess -> friendRequestsSnapshot = refreshedRequests.snapshot
+                                            is FriendRepositoryResult.RequestsSuccess -> {
+                                                friendRequestsSnapshot = createFriendRequestStatusState(
+                                                    snapshot = refreshedRequests.snapshot,
+                                                    message = statusState.message,
+                                                    isError = statusState.isError,
+                                                ).snapshot
+                                            }
                                             else -> Unit
                                         }
                                     }
                                     is FriendRepositoryResult.Failure -> {
-                                        friendRequestsStatusMessage = result.message
-                                        friendRequestsStatusError = true
+                                        val statusState = createFriendRequestStatusState(
+                                            snapshot = friendRequestsSnapshot,
+                                            message = result.message,
+                                            isError = true,
+                                        )
+                                        friendRequestsStatusMessage = statusState.message
+                                        friendRequestsStatusError = statusState.isError
                                     }
                                     else -> Unit
                                 }

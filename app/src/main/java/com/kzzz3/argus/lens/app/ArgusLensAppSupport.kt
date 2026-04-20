@@ -3,7 +3,9 @@ package com.kzzz3.argus.lens.app
 import com.kzzz3.argus.lens.app.session.AppSessionState
 import com.kzzz3.argus.lens.app.session.createAuthenticatedSession
 import com.kzzz3.argus.lens.data.auth.AuthSession
+import com.kzzz3.argus.lens.data.friend.FriendRequestsSnapshot
 import com.kzzz3.argus.lens.feature.auth.AuthFormState
+import com.kzzz3.argus.lens.feature.contacts.ContactsState
 import com.kzzz3.argus.lens.feature.register.RegisterFormState
 
 internal const val DEFAULT_PREVIEW_DISPLAY_NAME = "Argus Tester"
@@ -15,6 +17,12 @@ internal data class PostAuthUiState(
     val selectedConversationId: String,
     val nextAuthFormState: AuthFormState,
     val realtimeReconnectIncrement: Int = 1,
+)
+
+internal data class FriendRequestStatusState(
+    val snapshot: FriendRequestsSnapshot,
+    val message: String?,
+    val isError: Boolean,
 )
 
 internal fun shouldApplyWalletRequestResult(
@@ -101,5 +109,28 @@ internal fun createPostAuthUiState(
         hydratedConversationAccountId = signedInState.hydratedConversationAccountId,
         selectedConversationId = signedInState.selectedConversationId,
         nextAuthFormState = AuthFormState(account = accountId),
+    )
+}
+
+internal fun createContactsStatusUpdate(
+    currentState: ContactsState,
+    message: String,
+    isError: Boolean,
+): ContactsState {
+    return currentState.copy(
+        statusMessage = message,
+        isStatusError = isError,
+    )
+}
+
+internal fun createFriendRequestStatusState(
+    snapshot: FriendRequestsSnapshot,
+    message: String?,
+    isError: Boolean,
+): FriendRequestStatusState {
+    return FriendRequestStatusState(
+        snapshot = snapshot,
+        message = message,
+        isError = isError,
     )
 }

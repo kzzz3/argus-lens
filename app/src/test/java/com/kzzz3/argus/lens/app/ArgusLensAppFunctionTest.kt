@@ -1,8 +1,10 @@
 package com.kzzz3.argus.lens.app
 
 import com.kzzz3.argus.lens.feature.auth.AuthFormState
+import com.kzzz3.argus.lens.feature.contacts.ContactsState
 import com.kzzz3.argus.lens.feature.register.RegisterFormState
 import com.kzzz3.argus.lens.data.auth.AuthSession
+import com.kzzz3.argus.lens.data.friend.FriendRequestsSnapshot
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -105,6 +107,32 @@ class ArgusLensAppFunctionTest {
 
         assertFalse(state.isSubmitting)
         assertEquals("Created", state.submitResult)
+    }
+
+    @Test
+    fun createContactsStatusUpdate_marksSuccessMessage() {
+        val state = createContactsStatusUpdate(
+            currentState = ContactsState(),
+            message = "Friend request sent.",
+            isError = false,
+        )
+
+        assertEquals("Friend request sent.", state.statusMessage)
+        assertFalse(state.isStatusError)
+    }
+
+    @Test
+    fun createFriendRequestStatusState_updatesSnapshotAndClearsError() {
+        val snapshot = FriendRequestsSnapshot(emptyList(), emptyList())
+        val state = createFriendRequestStatusState(
+            snapshot = snapshot,
+            message = "Friend request accepted.",
+            isError = false,
+        )
+
+        assertEquals(snapshot, state.snapshot)
+        assertEquals("Friend request accepted.", state.message)
+        assertFalse(state.isError)
     }
 
     private fun sampleConversationThreadsState() =
