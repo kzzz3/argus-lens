@@ -8,6 +8,7 @@ import com.kzzz3.argus.lens.data.friend.FriendEntry
 import com.kzzz3.argus.lens.data.friend.FriendRequestsSnapshot
 import com.kzzz3.argus.lens.feature.auth.AuthFormState
 import com.kzzz3.argus.lens.feature.contacts.ContactsState
+import com.kzzz3.argus.lens.feature.inbox.ConversationThreadsState
 import com.kzzz3.argus.lens.feature.register.RegisterFormState
 import com.kzzz3.argus.lens.feature.wallet.WalletState
 
@@ -33,6 +34,11 @@ internal data class DirectConversationTarget(
     val requiresRefresh: Boolean,
     val requiresPlaceholder: Boolean,
     val placeholderTitle: String,
+)
+
+internal data class AppOutgoingDispatchResult(
+    val state: ConversationThreadsState,
+    val failureMessage: String? = null,
 )
 
 internal fun shouldApplyWalletRequestResult(
@@ -191,4 +197,19 @@ internal inline fun applyWalletRequestResult(
     transform: (WalletState) -> WalletState,
 ): WalletState {
     return if (isActive) transform(currentState) else currentState
+}
+
+internal fun summarizeOutgoingDispatch(
+    results: List<AppOutgoingDispatchResult>,
+): AppOutgoingDispatchResult? {
+    if (results.isEmpty()) {
+        return null
+    }
+
+    val finalState = results.last().state
+    val firstFailureMessage = results.firstNotNullOfOrNull { it.failureMessage }
+    return AppOutgoingDispatchResult(
+        state = finalState,
+        failureMessage = firstFailureMessage,
+    )
 }

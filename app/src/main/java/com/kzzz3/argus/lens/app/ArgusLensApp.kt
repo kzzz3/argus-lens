@@ -1247,7 +1247,7 @@ fun ArgusLensApp() {
                                         val outgoingMessages = result.state.messages
                                             .filter { it.id in result.effect.messageIds }
                                         val conversationId = result.effect.conversationId
-                                        var firstFailureMessage: String? = null
+                                        val dispatchResults = mutableListOf<AppOutgoingDispatchResult>()
 
                                         outgoingMessages.forEach { outgoingMessage ->
                                             val sendResult = dispatchOutgoingChatMessage(
@@ -1257,14 +1257,16 @@ fun ArgusLensApp() {
                                                 conversationRepository = conversationRepository,
                                                 mediaRepository = mediaRepository,
                                             )
+                                            dispatchResults += AppOutgoingDispatchResult(
+                                                state = sendResult.state,
+                                                failureMessage = sendResult.failureMessage,
+                                            )
                                             conversationThreadsState = sendResult.state
-                                            if (firstFailureMessage == null) {
-                                                firstFailureMessage = sendResult.failureMessage
-                                            }
                                         }
 
-                                        if (firstFailureMessage != null) {
-                                            chatStatusMessage = firstFailureMessage
+                                        val summary = summarizeOutgoingDispatch(dispatchResults)
+                                        if (summary?.failureMessage != null) {
+                                            chatStatusMessage = summary.failureMessage
                                             chatStatusError = true
                                         }
                                     }
