@@ -2,7 +2,6 @@ package com.kzzz3.argus.lens.app
 
 import com.kzzz3.argus.lens.app.session.AppSessionState
 import com.kzzz3.argus.lens.data.conversation.ConversationRepository
-import com.kzzz3.argus.lens.data.realtime.ConversationRealtimeConnectionState
 import com.kzzz3.argus.lens.data.realtime.ConversationRealtimeEvent
 import com.kzzz3.argus.lens.feature.inbox.ChatMessageDeliveryStatus
 import com.kzzz3.argus.lens.feature.inbox.ConversationThreadsState
@@ -101,24 +100,6 @@ internal fun ensureDirectConversationPlaceholder(
     )
 }
 
-internal fun buildRealtimeStatusLabel(state: ConversationRealtimeConnectionState): String {
-    return when (state) {
-        ConversationRealtimeConnectionState.DISABLED -> "offline"
-        ConversationRealtimeConnectionState.CONNECTING -> "connecting"
-        ConversationRealtimeConnectionState.LIVE -> "live"
-        ConversationRealtimeConnectionState.RECOVERING -> "recovering"
-    }
-}
-
-internal fun realtimeReconnectDelayMillis(attempt: Int): Long {
-    return when {
-        attempt <= 1 -> 1_000L
-        attempt == 2 -> 2_000L
-        attempt == 3 -> 4_000L
-        else -> 8_000L
-    }
-}
-
 private suspend fun acknowledgeVisibleRemoteMessagesAsRead(
     state: ConversationThreadsState,
     conversationId: String,
@@ -146,9 +127,11 @@ private suspend fun acknowledgeVisibleRemoteMessagesAsRead(
 
 internal const val REALTIME_EVENT_STREAM_READY = "STREAM_READY"
 internal const val REALTIME_EVENT_HEARTBEAT = "HEARTBEAT"
-private const val REALTIME_EVENT_MESSAGE_CREATED = "MESSAGE_CREATED"
-private const val REALTIME_EVENT_MESSAGE_STATUS_UPDATED = "MESSAGE_STATUS_UPDATED"
-private const val REALTIME_EVENT_MESSAGE_RECALLED = "MESSAGE_RECALLED"
-private const val REALTIME_EVENT_CONVERSATION_READ = "CONVERSATION_READ"
-private const val REALTIME_EVENT_CONVERSATION_CREATED = "CONVERSATION_CREATED"
-private const val REALTIME_EVENT_CONVERSATION_UPDATED = "CONVERSATION_UPDATED"
+internal const val REALTIME_EVENT_MESSAGE_CREATED = "MESSAGE_CREATED"
+internal const val REALTIME_EVENT_MESSAGE_STATUS_UPDATED = "MESSAGE_STATUS_UPDATED"
+internal const val REALTIME_EVENT_MESSAGE_RECALLED = "MESSAGE_RECALLED"
+internal const val REALTIME_EVENT_CONVERSATION_READ = "CONVERSATION_READ"
+internal const val REALTIME_EVENT_CONVERSATION_CREATED = "CONVERSATION_CREATED"
+internal const val REALTIME_EVENT_CONVERSATION_UPDATED = "CONVERSATION_UPDATED"
+
+

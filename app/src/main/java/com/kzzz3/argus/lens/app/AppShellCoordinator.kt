@@ -3,6 +3,7 @@ package com.kzzz3.argus.lens.app
 import com.kzzz3.argus.lens.app.session.AppSessionState
 import com.kzzz3.argus.lens.app.session.createAuthenticatedSession
 import com.kzzz3.argus.lens.data.conversation.ConversationRepository
+import com.kzzz3.argus.lens.data.payment.PaymentRepository
 import com.kzzz3.argus.lens.data.session.SessionRepository
 import com.kzzz3.argus.lens.feature.call.CallSessionState
 import com.kzzz3.argus.lens.feature.contacts.ContactsState
@@ -33,6 +34,7 @@ data class AppSignedOutState(
 class AppShellCoordinator(
     private val sessionRepository: SessionRepository,
     private val conversationRepository: ConversationRepository,
+    private val paymentRepository: PaymentRepository,
 ) {
     suspend fun hydrateAppState(
         previewThreadsState: ConversationThreadsState,
@@ -108,7 +110,9 @@ class AppShellCoordinator(
 
     fun createSignedOutState(
         previewThreadsState: ConversationThreadsState,
+        signedOutAccountId: String,
     ): AppSignedOutState {
+        paymentRepository.clearLocalData(signedOutAccountId)
         return AppSignedOutState(
             authFormState = com.kzzz3.argus.lens.feature.auth.AuthFormState(),
             registerFormState = com.kzzz3.argus.lens.feature.register.RegisterFormState(),
@@ -116,6 +120,21 @@ class AppShellCoordinator(
             callSessionState = CallSessionState(),
             conversationThreadsState = previewThreadsState,
             selectedConversationId = "",
+        )
+    }
+
+    fun createPreviewConversationThreads(
+        currentUserDisplayName: String,
+    ): ConversationThreadsState {
+        return conversationRepository.createPreviewState(currentUserDisplayName)
+    }
+
+    suspend fun loadInitialAuthenticatedConversations(
+        session: AppSessionState,
+    ): ConversationThreadsState {
+        return conversationRepository.loadOrCreateConversationThreads(
+            accountId = session.accountId,
+            currentUserDisplayName = resolvePreviewDisplayName(session.displayName),
         )
     }
 }

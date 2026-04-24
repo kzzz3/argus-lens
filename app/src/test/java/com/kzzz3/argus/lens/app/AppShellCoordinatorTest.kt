@@ -2,6 +2,8 @@ package com.kzzz3.argus.lens.app
 
 import com.kzzz3.argus.lens.app.session.AppSessionState
 import com.kzzz3.argus.lens.data.conversation.ConversationRepository
+import com.kzzz3.argus.lens.data.payment.PaymentRepository
+import com.kzzz3.argus.lens.data.payment.PaymentRepositoryResult
 import com.kzzz3.argus.lens.data.session.SessionRepository
 import com.kzzz3.argus.lens.feature.inbox.ChatMessageAttachment
 import com.kzzz3.argus.lens.feature.inbox.ChatState
@@ -37,6 +39,7 @@ class AppShellCoordinatorTest {
         val coordinator = AppShellCoordinator(
             sessionRepository = sessionRepository,
             conversationRepository = FakeConversationRepository(expectedThreads),
+            paymentRepository = FakePaymentRepository(),
         )
 
         val result = coordinator.hydrateAppState(previewThreadsState = ConversationThreadsState())
@@ -70,6 +73,7 @@ class AppShellCoordinatorTest {
         val coordinator = AppShellCoordinator(
             sessionRepository = sessionRepository,
             conversationRepository = FakeConversationRepository(previewThreads),
+            paymentRepository = FakePaymentRepository(),
         )
 
         val result = coordinator.hydrateAppState(previewThreadsState = previewThreads)
@@ -116,5 +120,18 @@ class AppShellCoordinatorTest {
         override fun updateConversationFromChatState(state: ConversationThreadsState, updatedState: ChatState): ConversationThreadsState = state
         override fun resolveOutgoingMessages(state: ConversationThreadsState, conversationId: String, messageIds: List<String>): ConversationThreadsState = state
         override fun resolveDeliveredMessages(state: ConversationThreadsState, conversationId: String, messageIds: List<String>): ConversationThreadsState = state
+    }
+
+    private class FakePaymentRepository : PaymentRepository {
+        override suspend fun getWalletSummary(): PaymentRepositoryResult = failure()
+        override suspend fun resolveScanPayload(scanPayload: String): PaymentRepositoryResult = failure()
+        override suspend fun confirmPayment(sessionId: String, amount: Double?, note: String): PaymentRepositoryResult = failure()
+        override suspend fun listPayments(): PaymentRepositoryResult = failure()
+        override suspend fun getPaymentReceipt(paymentId: String): PaymentRepositoryResult = failure()
+
+        private fun failure(): PaymentRepositoryResult = PaymentRepositoryResult.Failure(
+            code = "UNUSED",
+            message = "unused",
+        )
     }
 }

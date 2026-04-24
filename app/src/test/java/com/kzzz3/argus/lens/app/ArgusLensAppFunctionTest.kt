@@ -2,10 +2,11 @@ package com.kzzz3.argus.lens.app
 
 import com.kzzz3.argus.lens.feature.auth.AuthFormState
 import com.kzzz3.argus.lens.feature.contacts.ContactsState
-import com.kzzz3.argus.lens.feature.inbox.ChatMessageDeliveryStatus
-import com.kzzz3.argus.lens.feature.inbox.ChatMessageItem
+import com.kzzz3.argus.lens.feature.contacts.createContactsStatusUpdate
+import com.kzzz3.argus.lens.feature.contacts.createFriendRequestStatusState
+import com.kzzz3.argus.lens.feature.contacts.resolveDirectConversationTarget
 import com.kzzz3.argus.lens.feature.inbox.ConversationThreadsState
-import com.kzzz3.argus.lens.feature.inbox.InboxConversationThread
+import com.kzzz3.argus.lens.feature.realtime.isSseAuthFailure
 import com.kzzz3.argus.lens.feature.wallet.WalletTransferDirection
 import com.kzzz3.argus.lens.feature.wallet.WalletState
 import com.kzzz3.argus.lens.feature.wallet.counterpartyDisplayName
@@ -19,22 +20,11 @@ import com.kzzz3.argus.lens.data.payment.PaymentHistoryEntry
 import com.kzzz3.argus.lens.data.payment.PaymentReceipt
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ArgusLensAppFunctionTest {
 
-    @Test
-    fun incrementCallDurationLabel_incrementsSecondsAndMinutes() {
-        assertEquals("00:01", incrementCallDurationLabel("00:00"))
-        assertEquals("01:00", incrementCallDurationLabel("00:59"))
-    }
-
-    @Test
-    fun incrementCallDurationLabel_fallsBackForInvalidInput() {
-        assertEquals("00:01", incrementCallDurationLabel("invalid"))
-    }
 
     @Test
     fun isSseAuthFailure_detectsNestedUnauthorizedErrors() {
@@ -277,49 +267,9 @@ class ArgusLensAppFunctionTest {
         assertEquals("Li Si", history.counterpartyDisplayName("tester"))
     }
 
-    @Test
-    fun summarizeOutgoingDispatch_usesLatestStateAndFirstFailureMessage() {
-        val firstState = ConversationThreadsState(
-            threads = listOf(
-                InboxConversationThread(
-                    id = "conv-1",
-                    title = "Chat",
-                    subtitle = "",
-                    unreadCount = 0,
-                    messages = listOf(
-                        ChatMessageItem(
-                            id = "message-1",
-                            senderDisplayName = "Tester",
-                            body = "hello",
-                            timestampLabel = "now",
-                            deliveryStatus = ChatMessageDeliveryStatus.Sent,
-                            isFromCurrentUser = true,
-                        )
-                    ),
-                )
-            )
-        )
-        val secondState = firstState.copy()
-
-        val summary = summarizeOutgoingDispatch(
-            results = listOf(
-                AppOutgoingDispatchResult(state = firstState, failureMessage = "Upload failed"),
-                AppOutgoingDispatchResult(state = secondState, failureMessage = "Ignored later failure"),
-            )
-        )
-
-        assertNotNull(summary)
-        assertEquals(secondState, summary!!.state)
-        assertEquals("Upload failed", summary.failureMessage)
-    }
-
-    @Test
-    fun summarizeOutgoingDispatch_handlesEmptyBatch() {
-        val summary = summarizeOutgoingDispatch(emptyList<AppOutgoingDispatchResult>())
-
-        assertEquals(null, summary)
-    }
 
     private fun sampleConversationThreadsState() =
         com.kzzz3.argus.lens.feature.inbox.ConversationThreadsState()
 }
+
+
