@@ -18,7 +18,10 @@ fun createAppHttpClient(
     if (enableVerboseHttpLogs) {
         builder.addInterceptor(
             HttpLoggingInterceptor().apply {
-                level = HttpLoggingInterceptor.Level.BODY
+                redactHeader("Authorization")
+                redactHeader("Cookie")
+                redactHeader("Set-Cookie")
+                level = HttpLoggingInterceptor.Level.BASIC
             }
         )
     }
