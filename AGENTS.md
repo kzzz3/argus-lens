@@ -28,14 +28,17 @@ argus-lens/
 
 ## COMMANDS
 ```bash
-./gradlew test
-./gradlew connectedAndroidTest
+./gradlew testDebugUnitTest
+./gradlew lint
 ./gradlew assembleDebug
+# Device/emulator only, when UI/runtime behavior needs it:
+./gradlew connectedAndroidTest
 ```
 
 ## CONVENTIONS
 - Keep the project Android Studio-centered. Project layout should remain compatible with standard Android Studio workflows.
 - Use the Gradle wrapper, not arbitrary local Gradle installations.
+- Run Gradle tasks serially in this workspace; avoid parallel Gradle invocations because they can contend for the daemon/cache and hang.
 - Repository resolution is centralized in `settings.gradle.kts` with `FAIL_ON_PROJECT_REPOS`; do not add ad hoc per-module repositories.
 - `gradle/libs.versions.toml` is the version source of truth.
 - `gradle.properties` explicitly sets `kotlin.code.style=official`.
@@ -51,6 +54,7 @@ argus-lens/
 
 ## TESTING
 - Use `app/src/test/java` for local JVM tests and `app/src/androidTest/java` for device/emulator tests.
+- For routine verification, prefer `testDebugUnitTest`, `lint`, and `assembleDebug`; reserve `connectedAndroidTest` for emulator/device-specific coverage.
 - Compose UI testing dependencies are present; use instrumentation tests when the behavior is UI/runtime-specific.
 - Current tests often use handwritten fake repositories/services instead of a visible mocking framework.
 
