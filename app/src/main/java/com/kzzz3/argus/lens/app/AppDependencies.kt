@@ -3,6 +3,7 @@ package com.kzzz3.argus.lens.app
 import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import com.kzzz3.argus.lens.app.session.AppSessionState
 import com.kzzz3.argus.lens.data.auth.AuthRepository
 import com.kzzz3.argus.lens.data.auth.createAuthRepository
 import com.kzzz3.argus.lens.data.conversation.ConversationRepository
@@ -17,6 +18,13 @@ import com.kzzz3.argus.lens.data.realtime.ConversationRealtimeClient
 import com.kzzz3.argus.lens.data.realtime.createConversationRealtimeClient
 import com.kzzz3.argus.lens.data.session.SessionRepository
 import com.kzzz3.argus.lens.data.session.createLocalSessionStore
+import com.kzzz3.argus.lens.data.session.createLocalSessionSnapshot
+import com.kzzz3.argus.lens.feature.auth.AuthCoordinator
+import com.kzzz3.argus.lens.feature.contacts.ContactsCoordinator
+import com.kzzz3.argus.lens.feature.contacts.NewFriendsCoordinator
+import com.kzzz3.argus.lens.feature.inbox.ChatCoordinator
+import com.kzzz3.argus.lens.feature.realtime.RealtimeCoordinator
+import com.kzzz3.argus.lens.feature.wallet.WalletRequestCoordinator
 
 data class AppDependencies(
     val authRepository: AuthRepository,
@@ -27,6 +35,14 @@ data class AppDependencies(
     val paymentRepository: PaymentRepository,
     val realtimeClient: ConversationRealtimeClient,
     val appShellCoordinator: AppShellCoordinator,
+    val appSessionCoordinator: AppSessionCoordinator,
+    val authCoordinator: AuthCoordinator,
+    val contactsCoordinator: ContactsCoordinator,
+    val newFriendsCoordinator: NewFriendsCoordinator,
+    val chatCoordinator: ChatCoordinator,
+    val walletRequestCoordinator: WalletRequestCoordinator,
+    val realtimeCoordinator: RealtimeCoordinator,
+    val initialSessionSnapshot: AppSessionState,
 )
 
 @Composable
@@ -48,11 +64,34 @@ fun rememberAppDependencies(
         createPaymentRepository(context, sessionRepository)
     }
     val realtimeClient = remember { createConversationRealtimeClient() }
-    val appShellCoordinator = remember(sessionRepository, conversationRepository) {
+    val initialSessionSnapshot = remember(context) { createLocalSessionSnapshot(context) }
+    val appShellCoordinator = remember(sessionRepository, conversationRepository, paymentRepository) {
         AppShellCoordinator(
             sessionRepository = sessionRepository,
             conversationRepository = conversationRepository,
+            paymentRepository = paymentRepository,
         )
+    }
+    val appSessionCoordinator = remember(authRepository) {
+        AppSessionCoordinator(authRepository)
+    }
+    val authCoordinator = remember(authRepository) {
+        AuthCoordinator(authRepository)
+    }
+    val contactsCoordinator = remember(conversationRepository, friendRepository) {
+        ContactsCoordinator(conversationRepository, friendRepository)
+    }
+    val newFriendsCoordinator = remember(friendRepository, conversationRepository) {
+        NewFriendsCoordinator(friendRepository, conversationRepository)
+    }
+    val chatCoordinator = remember(conversationRepository, mediaRepository) {
+        ChatCoordinator(conversationRepository, mediaRepository)
+    }
+    val walletRequestCoordinator = remember(paymentRepository) {
+        WalletRequestCoordinator(paymentRepository)
+    }
+    val realtimeCoordinator = remember(conversationRepository) {
+        RealtimeCoordinator(conversationRepository)
     }
     return remember(
         authRepository,
@@ -63,6 +102,14 @@ fun rememberAppDependencies(
         paymentRepository,
         realtimeClient,
         appShellCoordinator,
+        appSessionCoordinator,
+        authCoordinator,
+        contactsCoordinator,
+        newFriendsCoordinator,
+        chatCoordinator,
+        walletRequestCoordinator,
+        realtimeCoordinator,
+        initialSessionSnapshot,
     ) {
         AppDependencies(
             authRepository = authRepository,
@@ -73,6 +120,14 @@ fun rememberAppDependencies(
             paymentRepository = paymentRepository,
             realtimeClient = realtimeClient,
             appShellCoordinator = appShellCoordinator,
+            appSessionCoordinator = appSessionCoordinator,
+            authCoordinator = authCoordinator,
+            contactsCoordinator = contactsCoordinator,
+            newFriendsCoordinator = newFriendsCoordinator,
+            chatCoordinator = chatCoordinator,
+            walletRequestCoordinator = walletRequestCoordinator,
+            realtimeCoordinator = realtimeCoordinator,
+            initialSessionSnapshot = initialSessionSnapshot,
         )
     }
 }
