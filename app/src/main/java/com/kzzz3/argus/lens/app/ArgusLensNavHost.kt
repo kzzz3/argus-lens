@@ -14,7 +14,10 @@ private object ArgusLensGraph {
 fun ArgusLensNavHost(
     dependencies: AppDependencies,
     currentRoute: AppRoute,
+    selectedConversationId: String,
     onRouteChanged: (AppRoute) -> Unit,
+    onConversationOpened: (String) -> Unit,
+    onConversationSelectionCleared: () -> Unit,
 ) {
     val navController = rememberNavController()
     NavHost(
@@ -25,7 +28,10 @@ fun ArgusLensNavHost(
             AppRouteHost(
                 dependencies = dependencies,
                 currentRoute = currentRoute,
+                selectedConversationId = selectedConversationId,
                 onRouteChanged = onRouteChanged,
+                onConversationOpened = onConversationOpened,
+                onConversationSelectionCleared = onConversationSelectionCleared,
             )
         }
     }

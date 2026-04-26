@@ -13,6 +13,9 @@ fun ArgusLensApp(
     ArgusLensNavHost(
         dependencies = viewModel.dependencies,
         currentRoute = uiState.currentRoute,
+        selectedConversationId = uiState.selectedConversationId,
         onRouteChanged = viewModel::openRoute,
+        onConversationOpened = viewModel::openConversation,
+        onConversationSelectionCleared = viewModel::clearSelectedConversation,
     )
 }

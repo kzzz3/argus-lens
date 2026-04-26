@@ -28,10 +28,24 @@ class ArgusLensAppViewModel @Inject constructor(
     fun openRoute(route: AppRoute) {
         _uiState.update { state -> state.copy(currentRoute = route) }
     }
+
+    fun openConversation(conversationId: String) {
+        _uiState.update { state ->
+            state.copy(
+                currentRoute = AppRoute.Chat,
+                selectedConversationId = conversationId,
+            )
+        }
+    }
+
+    fun clearSelectedConversation() {
+        _uiState.update { state -> state.copy(selectedConversationId = "") }
+    }
 }
 
 data class ArgusLensAppUiState(
     val currentRoute: AppRoute,
+    val selectedConversationId: String = "",
 )
 
 internal fun resolveInitialAppRoute(

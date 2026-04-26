@@ -86,7 +86,10 @@ import kotlinx.coroutines.sync.withLock
 internal fun AppRouteHost(
     dependencies: AppDependencies,
     currentRoute: AppRoute,
+    selectedConversationId: String,
     onRouteChanged: (AppRoute) -> Unit,
+    onConversationOpened: (String) -> Unit,
+    onConversationSelectionCleared: () -> Unit,
 ) {
     val coroutineScope = rememberCoroutineScope()
     val navController = rememberNavController()
@@ -124,7 +127,6 @@ internal fun AppRouteHost(
     var walletStateModel by rememberSaveable {
         mutableStateOf(WalletState())
     }
-    var selectedConversationId by rememberSaveable { mutableStateOf("") }
     var chatStatusMessage by rememberSaveable { mutableStateOf<String?>(null) }
     var chatStatusError by rememberSaveable { mutableStateOf(false) }
     var friendRequestsSnapshot by remember { mutableStateOf(FriendRequestsSnapshot(emptyList(), emptyList())) }
@@ -328,8 +330,7 @@ internal fun AppRouteHost(
             conversationId = conversationId,
         )
         conversationThreadsState = openResult.conversationThreadsState
-        selectedConversationId = openResult.conversationId
-        onRouteChanged(AppRoute.Chat)
+        onConversationOpened(openResult.conversationId)
         coroutineScope.launch {
             conversationThreadsState = chatCoordinator.synchronizeConversation(
                 state = conversationThreadsState,
@@ -366,7 +367,7 @@ internal fun AppRouteHost(
         walletStateModel = WalletState()
         conversationThreadsState = postAuthUiState.conversationThreadsState
         hydratedConversationAccountId = postAuthUiState.hydratedConversationAccountId
-        selectedConversationId = postAuthUiState.selectedConversationId
+        onConversationSelectionCleared()
         authFormState = if (keepSubmitMessageOnAuthForm) {
             postAuthUiState.nextAuthFormState.copy(submitResult = authResult.session.message)
         } else {
@@ -400,7 +401,7 @@ internal fun AppRouteHost(
         walletStateModel = WalletState()
         hydratedConversationAccountId = null
         conversationThreadsState = signedOutState.conversationThreadsState
-        selectedConversationId = signedOutState.selectedConversationId
+        onConversationSelectionCleared()
         friends = emptyList()
         friendRequestsSnapshot = FriendRequestsSnapshot(emptyList(), emptyList())
         friendRequestsStatusMessage = null
@@ -691,8 +692,7 @@ internal fun AppRouteHost(
                                     state = conversationThreadsState,
                                 )
                                 conversationThreadsState = openResult.conversationThreadsState
-                                selectedConversationId = openResult.conversationId
-                                onRouteChanged(AppRoute.Chat)
+                                onConversationOpened(openResult.conversationId)
                             }
                         }
 
