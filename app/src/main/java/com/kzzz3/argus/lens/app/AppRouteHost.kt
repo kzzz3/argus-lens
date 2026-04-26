@@ -151,6 +151,27 @@ internal fun AppRouteHost(
         )
     }
     val walletRequestRuntime = remember(coroutineScope) { WalletRequestRuntime(coroutineScope) }
+    val contactsRouteRuntime = remember(coroutineScope, contactsCoordinator, newFriendsCoordinator) {
+        ContactsRouteRuntime(
+            scope = coroutineScope,
+            openConversation = { request, conversationId ->
+                val result = contactsCoordinator.openConversation(
+                    session = request.session,
+                    requestedConversationId = conversationId,
+                    friends = request.friends,
+                    state = request.conversationThreadsState,
+                )
+                ContactsOpenConversationResult(
+                    conversationThreadsState = result.conversationThreadsState,
+                    conversationId = result.conversationId,
+                )
+            },
+            addFriend = contactsCoordinator::addFriend,
+            acceptFriendRequest = newFriendsCoordinator::accept,
+            rejectFriendRequest = newFriendsCoordinator::reject,
+            ignoreFriendRequest = newFriendsCoordinator::ignore,
+        )
+    }
     val walletRouteRuntime = remember(walletRequestRuntime, walletRequestCoordinator) {
         WalletRouteRuntime(
             requestRuntime = walletRequestRuntime,
@@ -399,6 +420,28 @@ internal fun AppRouteHost(
         onFriendRequestStatusChanged(statusState)
     }
 
+    fun contactsRouteRequest(contactsStateSnapshot: ContactsState = contactsState): ContactsRouteRequest {
+        return ContactsRouteRequest(
+            session = appSessionState,
+            contactsState = contactsStateSnapshot,
+            friends = friends,
+            conversationThreadsState = conversationThreadsState,
+            friendRequestsSnapshot = friendRequestsSnapshot,
+        )
+    }
+
+    fun contactsRouteCallbacks(): ContactsRouteCallbacks {
+        return ContactsRouteCallbacks(
+            onRouteChanged = onRouteChanged,
+            onContactsStateChanged = onContactsStateChanged,
+            onFriendRequestsSnapshotChanged = onFriendRequestsSnapshotChanged,
+            onConversationThreadsChanged = onConversationThreadsChanged,
+            onConversationOpened = onConversationOpened,
+            onFriendRequestStatusChanged = ::applyFriendRequestStatus,
+            onFriendsChanged = onFriendsChanged,
+        )
+    }
+
     fun signOutToEntry(message: String? = null) {
         sessionBoundaryRuntime.signOutToEntry(
             currentSession = appSessionState,
@@ -606,35 +649,11 @@ internal fun AppRouteHost(
                     )
                     onContactsStateChanged(result.state)
 
-                    when (val effect = result.effect) {
-                        is ContactsEffect.OpenConversation -> {
-                            coroutineScope.launch {
-                                val openResult = contactsCoordinator.openConversation(
-                                    session = appSessionState,
-                                    requestedConversationId = effect.conversationId,
-                                    friends = friends,
-                                    state = conversationThreadsState,
-                                )
-                                onConversationThreadsChanged(openResult.conversationThreadsState)
-                                onConversationOpened(openResult.conversationId)
-                            }
-                        }
-
-                        is ContactsEffect.AddFriend -> {
-                            coroutineScope.launch {
-                                val addFriendResult = contactsCoordinator.addFriend(
-                                    currentContactsState = contactsState,
-                                    friendAccountId = effect.friendAccountId,
-                                )
-                                onContactsStateChanged(addFriendResult.contactsState)
-                                addFriendResult.friendRequestsSnapshot?.let(onFriendRequestsSnapshotChanged)
-                            }
-                        }
-                        ContactsEffect.OpenNewFriends -> onRouteChanged(AppRoute.NewFriends)
-
-                        ContactsEffect.NavigateBackToInbox -> openTopLevelRoute(AppRoute.Inbox)
-                        null -> Unit
-                    }
+                    contactsRouteRuntime.handleContactsEffect(
+                        effect = result.effect,
+                        request = contactsRouteRequest(),
+                        callbacks = contactsRouteCallbacks(),
+                    )
                 },
                 modifier = Modifier.padding(innerPadding),
             )
@@ -647,40 +666,11 @@ internal fun AppRouteHost(
             NewFriendsScreen(
                 state = newFriendsUiState,
                 onAction = { action ->
-                    when (action) {
-                        NewFriendsAction.NavigateBack -> onRouteChanged(AppRoute.Contacts)
-                        is NewFriendsAction.Accept -> {
-                            coroutineScope.launch {
-                                val result = newFriendsCoordinator.accept(
-                                    requestId = action.requestId,
-                                    session = appSessionState,
-                                    currentSnapshot = friendRequestsSnapshot,
-                                    currentConversationState = conversationThreadsState,
-                                )
-                                applyFriendRequestStatus(result.status)
-                                result.friends?.let(onFriendsChanged)
-                                result.conversationThreadsState?.let(onConversationThreadsChanged)
-                            }
-                        }
-                        is NewFriendsAction.Reject -> {
-                            coroutineScope.launch {
-                                val result = newFriendsCoordinator.reject(
-                                    requestId = action.requestId,
-                                    currentSnapshot = friendRequestsSnapshot,
-                                )
-                                applyFriendRequestStatus(result.status)
-                            }
-                        }
-                        is NewFriendsAction.Ignore -> {
-                            coroutineScope.launch {
-                                val result = newFriendsCoordinator.ignore(
-                                    requestId = action.requestId,
-                                    currentSnapshot = friendRequestsSnapshot,
-                                )
-                                applyFriendRequestStatus(result.status)
-                            }
-                        }
-                    }
+                    contactsRouteRuntime.handleNewFriendsAction(
+                        action = action,
+                        request = contactsRouteRequest(),
+                        callbacks = contactsRouteCallbacks(),
+                    )
                 },
                 modifier = Modifier.padding(innerPadding),
             )
