@@ -12,6 +12,7 @@ class CallSessionRuntime(
     private val returnToChatDelayMillis: Long = 300L,
 ) {
     private var activeJob: Job? = null
+    private var returnToChatJob: Job? = null
 
     fun startCall(
         conversationId: String,
@@ -28,6 +29,8 @@ class CallSessionRuntime(
         )
         setState(latestState)
         activeJob?.cancel()
+        returnToChatJob?.cancel()
+        returnToChatJob = null
         activeJob = scope.launch {
             delay(activationDelayMillis)
             latestState = activateConnectingCallSession(latestState)
@@ -49,14 +52,18 @@ class CallSessionRuntime(
         activeJob?.cancel()
         activeJob = null
         setState(reduceCallSessionState(currentState, CallSessionAction.EndCall))
-        scope.launch {
+        returnToChatJob?.cancel()
+        returnToChatJob = scope.launch {
             delay(returnToChatDelayMillis)
             openChat()
+            returnToChatJob = null
         }
     }
 
     fun cancel() {
         activeJob?.cancel()
         activeJob = null
+        returnToChatJob?.cancel()
+        returnToChatJob = null
     }
 }

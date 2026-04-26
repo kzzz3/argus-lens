@@ -8,7 +8,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.Modifier
@@ -217,6 +216,7 @@ internal fun AppRouteHost(
     val latestSelectedConversationId by rememberUpdatedState(selectedConversationId)
     val latestAppSessionState by rememberUpdatedState(appSessionState)
     val latestCurrentRoute by rememberUpdatedState(currentRoute)
+    val latestRealtimeConnectionState by rememberUpdatedState(realtimeConnectionState)
     val latestRealtimeEnabled by rememberUpdatedState(
         appSessionState.isAuthenticated && sessionCredentialsStore.current.hasAccessToken
     )
@@ -413,8 +413,8 @@ internal fun AppRouteHost(
 
     fun scheduleSessionRefreshLoop() {
         sessionRefreshRuntime.startLoopIfNeeded(
-            getSession = { appSessionState },
-            getConnectionState = { realtimeConnectionState },
+            getSession = { latestAppSessionState },
+            getConnectionState = { latestRealtimeConnectionState },
             setSession = onSessionRefreshed,
             onUnauthorized = { signOutToEntry("Session expired or was revoked. Please sign in again.") },
         )
@@ -489,7 +489,7 @@ internal fun AppRouteHost(
                         onConversationThreadsChanged(realtimeCoordinator.applyEvent(
                             event = event,
                             session = latestAppSessionState,
-                            currentState = conversationThreadsState,
+                            currentState = latestConversationThreadsState,
                             selectedConversationId = latestSelectedConversationId,
                             isChatRouteActive = latestCurrentRoute == AppRoute.Chat,
                         ))

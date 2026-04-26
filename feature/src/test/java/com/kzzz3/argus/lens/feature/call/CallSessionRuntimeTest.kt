@@ -63,4 +63,34 @@ class CallSessionRuntimeTest {
         assertEquals(true, returnedToChat)
         scope.cancel()
     }
+
+    @Test
+    fun cancel_afterEndCallPreventsDelayedReturnToChat() = runBlocking {
+        val scope = CoroutineScope(Dispatchers.Unconfined)
+        val runtime = CallSessionRuntime(
+            scope = scope,
+            activationDelayMillis = Long.MAX_VALUE,
+            tickDelayMillis = Long.MAX_VALUE,
+            returnToChatDelayMillis = Long.MAX_VALUE,
+        )
+        var returnedToChat = false
+
+        runtime.startCall(
+            conversationId = "conv-1",
+            contactDisplayName = "Alice",
+            mode = CallSessionMode.Video,
+            setState = {},
+            openCallSession = {},
+            shouldKeepTicking = { true },
+        )
+        runtime.endCall(
+            currentState = startCallSession("conv-1", "Alice", CallSessionMode.Video),
+            setState = {},
+            openChat = { returnedToChat = true },
+        )
+        runtime.cancel()
+
+        assertEquals(false, returnedToChat)
+        scope.cancel()
+    }
 }
