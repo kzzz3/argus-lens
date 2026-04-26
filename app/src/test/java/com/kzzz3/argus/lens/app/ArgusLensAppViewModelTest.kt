@@ -2,6 +2,7 @@ package com.kzzz3.argus.lens.app
 
 import androidx.lifecycle.ViewModel
 import com.kzzz3.argus.lens.app.navigation.AppRoute
+import com.kzzz3.argus.lens.data.realtime.ConversationRealtimeConnectionState
 import com.kzzz3.argus.lens.data.session.SessionCredentials
 import com.kzzz3.argus.lens.model.session.AppSessionState
 import org.junit.Assert.assertEquals
@@ -65,5 +66,14 @@ class ArgusLensAppViewModelTest {
         )
 
         assertEquals(null, accountId)
+    }
+
+    @Test
+    fun appUiStateDefaultsRealtimeBookkeepingToDisconnectedState() {
+        val state = ArgusLensAppUiState(currentRoute = AppRoute.AuthEntry)
+
+        assertEquals(ConversationRealtimeConnectionState.DISABLED, state.realtimeConnectionState)
+        assertEquals("", state.realtimeLastEventId)
+        assertEquals(0, state.realtimeReconnectGeneration)
     }
 }

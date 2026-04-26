@@ -2,6 +2,7 @@ package com.kzzz3.argus.lens.app
 
 import androidx.lifecycle.ViewModel
 import com.kzzz3.argus.lens.app.navigation.AppRoute
+import com.kzzz3.argus.lens.data.realtime.ConversationRealtimeConnectionState
 import com.kzzz3.argus.lens.data.session.SessionCredentials
 import com.kzzz3.argus.lens.model.session.AppSessionState
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -48,12 +49,41 @@ class ArgusLensAppViewModel @Inject constructor(
     fun updateHydratedConversationAccountId(accountId: String?) {
         _uiState.update { state -> state.copy(hydratedConversationAccountId = accountId) }
     }
+
+    fun updateRealtimeConnectionState(connectionState: ConversationRealtimeConnectionState) {
+        _uiState.update { state -> state.copy(realtimeConnectionState = connectionState) }
+    }
+
+    fun recordRealtimeEventId(eventId: String) {
+        if (eventId.isBlank()) return
+        _uiState.update { state -> state.copy(realtimeLastEventId = eventId) }
+    }
+
+    fun resetRealtimeLastEventId() {
+        _uiState.update { state -> state.copy(realtimeLastEventId = "") }
+    }
+
+    fun incrementRealtimeReconnectGeneration() {
+        _uiState.update { state ->
+            state.copy(realtimeReconnectGeneration = state.realtimeReconnectGeneration + 1)
+        }
+    }
+
+    fun incrementRealtimeReconnectGenerationBy(amount: Int) {
+        if (amount == 0) return
+        _uiState.update { state ->
+            state.copy(realtimeReconnectGeneration = state.realtimeReconnectGeneration + amount)
+        }
+    }
 }
 
 data class ArgusLensAppUiState(
     val currentRoute: AppRoute,
     val selectedConversationId: String = "",
     val hydratedConversationAccountId: String? = null,
+    val realtimeConnectionState: ConversationRealtimeConnectionState = ConversationRealtimeConnectionState.DISABLED,
+    val realtimeLastEventId: String = "",
+    val realtimeReconnectGeneration: Int = 0,
 )
 
 internal fun resolveInitialAppRoute(

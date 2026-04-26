@@ -15,9 +15,17 @@ fun ArgusLensApp(
         currentRoute = uiState.currentRoute,
         selectedConversationId = uiState.selectedConversationId,
         hydratedConversationAccountId = uiState.hydratedConversationAccountId,
+        realtimeConnectionState = uiState.realtimeConnectionState,
+        realtimeLastEventId = uiState.realtimeLastEventId,
+        realtimeReconnectGeneration = uiState.realtimeReconnectGeneration,
         onRouteChanged = viewModel::openRoute,
         onConversationOpened = viewModel::openConversation,
         onConversationSelectionCleared = viewModel::clearSelectedConversation,
         onHydratedConversationAccountChanged = viewModel::updateHydratedConversationAccountId,
+        onRealtimeConnectionStateChanged = viewModel::updateRealtimeConnectionState,
+        onRealtimeEventIdRecorded = viewModel::recordRealtimeEventId,
+        onRealtimeLastEventIdReset = viewModel::resetRealtimeLastEventId,
+        onRealtimeReconnectIncremented = viewModel::incrementRealtimeReconnectGeneration,
+        onRealtimeReconnectIncrementedBy = viewModel::incrementRealtimeReconnectGenerationBy,
     )
 }

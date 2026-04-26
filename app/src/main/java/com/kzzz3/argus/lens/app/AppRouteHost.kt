@@ -88,10 +88,18 @@ internal fun AppRouteHost(
     currentRoute: AppRoute,
     selectedConversationId: String,
     hydratedConversationAccountId: String?,
+    realtimeConnectionState: ConversationRealtimeConnectionState,
+    realtimeLastEventId: String,
+    realtimeReconnectGeneration: Int,
     onRouteChanged: (AppRoute) -> Unit,
     onConversationOpened: (String) -> Unit,
     onConversationSelectionCleared: () -> Unit,
     onHydratedConversationAccountChanged: (String?) -> Unit,
+    onRealtimeConnectionStateChanged: (ConversationRealtimeConnectionState) -> Unit,
+    onRealtimeEventIdRecorded: (String) -> Unit,
+    onRealtimeLastEventIdReset: () -> Unit,
+    onRealtimeReconnectIncremented: () -> Unit,
+    onRealtimeReconnectIncrementedBy: (Int) -> Unit,
 ) {
     val coroutineScope = rememberCoroutineScope()
     val navController = rememberNavController()
@@ -136,9 +144,6 @@ internal fun AppRouteHost(
     var friendRequestsStatusError by rememberSaveable { mutableStateOf(false) }
     val callSessionRuntime = remember(coroutineScope) { CallSessionRuntime(coroutineScope) }
     var realtimeSubscription by remember { mutableStateOf<ConversationRealtimeSubscription?>(null) }
-    var realtimeConnectionState by remember { mutableStateOf(ConversationRealtimeConnectionState.DISABLED) }
-    var realtimeLastEventId by rememberSaveable { mutableStateOf("") }
-    var realtimeReconnectGeneration by remember { mutableStateOf(0) }
     val realtimeReconnectRuntime = remember(coroutineScope) { RealtimeReconnectRuntime(coroutineScope) }
     val sessionRefreshRuntime = remember(coroutineScope, appSessionCoordinator, sessionCredentialsStore) {
         SessionRefreshRuntime(
@@ -300,8 +305,8 @@ internal fun AppRouteHost(
     fun scheduleRealtimeReconnect() {
         realtimeReconnectRuntime.schedule(
             isEnabled = { latestRealtimeEnabled },
-            markRecovering = { realtimeConnectionState = ConversationRealtimeConnectionState.RECOVERING },
-            incrementGeneration = { realtimeReconnectGeneration += 1 },
+            markRecovering = { onRealtimeConnectionStateChanged(ConversationRealtimeConnectionState.RECOVERING) },
+            incrementGeneration = onRealtimeReconnectIncremented,
         )
     }
 
@@ -371,7 +376,7 @@ internal fun AppRouteHost(
         } else {
             postAuthUiState.nextAuthFormState
         }
-        realtimeReconnectGeneration += postAuthUiState.realtimeReconnectIncrement
+        onRealtimeReconnectIncrementedBy(postAuthUiState.realtimeReconnectIncrement)
         onRouteChanged(AppRoute.Inbox)
     }
 
@@ -443,25 +448,25 @@ internal fun AppRouteHost(
         val realtimeEnabled = appSessionState.isAuthenticated && realtimeCredentials.hasAccessToken
         if (!realtimeEnabled) {
             realtimeReconnectRuntime.disable()
-            realtimeLastEventId = ""
-            realtimeConnectionState = ConversationRealtimeConnectionState.DISABLED
+            onRealtimeLastEventIdReset()
+            onRealtimeConnectionStateChanged(ConversationRealtimeConnectionState.DISABLED)
             return@LaunchedEffect
         }
 
         val connectionId = "realtime-${appSessionState.accountId}-${realtimeReconnectGeneration}"
         activeRealtimeConnectionId = connectionId
-        realtimeConnectionState = if (realtimeReconnectRuntime.currentAttempt > 0) {
+        onRealtimeConnectionStateChanged(if (realtimeReconnectRuntime.currentAttempt > 0) {
             ConversationRealtimeConnectionState.RECOVERING
         } else {
             ConversationRealtimeConnectionState.CONNECTING
-        }
+        })
         realtimeSubscription = realtimeClient.connect(
             accessToken = realtimeCredentials.accessToken,
             lastEventId = realtimeLastEventId.ifBlank { null },
             onConnected = {
                 coroutineScope.launch {
                     if (activeRealtimeConnectionId == connectionId) {
-                        realtimeConnectionState = ConversationRealtimeConnectionState.LIVE
+                        onRealtimeConnectionStateChanged(ConversationRealtimeConnectionState.LIVE)
                         realtimeReconnectRuntime.markConnected()
                         scheduleSessionRefreshLoop()
                     }
@@ -478,11 +483,11 @@ internal fun AppRouteHost(
                 coroutineScope.launch {
                     if (activeRealtimeConnectionId != connectionId) return@launch
                     if (event.eventId.isNotBlank()) {
-                        realtimeLastEventId = event.eventId
+                        onRealtimeEventIdRecorded(event.eventId)
                     }
                     when (realtimeCoordinator.classifyEvent(event)) {
                         RealtimeEventKind.StreamReady -> {
-                            realtimeConnectionState = ConversationRealtimeConnectionState.LIVE
+                            onRealtimeConnectionStateChanged(ConversationRealtimeConnectionState.LIVE)
                             return@launch
                         }
                         RealtimeEventKind.Heartbeat -> return@launch
@@ -506,7 +511,7 @@ internal fun AppRouteHost(
                             when (val refreshResult = refreshSessionTokens()) {
                                 is AuthRepositoryResult.Success -> {
                                     realtimeReconnectRuntime.markConnected()
-                                    realtimeReconnectGeneration += 1
+                                    onRealtimeReconnectIncremented()
                                 }
                                 is AuthRepositoryResult.Failure -> {
                                     if (refreshResult.kind == AuthFailureKind.UNAUTHORIZED) {
