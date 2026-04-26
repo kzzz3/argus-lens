@@ -18,6 +18,7 @@ class ArgusLensAppViewModel @Inject constructor(
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(
         ArgusLensAppUiState(
+            appSessionState = dependencies.initialSessionSnapshot,
             currentRoute = resolveInitialAppRoute(
                 session = dependencies.initialSessionSnapshot,
                 credentials = dependencies.initialSessionCredentials,
@@ -44,6 +45,41 @@ class ArgusLensAppViewModel @Inject constructor(
 
     fun clearSelectedConversation() {
         _uiState.update { state -> state.copy(selectedConversationId = "") }
+    }
+
+    fun applyHydratedSession(
+        session: AppSessionState,
+        hydratedConversationAccountId: String?,
+    ) {
+        _uiState.update { state ->
+            applyHydratedSessionTransition(state, session, hydratedConversationAccountId)
+        }
+    }
+
+    fun applyAuthenticatedSession(
+        session: AppSessionState,
+        credentials: SessionCredentials,
+        hydratedConversationAccountId: String,
+        realtimeReconnectIncrement: Int,
+    ) {
+        dependencies.sessionCredentialsStore.update(credentials)
+        _uiState.update { state ->
+            applyAuthenticatedSessionTransition(
+                state = state,
+                session = session,
+                hydratedConversationAccountId = hydratedConversationAccountId,
+                realtimeReconnectIncrement = realtimeReconnectIncrement,
+            )
+        }
+    }
+
+    fun applyRefreshedSession(session: AppSessionState) {
+        _uiState.update { state -> applyRefreshedSessionTransition(state, session) }
+    }
+
+    fun clearSession() {
+        dependencies.sessionCredentialsStore.clear()
+        _uiState.update(::applySessionClearedTransition)
     }
 
     fun updateHydratedConversationAccountId(accountId: String?) {
@@ -78,6 +114,7 @@ class ArgusLensAppViewModel @Inject constructor(
 }
 
 data class ArgusLensAppUiState(
+    val appSessionState: AppSessionState,
     val currentRoute: AppRoute,
     val selectedConversationId: String = "",
     val hydratedConversationAccountId: String? = null,
@@ -103,4 +140,47 @@ internal fun resolveInitialHydratedConversationAccountId(session: AppSessionStat
     } else {
         null
     }
+}
+
+internal fun applyHydratedSessionTransition(
+    state: ArgusLensAppUiState,
+    session: AppSessionState,
+    hydratedConversationAccountId: String?,
+): ArgusLensAppUiState {
+    return state.copy(
+        appSessionState = session,
+        currentRoute = if (session.isAuthenticated) AppRoute.Inbox else state.currentRoute,
+        hydratedConversationAccountId = hydratedConversationAccountId,
+    )
+}
+
+internal fun applyAuthenticatedSessionTransition(
+    state: ArgusLensAppUiState,
+    session: AppSessionState,
+    hydratedConversationAccountId: String,
+    realtimeReconnectIncrement: Int,
+): ArgusLensAppUiState {
+    return state.copy(
+        appSessionState = session,
+        currentRoute = AppRoute.Inbox,
+        selectedConversationId = "",
+        hydratedConversationAccountId = hydratedConversationAccountId,
+        realtimeReconnectGeneration = state.realtimeReconnectGeneration + realtimeReconnectIncrement,
+    )
+}
+
+internal fun applyRefreshedSessionTransition(
+    state: ArgusLensAppUiState,
+    session: AppSessionState,
+): ArgusLensAppUiState {
+    return state.copy(appSessionState = session)
+}
+
+internal fun applySessionClearedTransition(state: ArgusLensAppUiState): ArgusLensAppUiState {
+    return state.copy(
+        appSessionState = AppSessionState(),
+        currentRoute = AppRoute.AuthEntry,
+        selectedConversationId = "",
+        hydratedConversationAccountId = null,
+    )
 }

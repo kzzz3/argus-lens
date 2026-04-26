@@ -23,6 +23,7 @@ import com.kzzz3.argus.lens.data.friend.FriendEntry
 import com.kzzz3.argus.lens.data.friend.FriendRequestsSnapshot
 import com.kzzz3.argus.lens.data.realtime.ConversationRealtimeConnectionState
 import com.kzzz3.argus.lens.data.realtime.ConversationRealtimeSubscription
+import com.kzzz3.argus.lens.data.session.SessionCredentials
 import com.kzzz3.argus.lens.feature.auth.AuthEntryAction
 import com.kzzz3.argus.lens.feature.auth.AuthEntryEffect
 import com.kzzz3.argus.lens.feature.auth.AuthEntryScreen
@@ -85,6 +86,7 @@ import kotlinx.coroutines.sync.withLock
 @Composable
 internal fun AppRouteHost(
     dependencies: AppDependencies,
+    appSessionState: AppSessionState,
     currentRoute: AppRoute,
     selectedConversationId: String,
     hydratedConversationAccountId: String?,
@@ -94,6 +96,10 @@ internal fun AppRouteHost(
     onRouteChanged: (AppRoute) -> Unit,
     onConversationOpened: (String) -> Unit,
     onConversationSelectionCleared: () -> Unit,
+    onHydratedSessionApplied: (AppSessionState, String?) -> Unit,
+    onAuthenticatedSessionApplied: (AppSessionState, SessionCredentials, String, Int) -> Unit,
+    onSessionRefreshed: (AppSessionState) -> Unit,
+    onSessionCleared: () -> Unit,
     onHydratedConversationAccountChanged: (String?) -> Unit,
     onRealtimeConnectionStateChanged: (ConversationRealtimeConnectionState) -> Unit,
     onRealtimeEventIdRecorded: (String) -> Unit,
@@ -124,9 +130,6 @@ internal fun AppRouteHost(
     }
     var registerFormState by rememberSaveable {
         mutableStateOf(RegisterFormState())
-    }
-    var appSessionState by rememberSaveable {
-        mutableStateOf(initialSessionSnapshot)
     }
     var contactsStateModel by rememberSaveable {
         mutableStateOf(ContactsState())
@@ -285,12 +288,8 @@ internal fun AppRouteHost(
         }
 
         val hydratedState = appShellCoordinator.hydrateAppState(previewThreadsState)
-        appSessionState = hydratedState.session
+        onHydratedSessionApplied(hydratedState.session, hydratedState.hydratedConversationAccountId)
         conversationThreadsState = hydratedState.conversationThreadsState
-        onHydratedConversationAccountChanged(hydratedState.hydratedConversationAccountId)
-        if (hydratedState.session.isAuthenticated) {
-            onRouteChanged(AppRoute.Inbox)
-        }
     }
 
     LaunchedEffect(appSessionState) {
@@ -356,12 +355,12 @@ internal fun AppRouteHost(
         authResult: AuthRepositoryResult.Success,
         keepSubmitMessageOnAuthForm: Boolean,
     ) {
-        appSessionState = createSessionFromAuthSession(authResult.session)
-        sessionCredentialsStore.update(createSessionCredentialsFromAuthSession(authResult.session))
+        val authenticatedSession = createSessionFromAuthSession(authResult.session)
+        val authenticatedCredentials = createSessionCredentialsFromAuthSession(authResult.session)
         walletRequestRuntime.invalidate()
         onHydratedConversationAccountChanged(null)
         callSessionRuntime.cancel()
-        val signedInState = appShellCoordinator.handleSignedIn(appSessionState)
+        val signedInState = appShellCoordinator.handleSignedIn(authenticatedSession)
         val postAuthUiState = createPostAuthUiState(
             signedInState = signedInState,
             accountId = authResult.session.accountId,
@@ -369,15 +368,17 @@ internal fun AppRouteHost(
         callSessionState = postAuthUiState.callSessionState
         walletStateModel = WalletState()
         conversationThreadsState = postAuthUiState.conversationThreadsState
-        onHydratedConversationAccountChanged(postAuthUiState.hydratedConversationAccountId)
-        onConversationSelectionCleared()
+        onAuthenticatedSessionApplied(
+            authenticatedSession,
+            authenticatedCredentials,
+            postAuthUiState.hydratedConversationAccountId,
+            postAuthUiState.realtimeReconnectIncrement,
+        )
         authFormState = if (keepSubmitMessageOnAuthForm) {
             postAuthUiState.nextAuthFormState.copy(submitResult = authResult.session.message)
         } else {
             postAuthUiState.nextAuthFormState
         }
-        onRealtimeReconnectIncrementedBy(postAuthUiState.realtimeReconnectIncrement)
-        onRouteChanged(AppRoute.Inbox)
     }
 
     fun applyFriendRequestStatus(statusState: FriendRequestStatusState) {
@@ -394,28 +395,24 @@ internal fun AppRouteHost(
         )
         sessionRefreshRuntime.cancel()
         walletRequestRuntime.invalidate()
-        sessionCredentialsStore.clear()
-        appSessionState = AppSessionState()
+        onSessionCleared()
         authFormState = signedOutState.authFormState.copy(submitResult = message)
         registerFormState = signedOutState.registerFormState
         contactsStateModel = signedOutState.contactsState
         callSessionRuntime.cancel()
         callSessionState = signedOutState.callSessionState
         walletStateModel = WalletState()
-        onHydratedConversationAccountChanged(null)
         conversationThreadsState = signedOutState.conversationThreadsState
-        onConversationSelectionCleared()
         friends = emptyList()
         friendRequestsSnapshot = FriendRequestsSnapshot(emptyList(), emptyList())
         friendRequestsStatusMessage = null
         friendRequestsStatusError = false
-        onRouteChanged(AppRoute.AuthEntry)
     }
 
     suspend fun refreshSessionTokens(): AuthRepositoryResult {
         return sessionRefreshRuntime.refreshOnce(
             session = appSessionState,
-            setSession = { appSessionState = it },
+            setSession = onSessionRefreshed,
         )
     }
 
@@ -423,7 +420,7 @@ internal fun AppRouteHost(
         sessionRefreshRuntime.startLoopIfNeeded(
             getSession = { appSessionState },
             getConnectionState = { realtimeConnectionState },
-            setSession = { appSessionState = it },
+            setSession = onSessionRefreshed,
             onUnauthorized = { signOutToEntry("Session expired or was revoked. Please sign in again.") },
         )
     }

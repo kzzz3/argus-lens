@@ -6,6 +6,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.kzzz3.argus.lens.app.navigation.AppRoute
 import com.kzzz3.argus.lens.data.realtime.ConversationRealtimeConnectionState
+import com.kzzz3.argus.lens.data.session.SessionCredentials
+import com.kzzz3.argus.lens.model.session.AppSessionState
 
 private object ArgusLensGraph {
     const val App = "app"
@@ -14,6 +16,7 @@ private object ArgusLensGraph {
 @Composable
 fun ArgusLensNavHost(
     dependencies: AppDependencies,
+    appSessionState: AppSessionState,
     currentRoute: AppRoute,
     selectedConversationId: String,
     hydratedConversationAccountId: String?,
@@ -23,6 +26,10 @@ fun ArgusLensNavHost(
     onRouteChanged: (AppRoute) -> Unit,
     onConversationOpened: (String) -> Unit,
     onConversationSelectionCleared: () -> Unit,
+    onHydratedSessionApplied: (AppSessionState, String?) -> Unit,
+    onAuthenticatedSessionApplied: (AppSessionState, SessionCredentials, String, Int) -> Unit,
+    onSessionRefreshed: (AppSessionState) -> Unit,
+    onSessionCleared: () -> Unit,
     onHydratedConversationAccountChanged: (String?) -> Unit,
     onRealtimeConnectionStateChanged: (ConversationRealtimeConnectionState) -> Unit,
     onRealtimeEventIdRecorded: (String) -> Unit,
@@ -38,6 +45,7 @@ fun ArgusLensNavHost(
         composable(ArgusLensGraph.App) {
             AppRouteHost(
                 dependencies = dependencies,
+                appSessionState = appSessionState,
                 currentRoute = currentRoute,
                 selectedConversationId = selectedConversationId,
                 hydratedConversationAccountId = hydratedConversationAccountId,
@@ -47,6 +55,10 @@ fun ArgusLensNavHost(
                 onRouteChanged = onRouteChanged,
                 onConversationOpened = onConversationOpened,
                 onConversationSelectionCleared = onConversationSelectionCleared,
+                onHydratedSessionApplied = onHydratedSessionApplied,
+                onAuthenticatedSessionApplied = onAuthenticatedSessionApplied,
+                onSessionRefreshed = onSessionRefreshed,
+                onSessionCleared = onSessionCleared,
                 onHydratedConversationAccountChanged = onHydratedConversationAccountChanged,
                 onRealtimeConnectionStateChanged = onRealtimeConnectionStateChanged,
                 onRealtimeEventIdRecorded = onRealtimeEventIdRecorded,

@@ -12,6 +12,7 @@ fun ArgusLensApp(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     ArgusLensNavHost(
         dependencies = viewModel.dependencies,
+        appSessionState = uiState.appSessionState,
         currentRoute = uiState.currentRoute,
         selectedConversationId = uiState.selectedConversationId,
         hydratedConversationAccountId = uiState.hydratedConversationAccountId,
@@ -21,6 +22,10 @@ fun ArgusLensApp(
         onRouteChanged = viewModel::openRoute,
         onConversationOpened = viewModel::openConversation,
         onConversationSelectionCleared = viewModel::clearSelectedConversation,
+        onHydratedSessionApplied = viewModel::applyHydratedSession,
+        onAuthenticatedSessionApplied = viewModel::applyAuthenticatedSession,
+        onSessionRefreshed = viewModel::applyRefreshedSession,
+        onSessionCleared = viewModel::clearSession,
         onHydratedConversationAccountChanged = viewModel::updateHydratedConversationAccountId,
         onRealtimeConnectionStateChanged = viewModel::updateRealtimeConnectionState,
         onRealtimeEventIdRecorded = viewModel::recordRealtimeEventId,
