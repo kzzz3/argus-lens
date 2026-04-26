@@ -894,7 +894,7 @@ internal fun AppRouteHost(
                                         },
                                         setState = { callSessionState = it },
                                         openCallSession = { onRouteChanged(AppRoute.CallSession) },
-                                        shouldKeepTicking = { currentRoute == AppRoute.CallSession },
+                                        shouldKeepTicking = { latestCurrentRoute == AppRoute.CallSession },
                                     )
                                 }
                                 is ChatEffect.DispatchOutgoingMessages -> {
