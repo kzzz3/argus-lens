@@ -16,12 +16,10 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.kzzz3.argus.lens.app.navigation.AppRoute
-import com.kzzz3.argus.lens.data.auth.AuthFailureKind
 import com.kzzz3.argus.lens.data.auth.AuthRepositoryResult
 import com.kzzz3.argus.lens.data.friend.FriendEntry
 import com.kzzz3.argus.lens.data.friend.FriendRequestsSnapshot
 import com.kzzz3.argus.lens.data.realtime.ConversationRealtimeConnectionState
-import com.kzzz3.argus.lens.data.realtime.ConversationRealtimeSubscription
 import com.kzzz3.argus.lens.data.session.SessionCredentials
 import com.kzzz3.argus.lens.feature.auth.AuthEntryAction
 import com.kzzz3.argus.lens.feature.auth.AuthEntryEffect
@@ -66,8 +64,6 @@ import com.kzzz3.argus.lens.feature.register.RegisterScreen
 import com.kzzz3.argus.lens.feature.register.createRegisterUiState
 import com.kzzz3.argus.lens.feature.register.reduceRegisterFormState
 import com.kzzz3.argus.lens.feature.realtime.buildRealtimeStatusLabel
-import com.kzzz3.argus.lens.feature.realtime.isSseAuthFailure
-import com.kzzz3.argus.lens.feature.realtime.RealtimeEventKind
 import com.kzzz3.argus.lens.feature.wallet.WalletAction
 import com.kzzz3.argus.lens.feature.wallet.WalletEffect
 import com.kzzz3.argus.lens.feature.wallet.WalletScreen
@@ -79,8 +75,6 @@ import com.kzzz3.argus.lens.model.session.AppSessionState
 import com.kzzz3.argus.lens.ui.shell.AuthenticatedShell
 import com.kzzz3.argus.lens.ui.shell.ShellDestination
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 
 @Composable
 internal fun AppRouteHost(
@@ -149,7 +143,6 @@ internal fun AppRouteHost(
     }
     val initialSessionSnapshot = dependencies.initialSessionSnapshot
     val callSessionRuntime = remember(coroutineScope) { CallSessionRuntime(coroutineScope) }
-    var realtimeSubscription by remember { mutableStateOf<ConversationRealtimeSubscription?>(null) }
     val realtimeReconnectRuntime = remember(coroutineScope) { RealtimeReconnectRuntime(coroutineScope) }
     val sessionRefreshRuntime = remember(coroutineScope, appSessionCoordinator, sessionCredentialsStore) {
         SessionRefreshRuntime(
@@ -159,8 +152,14 @@ internal fun AppRouteHost(
         )
     }
     val walletRequestRuntime = remember(coroutineScope) { WalletRequestRuntime(coroutineScope) }
-    var activeRealtimeConnectionId by remember { mutableStateOf("") }
-    val realtimeEventMutex = remember { Mutex() }
+    val realtimeConnectionRuntime = remember(coroutineScope, realtimeClient, realtimeCoordinator, realtimeReconnectRuntime) {
+        RealtimeConnectionRuntime(
+            scope = coroutineScope,
+            realtimeClient = realtimeClient,
+            realtimeCoordinator = realtimeCoordinator,
+            reconnectRuntime = realtimeReconnectRuntime,
+        )
+    }
     val startDestination = remember { currentRoute.name }
     val conversationThreads = conversationThreadsState.threads
 
@@ -420,6 +419,20 @@ internal fun AppRouteHost(
         )
     }
 
+    fun realtimeConnectionCallbacks(): RealtimeConnectionCallbacks {
+        return RealtimeConnectionCallbacks(
+            onConnectionStateChanged = onRealtimeConnectionStateChanged,
+            onEventIdRecorded = onRealtimeEventIdRecorded,
+            onLastEventIdReset = onRealtimeLastEventIdReset,
+            onConversationThreadsChanged = onConversationThreadsChanged,
+            onReconnectGenerationIncremented = onRealtimeReconnectIncremented,
+            onScheduleSessionRefreshLoop = { scheduleSessionRefreshLoop() },
+            onCancelSessionRefreshLoop = sessionRefreshRuntime::cancel,
+            refreshSessionTokens = { refreshSessionTokens() },
+            signOutToEntry = { message -> signOutToEntry(message) },
+        )
+    }
+
     LaunchedEffect(appSessionState.isAuthenticated, appSessionState.accountId, appSessionState.displayName) {
         sessionBoundaryRuntime.applySessionBoundary(
             session = appSessionState,
@@ -428,103 +441,26 @@ internal fun AppRouteHost(
     }
 
     LaunchedEffect(appSessionState.isAuthenticated, appSessionState.accountId, realtimeReconnectGeneration) {
-        activeRealtimeConnectionId = ""
-        realtimeSubscription?.close()
-        realtimeSubscription = null
-
-        val realtimeCredentials = sessionCredentialsStore.current
-        val realtimeEnabled = appSessionState.isAuthenticated && realtimeCredentials.hasAccessToken
-        if (!realtimeEnabled) {
-            realtimeReconnectRuntime.disable()
-            onRealtimeLastEventIdReset()
-            onRealtimeConnectionStateChanged(ConversationRealtimeConnectionState.DISABLED)
-            return@LaunchedEffect
-        }
-
-        val connectionId = "realtime-${appSessionState.accountId}-${realtimeReconnectGeneration}"
-        activeRealtimeConnectionId = connectionId
-        onRealtimeConnectionStateChanged(if (realtimeReconnectRuntime.currentAttempt > 0) {
-            ConversationRealtimeConnectionState.RECOVERING
-        } else {
-            ConversationRealtimeConnectionState.CONNECTING
-        })
-        realtimeSubscription = realtimeClient.connect(
-            accessToken = realtimeCredentials.accessToken,
-            lastEventId = realtimeLastEventId.ifBlank { null },
-            onConnected = {
-                coroutineScope.launch {
-                    if (activeRealtimeConnectionId == connectionId) {
-                        onRealtimeConnectionStateChanged(ConversationRealtimeConnectionState.LIVE)
-                        realtimeReconnectRuntime.markConnected()
-                        scheduleSessionRefreshLoop()
-                    }
-                }
-            },
-            onClosed = {
-                coroutineScope.launch {
-                    if (activeRealtimeConnectionId == connectionId) {
-                        scheduleRealtimeReconnect()
-                    }
-                }
-            },
-            onEvent = { event ->
-                coroutineScope.launch {
-                    if (activeRealtimeConnectionId != connectionId) return@launch
-                    if (event.eventId.isNotBlank()) {
-                        onRealtimeEventIdRecorded(event.eventId)
-                    }
-                    when (realtimeCoordinator.classifyEvent(event)) {
-                        RealtimeEventKind.StreamReady -> {
-                            onRealtimeConnectionStateChanged(ConversationRealtimeConnectionState.LIVE)
-                            return@launch
-                        }
-                        RealtimeEventKind.Heartbeat -> return@launch
-                        RealtimeEventKind.DomainEvent -> Unit
-                    }
-                    realtimeEventMutex.withLock {
-                        onConversationThreadsChanged(realtimeCoordinator.applyEvent(
-                            event = event,
-                            session = latestAppSessionState,
-                            currentState = latestConversationThreadsState,
-                            selectedConversationId = latestSelectedConversationId,
-                            isChatRouteActive = latestCurrentRoute == AppRoute.Chat,
-                        ))
-                    }
-                }
-            },
-            onError = {
-                coroutineScope.launch {
-                    if (activeRealtimeConnectionId == connectionId) {
-                        if (isSseAuthFailure(it)) {
-                            when (val refreshResult = refreshSessionTokens()) {
-                                is AuthRepositoryResult.Success -> {
-                                    realtimeReconnectRuntime.markConnected()
-                                    onRealtimeReconnectIncremented()
-                                }
-                                is AuthRepositoryResult.Failure -> {
-                                    if (refreshResult.kind == AuthFailureKind.UNAUTHORIZED) {
-                                        signOutToEntry("Session expired or was revoked. Please sign in again.")
-                                    } else {
-                                        scheduleRealtimeReconnect()
-                                    }
-                                }
-                            }
-                        } else {
-                            scheduleRealtimeReconnect()
-                        }
-                    }
-                }
-            },
+        realtimeConnectionRuntime.connect(
+            request = RealtimeConnectionRequest(
+                isAuthenticated = appSessionState.isAuthenticated,
+                accountId = appSessionState.accountId,
+                credentials = sessionCredentialsStore.current,
+                lastEventId = realtimeLastEventId,
+                reconnectGeneration = realtimeReconnectGeneration,
+                isRealtimeEnabled = { latestRealtimeEnabled },
+                getSession = { latestAppSessionState },
+                getConversationThreadsState = { latestConversationThreadsState },
+                getSelectedConversationId = { latestSelectedConversationId },
+                getCurrentRoute = { latestCurrentRoute },
+            ),
+            callbacks = realtimeConnectionCallbacks(),
         )
     }
 
     DisposableEffect(realtimeClient) {
         onDispose {
-            activeRealtimeConnectionId = ""
-            realtimeReconnectRuntime.disable()
-            sessionRefreshRuntime.cancel()
-            realtimeSubscription?.close()
-            realtimeSubscription = null
+            realtimeConnectionRuntime.dispose(realtimeConnectionCallbacks())
         }
     }
 
