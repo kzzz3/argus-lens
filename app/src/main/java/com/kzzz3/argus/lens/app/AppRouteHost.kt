@@ -92,6 +92,7 @@ internal fun AppRouteHost(
     registerFormState: RegisterFormState,
     callSessionState: CallSessionState,
     contactsState: ContactsState,
+    walletStateModel: WalletState,
     selectedConversationId: String,
     chatStatusMessage: String?,
     chatStatusError: Boolean,
@@ -107,6 +108,7 @@ internal fun AppRouteHost(
     onRegisterFormStateChanged: (RegisterFormState) -> Unit,
     onCallSessionStateChanged: (CallSessionState) -> Unit,
     onContactsStateChanged: (ContactsState) -> Unit,
+    onWalletStateChanged: (WalletState) -> Unit,
     onConversationOpened: (String) -> Unit,
     onConversationSelectionCleared: () -> Unit,
     onChatStatusChanged: (String?, Boolean) -> Unit,
@@ -143,9 +145,6 @@ internal fun AppRouteHost(
         )
     }
     val initialSessionSnapshot = dependencies.initialSessionSnapshot
-    var walletStateModel by rememberSaveable {
-        mutableStateOf(WalletState())
-    }
     val callSessionRuntime = remember(coroutineScope) { CallSessionRuntime(coroutineScope) }
     var realtimeSubscription by remember { mutableStateOf<ConversationRealtimeSubscription?>(null) }
     val realtimeReconnectRuntime = remember(coroutineScope) { RealtimeReconnectRuntime(coroutineScope) }
@@ -311,7 +310,7 @@ internal fun AppRouteHost(
 
     fun openTopLevelRoute(route: AppRoute) {
         if (route == AppRoute.Wallet) {
-            walletStateModel = walletStateModel.withCurrentAccount(appSessionState.accountId)
+            onWalletStateChanged(walletStateModel.withCurrentAccount(appSessionState.accountId))
         }
         onRouteChanged(route)
     }
@@ -346,7 +345,7 @@ internal fun AppRouteHost(
             requestSession = appSessionState,
             getCurrentSession = { appSessionState },
             getCurrentState = { walletStateModel },
-            setState = { walletStateModel = it },
+            setState = onWalletStateChanged,
             block = block,
         )
     }
@@ -366,7 +365,7 @@ internal fun AppRouteHost(
             accountId = authResult.session.accountId,
         )
         onCallSessionStateChanged(postAuthUiState.callSessionState)
-        walletStateModel = WalletState()
+        onWalletStateChanged(WalletState())
         conversationThreadsState = postAuthUiState.conversationThreadsState
         onAuthenticatedSessionApplied(
             authenticatedSession,
@@ -399,7 +398,7 @@ internal fun AppRouteHost(
         onContactsStateChanged(signedOutState.contactsState)
         callSessionRuntime.cancel()
         onCallSessionStateChanged(signedOutState.callSessionState)
-        walletStateModel = WalletState()
+        onWalletStateChanged(WalletState())
         conversationThreadsState = signedOutState.conversationThreadsState
         friends = emptyList()
         onFriendRequestStatusReset()
@@ -785,7 +784,7 @@ internal fun AppRouteHost(
                         currentState = walletStateModel,
                         action = action,
                     )
-                    walletStateModel = result.state
+                    onWalletStateChanged(result.state)
 
                     when (val effect = result.effect) {
                         WalletEffect.NavigateBackToInbox -> openTopLevelRoute(AppRoute.Inbox)

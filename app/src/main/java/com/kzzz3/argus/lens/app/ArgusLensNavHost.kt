@@ -13,6 +13,7 @@ import com.kzzz3.argus.lens.feature.call.CallSessionState
 import com.kzzz3.argus.lens.feature.contacts.ContactsState
 import com.kzzz3.argus.lens.feature.contacts.FriendRequestStatusState
 import com.kzzz3.argus.lens.feature.register.RegisterFormState
+import com.kzzz3.argus.lens.feature.wallet.WalletState
 import com.kzzz3.argus.lens.model.session.AppSessionState
 
 private object ArgusLensGraph {
@@ -28,6 +29,7 @@ fun ArgusLensNavHost(
     registerFormState: RegisterFormState,
     callSessionState: CallSessionState,
     contactsState: ContactsState,
+    walletState: WalletState,
     selectedConversationId: String,
     chatStatusMessage: String?,
     chatStatusError: Boolean,
@@ -43,6 +45,7 @@ fun ArgusLensNavHost(
     onRegisterFormStateChanged: (RegisterFormState) -> Unit,
     onCallSessionStateChanged: (CallSessionState) -> Unit,
     onContactsStateChanged: (ContactsState) -> Unit,
+    onWalletStateChanged: (WalletState) -> Unit,
     onConversationOpened: (String) -> Unit,
     onConversationSelectionCleared: () -> Unit,
     onChatStatusChanged: (String?, Boolean) -> Unit,
@@ -75,6 +78,7 @@ fun ArgusLensNavHost(
                 registerFormState = registerFormState,
                 callSessionState = callSessionState,
                 contactsState = contactsState,
+                walletStateModel = walletState,
                 selectedConversationId = selectedConversationId,
                 chatStatusMessage = chatStatusMessage,
                 chatStatusError = chatStatusError,
@@ -90,6 +94,7 @@ fun ArgusLensNavHost(
                 onRegisterFormStateChanged = onRegisterFormStateChanged,
                 onCallSessionStateChanged = onCallSessionStateChanged,
                 onContactsStateChanged = onContactsStateChanged,
+                onWalletStateChanged = onWalletStateChanged,
                 onConversationOpened = onConversationOpened,
                 onConversationSelectionCleared = onConversationSelectionCleared,
                 onChatStatusChanged = onChatStatusChanged,

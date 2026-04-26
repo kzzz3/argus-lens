@@ -10,6 +10,7 @@ import com.kzzz3.argus.lens.feature.call.CallSessionState
 import com.kzzz3.argus.lens.feature.contacts.ContactsState
 import com.kzzz3.argus.lens.feature.contacts.FriendRequestStatusState
 import com.kzzz3.argus.lens.feature.register.RegisterFormState
+import com.kzzz3.argus.lens.feature.wallet.WalletState
 import com.kzzz3.argus.lens.model.session.AppSessionState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -98,6 +99,10 @@ class ArgusLensAppViewModel @Inject constructor(
         _uiState.update { state -> state.copy(contactsState = contactsState) }
     }
 
+    fun updateWalletState(walletState: WalletState) {
+        _uiState.update { state -> state.copy(walletState = walletState) }
+    }
+
     fun updateAuthFormState(formState: AuthFormState) {
         _uiState.update { state -> state.copy(authFormState = formState) }
     }
@@ -179,6 +184,7 @@ data class ArgusLensAppUiState(
     val registerFormState: RegisterFormState = RegisterFormState(),
     val callSessionState: CallSessionState = CallSessionState(),
     val contactsState: ContactsState = ContactsState(),
+    val walletState: WalletState = WalletState(),
     val selectedConversationId: String = "",
     val chatStatusMessage: String? = null,
     val chatStatusError: Boolean = false,
