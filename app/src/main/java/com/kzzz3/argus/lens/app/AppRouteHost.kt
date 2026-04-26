@@ -160,6 +160,9 @@ internal fun AppRouteHost(
             reconnectRuntime = realtimeReconnectRuntime,
         )
     }
+    val appPersistenceRuntime = remember(appShellCoordinator) {
+        AppPersistenceRuntime(appShellCoordinator)
+    }
     val startDestination = remember { currentRoute.name }
     val conversationThreads = conversationThreadsState.threads
 
@@ -325,7 +328,7 @@ internal fun AppRouteHost(
     }
 
     LaunchedEffect(appSessionState) {
-        appShellCoordinator.persistSession(appSessionState, sessionCredentialsStore.current)
+        appPersistenceRuntime.persistSession(appSessionState, sessionCredentialsStore.current)
     }
 
     LaunchedEffect(selectedConversationId) {
@@ -465,7 +468,7 @@ internal fun AppRouteHost(
     }
 
     LaunchedEffect(appSessionState.isAuthenticated, appSessionState.accountId, hydratedConversationAccountId, conversationThreadsState) {
-        appShellCoordinator.persistConversationThreads(
+        appPersistenceRuntime.persistConversationThreads(
             session = appSessionState,
             hydratedConversationAccountId = hydratedConversationAccountId,
             state = conversationThreadsState,
