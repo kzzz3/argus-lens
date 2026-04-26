@@ -2,9 +2,11 @@ package com.kzzz3.argus.lens.app
 
 import androidx.lifecycle.ViewModel
 import com.kzzz3.argus.lens.app.navigation.AppRoute
+import com.kzzz3.argus.lens.data.friend.FriendRequestsSnapshot
 import com.kzzz3.argus.lens.data.realtime.ConversationRealtimeConnectionState
 import com.kzzz3.argus.lens.data.session.SessionCredentials
 import com.kzzz3.argus.lens.feature.auth.AuthFormState
+import com.kzzz3.argus.lens.feature.contacts.FriendRequestStatusState
 import com.kzzz3.argus.lens.feature.register.RegisterFormState
 import com.kzzz3.argus.lens.model.session.AppSessionState
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -60,6 +62,30 @@ class ArgusLensAppViewModel @Inject constructor(
 
     fun clearChatStatus() {
         updateChatStatus(message = null, isError = false)
+    }
+
+    fun updateFriendRequestStatus(statusState: FriendRequestStatusState) {
+        _uiState.update { state ->
+            state.copy(
+                friendRequestsSnapshot = statusState.snapshot,
+                friendRequestsStatusMessage = statusState.message,
+                friendRequestsStatusError = statusState.isError,
+            )
+        }
+    }
+
+    fun updateFriendRequestsSnapshot(snapshot: FriendRequestsSnapshot) {
+        _uiState.update { state -> state.copy(friendRequestsSnapshot = snapshot) }
+    }
+
+    fun resetFriendRequestStatus() {
+        _uiState.update { state ->
+            state.copy(
+                friendRequestsSnapshot = FriendRequestsSnapshot(emptyList(), emptyList()),
+                friendRequestsStatusMessage = null,
+                friendRequestsStatusError = false,
+            )
+        }
     }
 
     fun updateAuthFormState(formState: AuthFormState) {
@@ -144,6 +170,9 @@ data class ArgusLensAppUiState(
     val selectedConversationId: String = "",
     val chatStatusMessage: String? = null,
     val chatStatusError: Boolean = false,
+    val friendRequestsSnapshot: FriendRequestsSnapshot = FriendRequestsSnapshot(emptyList(), emptyList()),
+    val friendRequestsStatusMessage: String? = null,
+    val friendRequestsStatusError: Boolean = false,
     val hydratedConversationAccountId: String? = null,
     val realtimeConnectionState: ConversationRealtimeConnectionState = ConversationRealtimeConnectionState.DISABLED,
     val realtimeLastEventId: String = "",

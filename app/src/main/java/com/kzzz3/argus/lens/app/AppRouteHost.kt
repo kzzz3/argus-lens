@@ -93,6 +93,9 @@ internal fun AppRouteHost(
     selectedConversationId: String,
     chatStatusMessage: String?,
     chatStatusError: Boolean,
+    friendRequestsSnapshot: FriendRequestsSnapshot,
+    friendRequestsStatusMessage: String?,
+    friendRequestsStatusError: Boolean,
     hydratedConversationAccountId: String?,
     realtimeConnectionState: ConversationRealtimeConnectionState,
     realtimeLastEventId: String,
@@ -104,6 +107,9 @@ internal fun AppRouteHost(
     onConversationSelectionCleared: () -> Unit,
     onChatStatusChanged: (String?, Boolean) -> Unit,
     onChatStatusCleared: () -> Unit,
+    onFriendRequestStatusChanged: (FriendRequestStatusState) -> Unit,
+    onFriendRequestsSnapshotChanged: (FriendRequestsSnapshot) -> Unit,
+    onFriendRequestStatusReset: () -> Unit,
     onHydratedSessionApplied: (AppSessionState, String?) -> Unit,
     onAuthenticatedSessionApplied: (AppSessionState, SessionCredentials, String, Int) -> Unit,
     onSessionRefreshed: (AppSessionState) -> Unit,
@@ -142,9 +148,6 @@ internal fun AppRouteHost(
     var walletStateModel by rememberSaveable {
         mutableStateOf(WalletState())
     }
-    var friendRequestsSnapshot by remember { mutableStateOf(FriendRequestsSnapshot(emptyList(), emptyList())) }
-    var friendRequestsStatusMessage by rememberSaveable { mutableStateOf<String?>(null) }
-    var friendRequestsStatusError by rememberSaveable { mutableStateOf(false) }
     val callSessionRuntime = remember(coroutineScope) { CallSessionRuntime(coroutineScope) }
     var realtimeSubscription by remember { mutableStateOf<ConversationRealtimeSubscription?>(null) }
     val realtimeReconnectRuntime = remember(coroutineScope) { RealtimeReconnectRuntime(coroutineScope) }
@@ -381,9 +384,7 @@ internal fun AppRouteHost(
     }
 
     fun applyFriendRequestStatus(statusState: FriendRequestStatusState) {
-        friendRequestsSnapshot = statusState.snapshot
-        friendRequestsStatusMessage = statusState.message
-        friendRequestsStatusError = statusState.isError
+        onFriendRequestStatusChanged(statusState)
     }
 
     fun signOutToEntry(message: String? = null) {
@@ -403,9 +404,7 @@ internal fun AppRouteHost(
         walletStateModel = WalletState()
         conversationThreadsState = signedOutState.conversationThreadsState
         friends = emptyList()
-        friendRequestsSnapshot = FriendRequestsSnapshot(emptyList(), emptyList())
-        friendRequestsStatusMessage = null
-        friendRequestsStatusError = false
+        onFriendRequestStatusReset()
     }
 
     suspend fun refreshSessionTokens(): AuthRepositoryResult {
@@ -697,7 +696,7 @@ internal fun AppRouteHost(
                                     friendAccountId = effect.friendAccountId,
                                 )
                                 contactsStateModel = addFriendResult.contactsState
-                                addFriendResult.friendRequestsSnapshot?.let { friendRequestsSnapshot = it }
+                                addFriendResult.friendRequestsSnapshot?.let(onFriendRequestsSnapshotChanged)
                             }
                         }
                         ContactsEffect.OpenNewFriends -> onRouteChanged(AppRoute.NewFriends)

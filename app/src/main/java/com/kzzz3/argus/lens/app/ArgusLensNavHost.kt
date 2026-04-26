@@ -5,9 +5,11 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.kzzz3.argus.lens.app.navigation.AppRoute
+import com.kzzz3.argus.lens.data.friend.FriendRequestsSnapshot
 import com.kzzz3.argus.lens.data.realtime.ConversationRealtimeConnectionState
 import com.kzzz3.argus.lens.data.session.SessionCredentials
 import com.kzzz3.argus.lens.feature.auth.AuthFormState
+import com.kzzz3.argus.lens.feature.contacts.FriendRequestStatusState
 import com.kzzz3.argus.lens.feature.register.RegisterFormState
 import com.kzzz3.argus.lens.model.session.AppSessionState
 
@@ -25,6 +27,9 @@ fun ArgusLensNavHost(
     selectedConversationId: String,
     chatStatusMessage: String?,
     chatStatusError: Boolean,
+    friendRequestsSnapshot: FriendRequestsSnapshot,
+    friendRequestsStatusMessage: String?,
+    friendRequestsStatusError: Boolean,
     hydratedConversationAccountId: String?,
     realtimeConnectionState: ConversationRealtimeConnectionState,
     realtimeLastEventId: String,
@@ -36,6 +41,9 @@ fun ArgusLensNavHost(
     onConversationSelectionCleared: () -> Unit,
     onChatStatusChanged: (String?, Boolean) -> Unit,
     onChatStatusCleared: () -> Unit,
+    onFriendRequestStatusChanged: (FriendRequestStatusState) -> Unit,
+    onFriendRequestsSnapshotChanged: (FriendRequestsSnapshot) -> Unit,
+    onFriendRequestStatusReset: () -> Unit,
     onHydratedSessionApplied: (AppSessionState, String?) -> Unit,
     onAuthenticatedSessionApplied: (AppSessionState, SessionCredentials, String, Int) -> Unit,
     onSessionRefreshed: (AppSessionState) -> Unit,
@@ -62,6 +70,9 @@ fun ArgusLensNavHost(
                 selectedConversationId = selectedConversationId,
                 chatStatusMessage = chatStatusMessage,
                 chatStatusError = chatStatusError,
+                friendRequestsSnapshot = friendRequestsSnapshot,
+                friendRequestsStatusMessage = friendRequestsStatusMessage,
+                friendRequestsStatusError = friendRequestsStatusError,
                 hydratedConversationAccountId = hydratedConversationAccountId,
                 realtimeConnectionState = realtimeConnectionState,
                 realtimeLastEventId = realtimeLastEventId,
@@ -73,6 +84,9 @@ fun ArgusLensNavHost(
                 onConversationSelectionCleared = onConversationSelectionCleared,
                 onChatStatusChanged = onChatStatusChanged,
                 onChatStatusCleared = onChatStatusCleared,
+                onFriendRequestStatusChanged = onFriendRequestStatusChanged,
+                onFriendRequestsSnapshotChanged = onFriendRequestsSnapshotChanged,
+                onFriendRequestStatusReset = onFriendRequestStatusReset,
                 onHydratedSessionApplied = onHydratedSessionApplied,
                 onAuthenticatedSessionApplied = onAuthenticatedSessionApplied,
                 onSessionRefreshed = onSessionRefreshed,
