@@ -172,6 +172,16 @@ internal fun AppRouteHost(
             ignoreFriendRequest = newFriendsCoordinator::ignore,
         )
     }
+    val chatRouteRuntime = remember(coroutineScope, chatCoordinator, callSessionRuntime) {
+        ChatRouteRuntime(
+            scope = coroutineScope,
+            reduceAction = chatCoordinator::reduceAction,
+            startCall = callSessionRuntime::startCall,
+            dispatchOutgoingMessages = chatCoordinator::dispatchOutgoingMessages,
+            downloadAttachment = chatCoordinator::downloadAttachment,
+            recallMessage = chatCoordinator::recallMessage,
+        )
+    }
     val walletRouteRuntime = remember(walletRequestRuntime, walletRequestCoordinator) {
         WalletRouteRuntime(
             requestRuntime = walletRequestRuntime,
@@ -770,67 +780,20 @@ internal fun AppRouteHost(
                     ChatScreen(
                         state = resolvedChatUiState,
                         onAction = { action ->
-                            val result = chatCoordinator.reduceAction(
-                                currentThreadsState = conversationThreadsState,
-                                currentChatState = resolvedChatState,
+                            chatRouteRuntime.handleAction(
                                 action = action,
+                                request = ChatRouteRequest(
+                                    threadsState = conversationThreadsState,
+                                    chatState = resolvedChatState,
+                                ),
+                                callbacks = ChatRouteCallbacks(
+                                    onRouteChanged = ::openTopLevelRoute,
+                                    onConversationThreadsChanged = onConversationThreadsChanged,
+                                    onChatStatusChanged = onChatStatusChanged,
+                                    onCallSessionStateChanged = onCallSessionStateChanged,
+                                    getCurrentRoute = { latestCurrentRoute },
+                                ),
                             )
-                            onConversationThreadsChanged(result.conversationThreadsState)
-
-                            when (val effect = result.effect) {
-                                ChatEffect.NavigateBackToInbox -> openTopLevelRoute(AppRoute.Inbox)
-                                is ChatEffect.StartCall -> {
-                                    callSessionRuntime.startCall(
-                                        conversationId = effect.conversationId,
-                                        contactDisplayName = effect.contactDisplayName,
-                                        mode = if (effect.mode == ChatCallMode.Video) {
-                                            CallSessionMode.Video
-                                        } else {
-                                            CallSessionMode.Audio
-                                        },
-                                        setState = onCallSessionStateChanged,
-                                        openCallSession = { onRouteChanged(AppRoute.CallSession) },
-                                        shouldKeepTicking = { latestCurrentRoute == AppRoute.CallSession },
-                                    )
-                                }
-                                is ChatEffect.DispatchOutgoingMessages -> {
-                                    coroutineScope.launch {
-                                        val outgoingMessages = result.chatState.messages
-                                            .filter { it.id in effect.messageIds }
-                                        val dispatchResult = chatCoordinator.dispatchOutgoingMessages(
-                                            state = conversationThreadsState,
-                                            conversationId = effect.conversationId,
-                                            messages = outgoingMessages,
-                                        )
-                                        onConversationThreadsChanged(dispatchResult.conversationThreadsState)
-                                        val summary = dispatchResult.summary
-                                        if (summary?.failureMessage != null) {
-                                            onChatStatusChanged(summary.failureMessage, true)
-                                        }
-                                    }
-                                }
-                                null -> Unit
-                            }
-
-                            if (action is ChatAction.DownloadAttachment) {
-                                coroutineScope.launch {
-                                    val downloadResult = chatCoordinator.downloadAttachment(
-                                        attachmentId = action.attachmentId,
-                                        fileName = action.fileName,
-                                    )
-                                    onChatStatusChanged(downloadResult.message, downloadResult.isError)
-                                }
-                            }
-
-                            if (action is ChatAction.RecallMessage) {
-                                coroutineScope.launch {
-                                    onConversationThreadsChanged(chatCoordinator.recallMessage(
-                                        state = conversationThreadsState,
-                                        chatState = resolvedChatState,
-                                        messageId = action.messageId,
-                                    ))
-                                }
-                            }
                         },                        modifier = Modifier.padding(innerPadding),
                     )
                 }
