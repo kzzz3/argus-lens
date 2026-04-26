@@ -40,4 +40,30 @@ class ArgusLensAppViewModelTest {
 
         assertEquals(AppRoute.AuthEntry, route)
     }
+
+    @Test
+    fun resolveInitialHydratedConversationAccountId_authenticatedSessionKeepsAccountBoundary() {
+        val accountId = resolveInitialHydratedConversationAccountId(
+            session = AppSessionState(
+                isAuthenticated = true,
+                accountId = "argus_tester",
+                displayName = "Argus Tester",
+            ),
+        )
+
+        assertEquals("argus_tester", accountId)
+    }
+
+    @Test
+    fun resolveInitialHydratedConversationAccountId_signedOutSessionHasNoAccountBoundary() {
+        val accountId = resolveInitialHydratedConversationAccountId(
+            session = AppSessionState(
+                isAuthenticated = false,
+                accountId = "argus_tester",
+                displayName = "Argus Tester",
+            ),
+        )
+
+        assertEquals(null, accountId)
+    }
 }

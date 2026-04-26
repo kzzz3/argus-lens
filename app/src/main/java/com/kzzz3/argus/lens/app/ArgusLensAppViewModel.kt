@@ -21,6 +21,9 @@ class ArgusLensAppViewModel @Inject constructor(
                 session = dependencies.initialSessionSnapshot,
                 credentials = dependencies.initialSessionCredentials,
             ),
+            hydratedConversationAccountId = resolveInitialHydratedConversationAccountId(
+                session = dependencies.initialSessionSnapshot,
+            ),
         )
     )
     val uiState: StateFlow<ArgusLensAppUiState> = _uiState.asStateFlow()
@@ -41,11 +44,16 @@ class ArgusLensAppViewModel @Inject constructor(
     fun clearSelectedConversation() {
         _uiState.update { state -> state.copy(selectedConversationId = "") }
     }
+
+    fun updateHydratedConversationAccountId(accountId: String?) {
+        _uiState.update { state -> state.copy(hydratedConversationAccountId = accountId) }
+    }
 }
 
 data class ArgusLensAppUiState(
     val currentRoute: AppRoute,
     val selectedConversationId: String = "",
+    val hydratedConversationAccountId: String? = null,
 )
 
 internal fun resolveInitialAppRoute(
@@ -56,5 +64,13 @@ internal fun resolveInitialAppRoute(
         AppRoute.Inbox
     } else {
         AppRoute.AuthEntry
+    }
+}
+
+internal fun resolveInitialHydratedConversationAccountId(session: AppSessionState): String? {
+    return if (session.isAuthenticated) {
+        session.accountId.takeIf { it.isNotBlank() }
+    } else {
+        null
     }
 }

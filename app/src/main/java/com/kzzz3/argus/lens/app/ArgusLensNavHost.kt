@@ -15,9 +15,11 @@ fun ArgusLensNavHost(
     dependencies: AppDependencies,
     currentRoute: AppRoute,
     selectedConversationId: String,
+    hydratedConversationAccountId: String?,
     onRouteChanged: (AppRoute) -> Unit,
     onConversationOpened: (String) -> Unit,
     onConversationSelectionCleared: () -> Unit,
+    onHydratedConversationAccountChanged: (String?) -> Unit,
 ) {
     val navController = rememberNavController()
     NavHost(
@@ -29,9 +31,11 @@ fun ArgusLensNavHost(
                 dependencies = dependencies,
                 currentRoute = currentRoute,
                 selectedConversationId = selectedConversationId,
+                hydratedConversationAccountId = hydratedConversationAccountId,
                 onRouteChanged = onRouteChanged,
                 onConversationOpened = onConversationOpened,
                 onConversationSelectionCleared = onConversationSelectionCleared,
+                onHydratedConversationAccountChanged = onHydratedConversationAccountChanged,
             )
         }
     }

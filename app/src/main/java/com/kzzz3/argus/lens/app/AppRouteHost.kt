@@ -87,9 +87,11 @@ internal fun AppRouteHost(
     dependencies: AppDependencies,
     currentRoute: AppRoute,
     selectedConversationId: String,
+    hydratedConversationAccountId: String?,
     onRouteChanged: (AppRoute) -> Unit,
     onConversationOpened: (String) -> Unit,
     onConversationSelectionCleared: () -> Unit,
+    onHydratedConversationAccountChanged: (String?) -> Unit,
 ) {
     val coroutineScope = rememberCoroutineScope()
     val navController = rememberNavController()
@@ -133,10 +135,6 @@ internal fun AppRouteHost(
     var friendRequestsStatusMessage by rememberSaveable { mutableStateOf<String?>(null) }
     var friendRequestsStatusError by rememberSaveable { mutableStateOf(false) }
     val callSessionRuntime = remember(coroutineScope) { CallSessionRuntime(coroutineScope) }
-    var hydratedConversationAccountId by remember {
-        mutableStateOf(if (initialSessionSnapshot.isAuthenticated) initialSessionSnapshot.accountId else null)
-    }
-    var hydratedSession by remember { mutableStateOf(true) }
     var realtimeSubscription by remember { mutableStateOf<ConversationRealtimeSubscription?>(null) }
     var realtimeConnectionState by remember { mutableStateOf(ConversationRealtimeConnectionState.DISABLED) }
     var realtimeLastEventId by rememberSaveable { mutableStateOf("") }
@@ -212,7 +210,7 @@ internal fun AppRouteHost(
     val latestAppSessionState by rememberUpdatedState(appSessionState)
     val latestCurrentRoute by rememberUpdatedState(currentRoute)
     val latestRealtimeEnabled by rememberUpdatedState(
-        hydratedSession && appSessionState.isAuthenticated && sessionCredentialsStore.current.hasAccessToken
+        appSessionState.isAuthenticated && sessionCredentialsStore.current.hasAccessToken
     )
     val chatState = remember(selectedConversation, sessionDisplayName) {
         selectedConversation?.let { conversation ->
@@ -276,7 +274,7 @@ internal fun AppRouteHost(
     LaunchedEffect(initialSessionSnapshot.isAuthenticated, initialSessionSnapshot.accountId) {
         if (initialSessionSnapshot.isAuthenticated && initialSessionSnapshot.accountId.isNotBlank() && dependencies.initialSessionCredentials.hasAccessToken) {
             conversationThreadsState = appShellCoordinator.loadInitialAuthenticatedConversations(initialSessionSnapshot)
-            hydratedConversationAccountId = initialSessionSnapshot.accountId
+            onHydratedConversationAccountChanged(initialSessionSnapshot.accountId)
             onRouteChanged(AppRoute.Inbox)
             return@LaunchedEffect
         }
@@ -284,14 +282,14 @@ internal fun AppRouteHost(
         val hydratedState = appShellCoordinator.hydrateAppState(previewThreadsState)
         appSessionState = hydratedState.session
         conversationThreadsState = hydratedState.conversationThreadsState
-        hydratedConversationAccountId = hydratedState.hydratedConversationAccountId
+        onHydratedConversationAccountChanged(hydratedState.hydratedConversationAccountId)
         if (hydratedState.session.isAuthenticated) {
             onRouteChanged(AppRoute.Inbox)
         }
     }
 
-    LaunchedEffect(hydratedSession, appSessionState) {
-        appShellCoordinator.persistSession(hydratedSession, appSessionState, sessionCredentialsStore.current)
+    LaunchedEffect(appSessionState) {
+        appShellCoordinator.persistSession(appSessionState, sessionCredentialsStore.current)
     }
 
     LaunchedEffect(selectedConversationId) {
@@ -356,7 +354,7 @@ internal fun AppRouteHost(
         appSessionState = createSessionFromAuthSession(authResult.session)
         sessionCredentialsStore.update(createSessionCredentialsFromAuthSession(authResult.session))
         walletRequestRuntime.invalidate()
-        hydratedConversationAccountId = null
+        onHydratedConversationAccountChanged(null)
         callSessionRuntime.cancel()
         val signedInState = appShellCoordinator.handleSignedIn(appSessionState)
         val postAuthUiState = createPostAuthUiState(
@@ -366,7 +364,7 @@ internal fun AppRouteHost(
         callSessionState = postAuthUiState.callSessionState
         walletStateModel = WalletState()
         conversationThreadsState = postAuthUiState.conversationThreadsState
-        hydratedConversationAccountId = postAuthUiState.hydratedConversationAccountId
+        onHydratedConversationAccountChanged(postAuthUiState.hydratedConversationAccountId)
         onConversationSelectionCleared()
         authFormState = if (keepSubmitMessageOnAuthForm) {
             postAuthUiState.nextAuthFormState.copy(submitResult = authResult.session.message)
@@ -399,7 +397,7 @@ internal fun AppRouteHost(
         callSessionRuntime.cancel()
         callSessionState = signedOutState.callSessionState
         walletStateModel = WalletState()
-        hydratedConversationAccountId = null
+        onHydratedConversationAccountChanged(null)
         conversationThreadsState = signedOutState.conversationThreadsState
         onConversationSelectionCleared()
         friends = emptyList()
@@ -426,23 +424,23 @@ internal fun AppRouteHost(
     }
 
     LaunchedEffect(appSessionState.isAuthenticated, appSessionState.accountId, appSessionState.displayName) {
-        if (hydratedSession && appSessionState.isAuthenticated) {
-            hydratedConversationAccountId = null
+        if (appSessionState.isAuthenticated) {
+            onHydratedConversationAccountChanged(null)
             val signedInState = appShellCoordinator.handleSignedIn(appSessionState)
             conversationThreadsState = signedInState.conversationThreadsState
-            hydratedConversationAccountId = signedInState.hydratedConversationAccountId
+            onHydratedConversationAccountChanged(signedInState.hydratedConversationAccountId)
         } else {
-            hydratedConversationAccountId = null
+            onHydratedConversationAccountChanged(null)
         }
     }
 
-    LaunchedEffect(hydratedSession, appSessionState.isAuthenticated, appSessionState.accountId, realtimeReconnectGeneration) {
+    LaunchedEffect(appSessionState.isAuthenticated, appSessionState.accountId, realtimeReconnectGeneration) {
         activeRealtimeConnectionId = ""
         realtimeSubscription?.close()
         realtimeSubscription = null
 
         val realtimeCredentials = sessionCredentialsStore.current
-        val realtimeEnabled = hydratedSession && appSessionState.isAuthenticated && realtimeCredentials.hasAccessToken
+        val realtimeEnabled = appSessionState.isAuthenticated && realtimeCredentials.hasAccessToken
         if (!realtimeEnabled) {
             realtimeReconnectRuntime.disable()
             realtimeLastEventId = ""
@@ -552,11 +550,6 @@ internal fun AppRouteHost(
         if (currentRoute == AppRoute.NewFriends && appSessionState.isAuthenticated) {
             applyFriendRequestStatus(newFriendsCoordinator.loadRequests(friendRequestsSnapshot))
         }
-    }
-
-    if (!hydratedSession) {
-        AppLaunchPlaceholder()
-        return
     }
 
     val currentBackStackEntry by navController.currentBackStackEntryAsState()

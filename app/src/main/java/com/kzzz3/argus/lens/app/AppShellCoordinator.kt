@@ -69,11 +69,9 @@ class AppShellCoordinator(
     }
 
     suspend fun persistSession(
-        hydratedSession: Boolean,
         session: AppSessionState,
         credentials: SessionCredentials,
     ) {
-        if (!hydratedSession) return
         if (session.isAuthenticated) {
             sessionRepository.saveSession(session, credentials)
         } else {
