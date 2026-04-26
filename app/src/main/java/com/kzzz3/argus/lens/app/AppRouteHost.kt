@@ -87,6 +87,7 @@ import kotlinx.coroutines.sync.withLock
 internal fun AppRouteHost(
     dependencies: AppDependencies,
     appSessionState: AppSessionState,
+    conversationThreadsState: ConversationThreadsState,
     currentRoute: AppRoute,
     authFormState: AuthFormState,
     registerFormState: RegisterFormState,
@@ -122,6 +123,7 @@ internal fun AppRouteHost(
     onAuthenticatedSessionApplied: (AppSessionState, SessionCredentials, String, Int) -> Unit,
     onSessionRefreshed: (AppSessionState) -> Unit,
     onSessionCleared: () -> Unit,
+    onConversationThreadsChanged: (ConversationThreadsState) -> Unit,
     onHydratedConversationAccountChanged: (String?) -> Unit,
     onRealtimeConnectionStateChanged: (ConversationRealtimeConnectionState) -> Unit,
     onRealtimeEventIdRecorded: (String) -> Unit,
@@ -160,9 +162,6 @@ internal fun AppRouteHost(
     val walletRequestRuntime = remember(coroutineScope) { WalletRequestRuntime(coroutineScope) }
     var activeRealtimeConnectionId by remember { mutableStateOf("") }
     val realtimeEventMutex = remember { Mutex() }
-    var conversationThreadsState by remember {
-        mutableStateOf(previewThreadsState)
-    }
     val startDestination = remember { currentRoute.name }
     val conversationThreads = conversationThreadsState.threads
 
@@ -282,7 +281,7 @@ internal fun AppRouteHost(
 
     LaunchedEffect(initialSessionSnapshot.isAuthenticated, initialSessionSnapshot.accountId) {
         if (initialSessionSnapshot.isAuthenticated && initialSessionSnapshot.accountId.isNotBlank() && dependencies.initialSessionCredentials.hasAccessToken) {
-            conversationThreadsState = appShellCoordinator.loadInitialAuthenticatedConversations(initialSessionSnapshot)
+            onConversationThreadsChanged(appShellCoordinator.loadInitialAuthenticatedConversations(initialSessionSnapshot))
             onHydratedConversationAccountChanged(initialSessionSnapshot.accountId)
             onRouteChanged(AppRoute.Inbox)
             return@LaunchedEffect
@@ -290,7 +289,7 @@ internal fun AppRouteHost(
 
         val hydratedState = appShellCoordinator.hydrateAppState(previewThreadsState)
         onHydratedSessionApplied(hydratedState.session, hydratedState.hydratedConversationAccountId)
-        conversationThreadsState = hydratedState.conversationThreadsState
+        onConversationThreadsChanged(hydratedState.conversationThreadsState)
     }
 
     LaunchedEffect(appSessionState) {
@@ -331,13 +330,13 @@ internal fun AppRouteHost(
             state = conversationThreadsState,
             conversationId = conversationId,
         )
-        conversationThreadsState = openResult.conversationThreadsState
+        onConversationThreadsChanged(openResult.conversationThreadsState)
         onConversationOpened(openResult.conversationId)
         coroutineScope.launch {
-            conversationThreadsState = chatCoordinator.synchronizeConversation(
-                state = conversationThreadsState,
+            onConversationThreadsChanged(chatCoordinator.synchronizeConversation(
+                state = openResult.conversationThreadsState,
                 conversationId = conversationId,
-            )
+            ))
         }
     }
 
@@ -367,7 +366,7 @@ internal fun AppRouteHost(
         )
         onCallSessionStateChanged(postAuthUiState.callSessionState)
         onWalletStateChanged(WalletState())
-        conversationThreadsState = postAuthUiState.conversationThreadsState
+        onConversationThreadsChanged(postAuthUiState.conversationThreadsState)
         onAuthenticatedSessionApplied(
             authenticatedSession,
             authenticatedCredentials,
@@ -400,7 +399,7 @@ internal fun AppRouteHost(
         callSessionRuntime.cancel()
         onCallSessionStateChanged(signedOutState.callSessionState)
         onWalletStateChanged(WalletState())
-        conversationThreadsState = signedOutState.conversationThreadsState
+        onConversationThreadsChanged(signedOutState.conversationThreadsState)
         onFriendsChanged(emptyList())
         onFriendRequestStatusReset()
     }
@@ -425,7 +424,7 @@ internal fun AppRouteHost(
         if (appSessionState.isAuthenticated) {
             onHydratedConversationAccountChanged(null)
             val signedInState = appShellCoordinator.handleSignedIn(appSessionState)
-            conversationThreadsState = signedInState.conversationThreadsState
+            onConversationThreadsChanged(signedInState.conversationThreadsState)
             onHydratedConversationAccountChanged(signedInState.hydratedConversationAccountId)
         } else {
             onHydratedConversationAccountChanged(null)
@@ -487,13 +486,13 @@ internal fun AppRouteHost(
                         RealtimeEventKind.DomainEvent -> Unit
                     }
                     realtimeEventMutex.withLock {
-                        conversationThreadsState = realtimeCoordinator.applyEvent(
+                        onConversationThreadsChanged(realtimeCoordinator.applyEvent(
                             event = event,
                             session = latestAppSessionState,
                             currentState = conversationThreadsState,
                             selectedConversationId = latestSelectedConversationId,
                             isChatRouteActive = latestCurrentRoute == AppRoute.Chat,
-                        )
+                        ))
                     }
                 }
             },
@@ -682,7 +681,7 @@ internal fun AppRouteHost(
                                     friends = friends,
                                     state = conversationThreadsState,
                                 )
-                                conversationThreadsState = openResult.conversationThreadsState
+                                onConversationThreadsChanged(openResult.conversationThreadsState)
                                 onConversationOpened(openResult.conversationId)
                             }
                         }
@@ -726,7 +725,7 @@ internal fun AppRouteHost(
                                 )
                                 applyFriendRequestStatus(result.status)
                                 result.friends?.let(onFriendsChanged)
-                                result.conversationThreadsState?.let { conversationThreadsState = it }
+                                result.conversationThreadsState?.let(onConversationThreadsChanged)
                             }
                         }
                         is NewFriendsAction.Reject -> {
@@ -873,7 +872,7 @@ internal fun AppRouteHost(
                                 currentChatState = resolvedChatState,
                                 action = action,
                             )
-                            conversationThreadsState = result.conversationThreadsState
+                            onConversationThreadsChanged(result.conversationThreadsState)
 
                             when (val effect = result.effect) {
                                 ChatEffect.NavigateBackToInbox -> openTopLevelRoute(AppRoute.Inbox)
@@ -900,7 +899,7 @@ internal fun AppRouteHost(
                                             conversationId = effect.conversationId,
                                             messages = outgoingMessages,
                                         )
-                                        conversationThreadsState = dispatchResult.conversationThreadsState
+                                        onConversationThreadsChanged(dispatchResult.conversationThreadsState)
                                         val summary = dispatchResult.summary
                                         if (summary?.failureMessage != null) {
                                             onChatStatusChanged(summary.failureMessage, true)
@@ -922,11 +921,11 @@ internal fun AppRouteHost(
 
                             if (action is ChatAction.RecallMessage) {
                                 coroutineScope.launch {
-                                    conversationThreadsState = chatCoordinator.recallMessage(
+                                    onConversationThreadsChanged(chatCoordinator.recallMessage(
                                         state = conversationThreadsState,
                                         chatState = resolvedChatState,
                                         messageId = action.messageId,
-                                    )
+                                    ))
                                 }
                             }
                         },                        modifier = Modifier.padding(innerPadding),

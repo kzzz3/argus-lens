@@ -13,6 +13,7 @@ fun ArgusLensApp(
     ArgusLensNavHost(
         dependencies = viewModel.dependencies,
         appSessionState = uiState.appSessionState,
+        conversationThreadsState = uiState.conversationThreadsState,
         currentRoute = uiState.currentRoute,
         authFormState = uiState.authFormState,
         registerFormState = uiState.registerFormState,
@@ -48,6 +49,7 @@ fun ArgusLensApp(
         onAuthenticatedSessionApplied = viewModel::applyAuthenticatedSession,
         onSessionRefreshed = viewModel::applyRefreshedSession,
         onSessionCleared = viewModel::clearSession,
+        onConversationThreadsChanged = viewModel::updateConversationThreadsState,
         onHydratedConversationAccountChanged = viewModel::updateHydratedConversationAccountId,
         onRealtimeConnectionStateChanged = viewModel::updateRealtimeConnectionState,
         onRealtimeEventIdRecorded = viewModel::recordRealtimeEventId,

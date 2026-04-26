@@ -10,6 +10,7 @@ import com.kzzz3.argus.lens.feature.auth.AuthFormState
 import com.kzzz3.argus.lens.feature.call.CallSessionState
 import com.kzzz3.argus.lens.feature.contacts.ContactsState
 import com.kzzz3.argus.lens.feature.contacts.FriendRequestStatusState
+import com.kzzz3.argus.lens.feature.inbox.ConversationThreadsState
 import com.kzzz3.argus.lens.feature.register.RegisterFormState
 import com.kzzz3.argus.lens.feature.wallet.WalletState
 import com.kzzz3.argus.lens.model.session.AppSessionState
@@ -27,6 +28,9 @@ class ArgusLensAppViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(
         ArgusLensAppUiState(
             appSessionState = dependencies.initialSessionSnapshot,
+            conversationThreadsState = dependencies.appShellCoordinator.createPreviewConversationThreads(
+                currentUserDisplayName = DEFAULT_PREVIEW_DISPLAY_NAME,
+            ),
             currentRoute = resolveInitialAppRoute(
                 session = dependencies.initialSessionSnapshot,
                 credentials = dependencies.initialSessionCredentials,
@@ -108,6 +112,10 @@ class ArgusLensAppViewModel @Inject constructor(
         _uiState.update { state -> state.copy(friends = friends) }
     }
 
+    fun updateConversationThreadsState(conversationThreadsState: ConversationThreadsState) {
+        _uiState.update { state -> state.copy(conversationThreadsState = conversationThreadsState) }
+    }
+
     fun updateAuthFormState(formState: AuthFormState) {
         _uiState.update { state -> state.copy(authFormState = formState) }
     }
@@ -184,6 +192,7 @@ class ArgusLensAppViewModel @Inject constructor(
 
 data class ArgusLensAppUiState(
     val appSessionState: AppSessionState,
+    val conversationThreadsState: ConversationThreadsState = ConversationThreadsState(),
     val currentRoute: AppRoute,
     val authFormState: AuthFormState = AuthFormState(),
     val registerFormState: RegisterFormState = RegisterFormState(),

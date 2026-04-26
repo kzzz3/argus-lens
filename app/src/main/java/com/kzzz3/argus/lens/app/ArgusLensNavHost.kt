@@ -13,6 +13,7 @@ import com.kzzz3.argus.lens.feature.auth.AuthFormState
 import com.kzzz3.argus.lens.feature.call.CallSessionState
 import com.kzzz3.argus.lens.feature.contacts.ContactsState
 import com.kzzz3.argus.lens.feature.contacts.FriendRequestStatusState
+import com.kzzz3.argus.lens.feature.inbox.ConversationThreadsState
 import com.kzzz3.argus.lens.feature.register.RegisterFormState
 import com.kzzz3.argus.lens.feature.wallet.WalletState
 import com.kzzz3.argus.lens.model.session.AppSessionState
@@ -25,6 +26,7 @@ private object ArgusLensGraph {
 fun ArgusLensNavHost(
     dependencies: AppDependencies,
     appSessionState: AppSessionState,
+    conversationThreadsState: ConversationThreadsState,
     currentRoute: AppRoute,
     authFormState: AuthFormState,
     registerFormState: RegisterFormState,
@@ -60,6 +62,7 @@ fun ArgusLensNavHost(
     onAuthenticatedSessionApplied: (AppSessionState, SessionCredentials, String, Int) -> Unit,
     onSessionRefreshed: (AppSessionState) -> Unit,
     onSessionCleared: () -> Unit,
+    onConversationThreadsChanged: (ConversationThreadsState) -> Unit,
     onHydratedConversationAccountChanged: (String?) -> Unit,
     onRealtimeConnectionStateChanged: (ConversationRealtimeConnectionState) -> Unit,
     onRealtimeEventIdRecorded: (String) -> Unit,
@@ -76,6 +79,7 @@ fun ArgusLensNavHost(
             AppRouteHost(
                 dependencies = dependencies,
                 appSessionState = appSessionState,
+                conversationThreadsState = conversationThreadsState,
                 currentRoute = currentRoute,
                 authFormState = authFormState,
                 registerFormState = registerFormState,
@@ -111,6 +115,7 @@ fun ArgusLensNavHost(
                 onAuthenticatedSessionApplied = onAuthenticatedSessionApplied,
                 onSessionRefreshed = onSessionRefreshed,
                 onSessionCleared = onSessionCleared,
+                onConversationThreadsChanged = onConversationThreadsChanged,
                 onHydratedConversationAccountChanged = onHydratedConversationAccountChanged,
                 onRealtimeConnectionStateChanged = onRealtimeConnectionStateChanged,
                 onRealtimeEventIdRecorded = onRealtimeEventIdRecorded,
