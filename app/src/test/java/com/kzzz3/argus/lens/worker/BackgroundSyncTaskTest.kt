@@ -1,6 +1,6 @@
 package com.kzzz3.argus.lens.worker
 
-import com.kzzz3.argus.lens.app.session.AppSessionState
+import com.kzzz3.argus.lens.model.session.AppSessionState
 import com.kzzz3.argus.lens.data.conversation.ConversationRepository
 import com.kzzz3.argus.lens.data.session.SessionCredentials
 import com.kzzz3.argus.lens.data.session.SessionRepository

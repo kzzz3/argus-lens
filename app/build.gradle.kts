@@ -1,8 +1,23 @@
+import java.net.URI
+
 val debugAuthBaseUrl = "http://10.0.2.2:8080/"
 val isReleaseBuildRequested = gradle.startParameter.taskNames.any { taskName ->
-    taskName.contains("Release", ignoreCase = true)
+    val normalizedName = taskName.substringAfterLast(':').lowercase()
+    normalizedName.contains("release") || normalizedName in setOf("assemble", "bundle", "build")
 }
+fun validateReleaseBaseUrl(rawUrl: String): String {
+    val uri = URI(rawUrl.trim())
+    val host = uri.host?.lowercase()
+        ?: error("ARGUS_RELEASE_BASE_URL must include a host.")
+    val forbiddenHosts = setOf("localhost", "127.0.0.1", "0.0.0.0", "10.0.2.2", "debug-placeholder.invalid")
+    require(uri.scheme == "https") { "ARGUS_RELEASE_BASE_URL must use HTTPS for release builds." }
+    require(host !in forbiddenHosts) { "ARGUS_RELEASE_BASE_URL must not target localhost, emulator, or debug placeholder hosts." }
+    require(uri.userInfo == null) { "ARGUS_RELEASE_BASE_URL must not include credentials." }
+    return rawUrl.trim()
+}
+
 val releaseAuthBaseUrl = providers.gradleProperty("ARGUS_RELEASE_BASE_URL").orNull
+    ?.let(::validateReleaseBaseUrl)
     ?: if (isReleaseBuildRequested) {
         error("ARGUS_RELEASE_BASE_URL is required for release builds.")
     } else {
@@ -66,11 +81,14 @@ android {
 }
 
 ksp {
-    arg("room.schemaLocation", "$projectDir/schemas")
     arg("room.incremental", "true")
 }
 
 dependencies {
+    implementation(project(":data"))
+    implementation(project(":feature"))
+    implementation(project(":model"))
+    implementation(project(":ui"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.runtime.compose)
@@ -89,22 +107,8 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material.icons.extended)
-    implementation(libs.retrofit)
-    implementation(libs.retrofit.gson)
-    implementation(libs.okhttp.logging)
-    implementation(libs.okhttp.sse)
-    implementation(libs.gson)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.androidx.datastore.preferences)
-    implementation(libs.androidx.camera.camera2)
-    implementation(libs.androidx.camera.lifecycle)
-    implementation(libs.androidx.camera.view)
-    implementation(libs.androidx.camera.mlkit.vision)
-    implementation(libs.mlkit.barcode.scanning)
-    implementation(libs.zxing.core)
-    implementation(libs.androidx.room.runtime)
-    implementation(libs.androidx.room.ktx)
-    ksp(libs.androidx.room.compiler)
     ksp(libs.hilt.compiler)
     ksp(libs.androidx.hilt.compiler)
     testImplementation(libs.junit)

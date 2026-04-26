@@ -11,6 +11,18 @@ argus-lens/
 ├── app/
 │   ├── build.gradle.kts
 │   └── src/
+├── data/
+│   ├── build.gradle.kts
+│   └── src/
+├── feature/
+│   ├── build.gradle.kts
+│   └── src/
+├── model/
+│   ├── build.gradle.kts
+│   └── src/
+├── ui/
+│   ├── build.gradle.kts
+│   └── src/
 ├── gradle/
 └── docs/
 ```
@@ -18,11 +30,16 @@ argus-lens/
 ## WHERE TO LOOK
 | Task | Location | Notes |
 |------|----------|-------|
-| Project/module wiring | `settings.gradle.kts`, `build.gradle.kts` | Single app module: `:app` |
-| Actual Android build config | `app/build.gradle.kts` | Build types, BuildConfig values, test deps |
+| Project/module wiring | `settings.gradle.kts`, `build.gradle.kts` | Android modules: `:app`, `:feature`, `:data`, `:model`, `:ui` |
+| App assembly / entry build config | `app/build.gradle.kts` | App shell, Hilt, release shrink config |
+| Data/network/persistence build config | `data/build.gradle.kts` | Room/KSP, Retrofit/OkHttp, DataStore, backend BuildConfig values |
 | Launcher/entry | `app/src/main/AndroidManifest.xml`, `app/src/main/java/com/kzzz3/argus/lens/MainActivity.kt` | Manifest + activity startup |
-| App code | `app/src/main/java/com/kzzz3/argus/lens/` | Main subtrees: `app`, `data`, `feature`, `ui` |
-| Local unit tests | `app/src/test/java/` | JVM tests |
+| App shell code | `app/src/main/java/com/kzzz3/argus/lens/app/` | Navigation host, dependency assembly, Hilt wiring |
+| Feature code | `feature/src/main/java/com/kzzz3/argus/lens/feature/` | Auth, inbox, contacts, wallet, call, realtime UI/business flows |
+| Data code | `data/src/main/java/com/kzzz3/argus/lens/data/` | Repositories, Room, network clients, session persistence |
+| Shared models | `model/src/main/java/com/kzzz3/argus/lens/model/` | Parcelable/domain models shared across data/feature/app |
+| Shared UI | `ui/src/main/java/com/kzzz3/argus/lens/ui/` | Theme, shell widgets, status UI primitives |
+| Local unit tests | `*/src/test/java/` | JVM tests live with their owning module |
 | Instrumentation/UI tests | `app/src/androidTest/java/` | AndroidX / Compose test path |
 | Project intent | `docs/project-plan.md`, `docs/wallet-payment-flow.md` | Product and UX boundaries |
 
@@ -42,7 +59,8 @@ argus-lens/
 - Repository resolution is centralized in `settings.gradle.kts` with `FAIL_ON_PROJECT_REPOS`; do not add ad hoc per-module repositories.
 - `gradle/libs.versions.toml` is the version source of truth.
 - `gradle.properties` explicitly sets `kotlin.code.style=official`.
-- `app/build.gradle.kts` encodes debug/release backend URL behavior and `AUTH_MODE` / `CONVERSATION_MODE` BuildConfig boundaries.
+- `data/build.gradle.kts` encodes debug/release backend URL behavior and `AUTH_MODE` / `CONVERSATION_MODE` BuildConfig boundaries.
+- `app` may depend on all lower modules; `feature` may depend on `data`, `model`, and `ui`; `data` may depend on `model`; `ui` and `model` should not depend on product modules.
 - Room is wired through KSP; preserve that path instead of casually switching annotation processing style.
 
 ## ANTI-PATTERNS
@@ -53,7 +71,7 @@ argus-lens/
 - Do not treat `.gradle/`, `.idea/`, `.kotlin/`, or build outputs as source areas.
 
 ## TESTING
-- Use `app/src/test/java` for local JVM tests and `app/src/androidTest/java` for device/emulator tests.
+- Use each module's `src/test/java` for local JVM tests and `app/src/androidTest/java` for device/emulator tests.
 - For routine verification, prefer `testDebugUnitTest`, `lint`, and `assembleDebug`; reserve `connectedAndroidTest` for emulator/device-specific coverage.
 - Compose UI testing dependencies are present; use instrumentation tests when the behavior is UI/runtime-specific.
 - Current tests often use handwritten fake repositories/services instead of a visible mocking framework.

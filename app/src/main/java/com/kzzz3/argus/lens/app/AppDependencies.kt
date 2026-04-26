@@ -1,6 +1,5 @@
 package com.kzzz3.argus.lens.app
 
-import com.kzzz3.argus.lens.app.session.AppSessionState
 import com.kzzz3.argus.lens.data.auth.AuthRepository
 import com.kzzz3.argus.lens.data.conversation.ConversationRepository
 import com.kzzz3.argus.lens.data.friend.FriendRepository
@@ -15,6 +14,7 @@ import com.kzzz3.argus.lens.feature.contacts.NewFriendsCoordinator
 import com.kzzz3.argus.lens.feature.inbox.ChatCoordinator
 import com.kzzz3.argus.lens.feature.realtime.RealtimeCoordinator
 import com.kzzz3.argus.lens.feature.wallet.WalletRequestCoordinator
+import com.kzzz3.argus.lens.model.session.AppSessionState
 
 data class AppDependencies(
     val authRepository: AuthRepository,

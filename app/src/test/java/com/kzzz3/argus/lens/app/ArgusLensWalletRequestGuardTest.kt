@@ -1,6 +1,6 @@
 package com.kzzz3.argus.lens.app
 
-import com.kzzz3.argus.lens.app.session.AppSessionState
+import com.kzzz3.argus.lens.model.session.AppSessionState
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test

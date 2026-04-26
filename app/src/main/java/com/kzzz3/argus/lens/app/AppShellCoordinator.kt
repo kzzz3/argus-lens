@@ -1,7 +1,5 @@
 package com.kzzz3.argus.lens.app
 
-import com.kzzz3.argus.lens.app.session.AppSessionState
-import com.kzzz3.argus.lens.app.session.createAuthenticatedSession
 import com.kzzz3.argus.lens.data.conversation.ConversationRepository
 import com.kzzz3.argus.lens.data.payment.PaymentRepository
 import com.kzzz3.argus.lens.data.session.SessionCredentials
@@ -9,6 +7,8 @@ import com.kzzz3.argus.lens.data.session.SessionRepository
 import com.kzzz3.argus.lens.feature.call.CallSessionState
 import com.kzzz3.argus.lens.feature.contacts.ContactsState
 import com.kzzz3.argus.lens.feature.inbox.ConversationThreadsState
+import com.kzzz3.argus.lens.model.session.AppSessionState
+import com.kzzz3.argus.lens.model.session.createAuthenticatedSession
 import com.kzzz3.argus.lens.worker.BackgroundSyncScheduler
 
 data class AppHydrationState(

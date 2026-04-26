@@ -1,11 +1,11 @@
 package com.kzzz3.argus.lens.app
 
-import com.kzzz3.argus.lens.app.session.AppSessionState
 import com.kzzz3.argus.lens.data.auth.AuthFailureKind
 import com.kzzz3.argus.lens.data.auth.AuthRepository
 import com.kzzz3.argus.lens.data.auth.AuthRepositoryResult
 import com.kzzz3.argus.lens.data.session.SessionCredentials
 import com.kzzz3.argus.lens.data.session.SessionRepository
+import com.kzzz3.argus.lens.model.session.AppSessionState
 
 class AppSessionCoordinator(
     private val authRepository: AuthRepository,

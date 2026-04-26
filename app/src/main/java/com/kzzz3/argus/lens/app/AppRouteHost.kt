@@ -17,7 +17,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.kzzz3.argus.lens.app.navigation.AppRoute
-import com.kzzz3.argus.lens.app.session.AppSessionState
 import com.kzzz3.argus.lens.data.auth.AuthFailureKind
 import com.kzzz3.argus.lens.data.auth.AuthRepositoryResult
 import com.kzzz3.argus.lens.data.friend.FriendEntry
@@ -76,7 +75,9 @@ import com.kzzz3.argus.lens.feature.wallet.WalletState
 import com.kzzz3.argus.lens.feature.wallet.createWalletUiState
 import com.kzzz3.argus.lens.feature.wallet.reduceWalletState
 import com.kzzz3.argus.lens.feature.wallet.withCurrentAccount
+import com.kzzz3.argus.lens.model.session.AppSessionState
 import com.kzzz3.argus.lens.ui.shell.AuthenticatedShell
+import com.kzzz3.argus.lens.ui.shell.ShellDestination
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -318,6 +319,16 @@ internal fun AppRouteHost(dependencies: AppDependencies) {
         currentRoute = route
     }
 
+    fun openShellDestination(destination: ShellDestination) {
+        when (destination) {
+            ShellDestination.Inbox -> openTopLevelRoute(AppRoute.Inbox)
+            ShellDestination.Contacts -> openTopLevelRoute(AppRoute.Contacts)
+            ShellDestination.Wallet -> openTopLevelRoute(AppRoute.Wallet)
+            ShellDestination.Me -> openTopLevelRoute(AppRoute.Me)
+            ShellDestination.Secondary -> Unit
+        }
+    }
+
     fun openInboxConversation(conversationId: String) {
         val openResult = chatCoordinator.openConversation(
             state = conversationThreadsState,
@@ -491,7 +502,7 @@ internal fun AppRouteHost(dependencies: AppDependencies) {
                             session = latestAppSessionState,
                             currentState = conversationThreadsState,
                             selectedConversationId = latestSelectedConversationId,
-                            currentRoute = latestCurrentRoute,
+                            isChatRouteActive = latestCurrentRoute == AppRoute.Chat,
                         )
                     }
                 }
@@ -577,15 +588,15 @@ internal fun AppRouteHost(dependencies: AppDependencies) {
                 )
                 authFormState = result.formState
 
-                when (result.effect) {
+                when (val effect = result.effect) {
                     AuthEntryEffect.NavigateBack -> Unit
                     AuthEntryEffect.NavigateToRegister -> currentRoute = AppRoute.RegisterEntry
                     is AuthEntryEffect.SubmitPasswordLogin -> {
                         coroutineScope.launch {
                             when (val authResult = authCoordinator.login(
                                 formState = authFormState,
-                                account = result.effect.account,
-                                password = result.effect.password,
+                                account = effect.account,
+                                password = effect.password,
                             )) {
                                 is AuthSubmissionResult.Success -> {
                                     authFormState = authResult.formState
@@ -616,15 +627,15 @@ internal fun AppRouteHost(dependencies: AppDependencies) {
                 )
                 registerFormState = result.formState
 
-                when (result.effect) {
+                when (val effect = result.effect) {
                     RegisterEffect.NavigateBackToLogin -> currentRoute = AppRoute.AuthEntry
                     is RegisterEffect.SubmitRegistration -> {
                         coroutineScope.launch {
                             when (val authResult = authCoordinator.register(
                                 formState = registerFormState,
-                                displayName = result.effect.displayName,
-                                account = result.effect.account,
-                                password = result.effect.password,
+                                displayName = effect.displayName,
+                                account = effect.account,
+                                password = effect.password,
                             )) {
                                 is AuthSubmissionResult.Success -> {
                                     registerFormState = authResult.formState
@@ -646,8 +657,8 @@ internal fun AppRouteHost(dependencies: AppDependencies) {
         }
 
         composable(AppRoute.Inbox.name) { AuthenticatedShell(
-            currentRoute = currentRoute,
-            onTabSelected = ::openTopLevelRoute,
+            currentDestination = currentRoute.toShellDestination(),
+            onTabSelected = ::openShellDestination,
         ) { innerPadding ->
             InboxScreen(
                 state = inboxState,
@@ -665,8 +676,8 @@ internal fun AppRouteHost(dependencies: AppDependencies) {
         } }
 
         composable(AppRoute.Contacts.name) { AuthenticatedShell(
-            currentRoute = currentRoute,
-            onTabSelected = ::openTopLevelRoute,
+            currentDestination = currentRoute.toShellDestination(),
+            onTabSelected = ::openShellDestination,
         ) { innerPadding ->
             ContactsScreen(
                 state = contactsState,
@@ -713,8 +724,8 @@ internal fun AppRouteHost(dependencies: AppDependencies) {
         } }
 
         composable(AppRoute.NewFriends.name) { AuthenticatedShell(
-            currentRoute = AppRoute.Contacts,
-            onTabSelected = ::openTopLevelRoute,
+            currentDestination = ShellDestination.Contacts,
+            onTabSelected = ::openShellDestination,
         ) { innerPadding ->
             NewFriendsScreen(
                 state = newFriendsUiState,
@@ -758,8 +769,8 @@ internal fun AppRouteHost(dependencies: AppDependencies) {
             )
         } }
         composable(AppRoute.CallSession.name) { AuthenticatedShell(
-            currentRoute = currentRoute,
-            onTabSelected = ::openTopLevelRoute,
+            currentDestination = currentRoute.toShellDestination(),
+            onTabSelected = ::openShellDestination,
         ) { innerPadding ->
             CallSessionScreen(
                 state = callSessionUiState,
@@ -778,8 +789,8 @@ internal fun AppRouteHost(dependencies: AppDependencies) {
         } }
 
         composable(AppRoute.Wallet.name) { AuthenticatedShell(
-            currentRoute = currentRoute,
-            onTabSelected = ::openTopLevelRoute,
+            currentDestination = currentRoute.toShellDestination(),
+            onTabSelected = ::openShellDestination,
         ) { innerPadding ->
             WalletScreen(
                 state = walletUiState,
@@ -831,8 +842,8 @@ internal fun AppRouteHost(dependencies: AppDependencies) {
         } }
 
         composable(AppRoute.Me.name) { AuthenticatedShell(
-            currentRoute = currentRoute,
-            onTabSelected = ::openTopLevelRoute,
+            currentDestination = currentRoute.toShellDestination(),
+            onTabSelected = ::openShellDestination,
         ) { innerPadding ->
             MeScreen(
                 state = meUiState,
@@ -847,8 +858,8 @@ internal fun AppRouteHost(dependencies: AppDependencies) {
 
             if (resolvedChatUiState == null || resolvedChatState == null) {
                 AuthenticatedShell(
-                    currentRoute = AppRoute.Inbox,
-                    onTabSelected = ::openTopLevelRoute,
+                    currentDestination = ShellDestination.Inbox,
+                    onTabSelected = ::openShellDestination,
                 ) { innerPadding ->
                     InboxScreen(
                         state = inboxState,
@@ -866,8 +877,8 @@ internal fun AppRouteHost(dependencies: AppDependencies) {
                 }
             } else {
                 AuthenticatedShell(
-                    currentRoute = currentRoute,
-                    onTabSelected = ::openTopLevelRoute,
+                    currentDestination = currentRoute.toShellDestination(),
+                    onTabSelected = ::openShellDestination,
                 ) { innerPadding ->
                     ChatScreen(
                         state = resolvedChatUiState,
@@ -905,8 +916,9 @@ internal fun AppRouteHost(dependencies: AppDependencies) {
                                             messages = outgoingMessages,
                                         )
                                         conversationThreadsState = dispatchResult.conversationThreadsState
-                                        if (dispatchResult.summary?.failureMessage != null) {
-                                            chatStatusMessage = dispatchResult.summary.failureMessage
+                                        val summary = dispatchResult.summary
+                                        if (summary?.failureMessage != null) {
+                                            chatStatusMessage = summary.failureMessage
                                             chatStatusError = true
                                         }
                                     }
@@ -939,6 +951,21 @@ internal fun AppRouteHost(dependencies: AppDependencies) {
                 }
             }
         }
+    }
+}
+
+private fun AppRoute.toShellDestination(): ShellDestination {
+    return when (this) {
+        AppRoute.Inbox -> ShellDestination.Inbox
+        AppRoute.Contacts -> ShellDestination.Contacts
+        AppRoute.Wallet -> ShellDestination.Wallet
+        AppRoute.Me -> ShellDestination.Me
+        AppRoute.AuthEntry,
+        AppRoute.RegisterEntry,
+        AppRoute.NewFriends,
+        AppRoute.CallSession,
+        AppRoute.Chat,
+        -> ShellDestination.Secondary
     }
 }
 

@@ -1,7 +1,7 @@
 package com.kzzz3.argus.lens.app
 
-import com.kzzz3.argus.lens.app.session.AppSessionState
 import com.kzzz3.argus.lens.feature.wallet.WalletState
+import com.kzzz3.argus.lens.model.session.AppSessionState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch

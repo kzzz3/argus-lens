@@ -24,3 +24,7 @@ dependencyResolutionManagement {
 
 rootProject.name = "argus-lens"
 include(":app")
+include(":data")
+include(":feature")
+include(":model")
+include(":ui")

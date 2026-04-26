@@ -1,13 +1,13 @@
 package com.kzzz3.argus.lens.app
 
-import com.kzzz3.argus.lens.app.session.AppSessionState
-import com.kzzz3.argus.lens.app.session.createAuthenticatedSession
 import com.kzzz3.argus.lens.data.auth.AuthSession
 import com.kzzz3.argus.lens.data.session.SessionCredentials
 import com.kzzz3.argus.lens.feature.auth.AuthFormState
 import com.kzzz3.argus.lens.feature.inbox.ConversationThreadsState
 import com.kzzz3.argus.lens.feature.register.RegisterFormState
 import com.kzzz3.argus.lens.feature.wallet.WalletState
+import com.kzzz3.argus.lens.model.session.AppSessionState
+import com.kzzz3.argus.lens.model.session.createAuthenticatedSession
 
 internal const val DEFAULT_PREVIEW_DISPLAY_NAME = "Argus Tester"
 
