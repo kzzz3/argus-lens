@@ -2,6 +2,7 @@ package com.kzzz3.argus.lens.app
 
 import androidx.lifecycle.ViewModel
 import com.kzzz3.argus.lens.app.navigation.AppRoute
+import com.kzzz3.argus.lens.data.friend.FriendEntry
 import com.kzzz3.argus.lens.data.friend.FriendRequestsSnapshot
 import com.kzzz3.argus.lens.data.realtime.ConversationRealtimeConnectionState
 import com.kzzz3.argus.lens.data.session.SessionCredentials
@@ -103,6 +104,10 @@ class ArgusLensAppViewModel @Inject constructor(
         _uiState.update { state -> state.copy(walletState = walletState) }
     }
 
+    fun updateFriends(friends: List<FriendEntry>) {
+        _uiState.update { state -> state.copy(friends = friends) }
+    }
+
     fun updateAuthFormState(formState: AuthFormState) {
         _uiState.update { state -> state.copy(authFormState = formState) }
     }
@@ -185,6 +190,7 @@ data class ArgusLensAppUiState(
     val callSessionState: CallSessionState = CallSessionState(),
     val contactsState: ContactsState = ContactsState(),
     val walletState: WalletState = WalletState(),
+    val friends: List<FriendEntry> = emptyList(),
     val selectedConversationId: String = "",
     val chatStatusMessage: String? = null,
     val chatStatusError: Boolean = false,

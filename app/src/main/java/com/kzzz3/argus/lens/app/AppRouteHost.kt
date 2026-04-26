@@ -93,6 +93,7 @@ internal fun AppRouteHost(
     callSessionState: CallSessionState,
     contactsState: ContactsState,
     walletStateModel: WalletState,
+    friends: List<FriendEntry>,
     selectedConversationId: String,
     chatStatusMessage: String?,
     chatStatusError: Boolean,
@@ -109,6 +110,7 @@ internal fun AppRouteHost(
     onCallSessionStateChanged: (CallSessionState) -> Unit,
     onContactsStateChanged: (ContactsState) -> Unit,
     onWalletStateChanged: (WalletState) -> Unit,
+    onFriendsChanged: (List<FriendEntry>) -> Unit,
     onConversationOpened: (String) -> Unit,
     onConversationSelectionCleared: () -> Unit,
     onChatStatusChanged: (String?, Boolean) -> Unit,
@@ -158,7 +160,6 @@ internal fun AppRouteHost(
     val walletRequestRuntime = remember(coroutineScope) { WalletRequestRuntime(coroutineScope) }
     var activeRealtimeConnectionId by remember { mutableStateOf("") }
     val realtimeEventMutex = remember { Mutex() }
-    var friends by remember { mutableStateOf<List<FriendEntry>>(emptyList()) }
     var conversationThreadsState by remember {
         mutableStateOf(previewThreadsState)
     }
@@ -400,7 +401,7 @@ internal fun AppRouteHost(
         onCallSessionStateChanged(signedOutState.callSessionState)
         onWalletStateChanged(WalletState())
         conversationThreadsState = signedOutState.conversationThreadsState
-        friends = emptyList()
+        onFriendsChanged(emptyList())
         onFriendRequestStatusReset()
     }
 
@@ -542,7 +543,7 @@ internal fun AppRouteHost(
 
     LaunchedEffect(currentRoute, appSessionState.isAuthenticated) {
         if (currentRoute == AppRoute.Contacts && appSessionState.isAuthenticated) {
-            contactsCoordinator.loadFriends()?.let { friends = it }
+            contactsCoordinator.loadFriends()?.let(onFriendsChanged)
         }
         if (currentRoute == AppRoute.NewFriends && appSessionState.isAuthenticated) {
             applyFriendRequestStatus(newFriendsCoordinator.loadRequests(friendRequestsSnapshot))
@@ -724,7 +725,7 @@ internal fun AppRouteHost(
                                     currentConversationState = conversationThreadsState,
                                 )
                                 applyFriendRequestStatus(result.status)
-                                result.friends?.let { friends = it }
+                                result.friends?.let(onFriendsChanged)
                                 result.conversationThreadsState?.let { conversationThreadsState = it }
                             }
                         }

@@ -5,6 +5,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.kzzz3.argus.lens.app.navigation.AppRoute
+import com.kzzz3.argus.lens.data.friend.FriendEntry
 import com.kzzz3.argus.lens.data.friend.FriendRequestsSnapshot
 import com.kzzz3.argus.lens.data.realtime.ConversationRealtimeConnectionState
 import com.kzzz3.argus.lens.data.session.SessionCredentials
@@ -30,6 +31,7 @@ fun ArgusLensNavHost(
     callSessionState: CallSessionState,
     contactsState: ContactsState,
     walletState: WalletState,
+    friends: List<FriendEntry>,
     selectedConversationId: String,
     chatStatusMessage: String?,
     chatStatusError: Boolean,
@@ -46,6 +48,7 @@ fun ArgusLensNavHost(
     onCallSessionStateChanged: (CallSessionState) -> Unit,
     onContactsStateChanged: (ContactsState) -> Unit,
     onWalletStateChanged: (WalletState) -> Unit,
+    onFriendsChanged: (List<FriendEntry>) -> Unit,
     onConversationOpened: (String) -> Unit,
     onConversationSelectionCleared: () -> Unit,
     onChatStatusChanged: (String?, Boolean) -> Unit,
@@ -79,6 +82,7 @@ fun ArgusLensNavHost(
                 callSessionState = callSessionState,
                 contactsState = contactsState,
                 walletStateModel = walletState,
+                friends = friends,
                 selectedConversationId = selectedConversationId,
                 chatStatusMessage = chatStatusMessage,
                 chatStatusError = chatStatusError,
@@ -95,6 +99,7 @@ fun ArgusLensNavHost(
                 onCallSessionStateChanged = onCallSessionStateChanged,
                 onContactsStateChanged = onContactsStateChanged,
                 onWalletStateChanged = onWalletStateChanged,
+                onFriendsChanged = onFriendsChanged,
                 onConversationOpened = onConversationOpened,
                 onConversationSelectionCleared = onConversationSelectionCleared,
                 onChatStatusChanged = onChatStatusChanged,
