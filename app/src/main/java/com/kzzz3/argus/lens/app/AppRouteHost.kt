@@ -90,6 +90,7 @@ internal fun AppRouteHost(
     currentRoute: AppRoute,
     authFormState: AuthFormState,
     registerFormState: RegisterFormState,
+    callSessionState: CallSessionState,
     selectedConversationId: String,
     chatStatusMessage: String?,
     chatStatusError: Boolean,
@@ -103,6 +104,7 @@ internal fun AppRouteHost(
     onRouteChanged: (AppRoute) -> Unit,
     onAuthFormStateChanged: (AuthFormState) -> Unit,
     onRegisterFormStateChanged: (RegisterFormState) -> Unit,
+    onCallSessionStateChanged: (CallSessionState) -> Unit,
     onConversationOpened: (String) -> Unit,
     onConversationSelectionCleared: () -> Unit,
     onChatStatusChanged: (String?, Boolean) -> Unit,
@@ -141,9 +143,6 @@ internal fun AppRouteHost(
     val initialSessionSnapshot = dependencies.initialSessionSnapshot
     var contactsStateModel by rememberSaveable {
         mutableStateOf(ContactsState())
-    }
-    var callSessionState by rememberSaveable {
-        mutableStateOf(CallSessionState())
     }
     var walletStateModel by rememberSaveable {
         mutableStateOf(WalletState())
@@ -367,7 +366,7 @@ internal fun AppRouteHost(
             signedInState = signedInState,
             accountId = authResult.session.accountId,
         )
-        callSessionState = postAuthUiState.callSessionState
+        onCallSessionStateChanged(postAuthUiState.callSessionState)
         walletStateModel = WalletState()
         conversationThreadsState = postAuthUiState.conversationThreadsState
         onAuthenticatedSessionApplied(
@@ -400,7 +399,7 @@ internal fun AppRouteHost(
         onRegisterFormStateChanged(signedOutState.registerFormState)
         contactsStateModel = signedOutState.contactsState
         callSessionRuntime.cancel()
-        callSessionState = signedOutState.callSessionState
+        onCallSessionStateChanged(signedOutState.callSessionState)
         walletStateModel = WalletState()
         conversationThreadsState = signedOutState.conversationThreadsState
         friends = emptyList()
@@ -761,11 +760,12 @@ internal fun AppRouteHost(
             CallSessionScreen(
                 state = callSessionUiState,
                 onAction = { action ->
-                    callSessionState = reduceCallSessionState(callSessionState, action)
+                    val nextCallSessionState = reduceCallSessionState(callSessionState, action)
+                    onCallSessionStateChanged(nextCallSessionState)
                     if (action == CallSessionAction.EndCall) {
                         callSessionRuntime.endCall(
-                            currentState = callSessionState,
-                            setState = { callSessionState = it },
+                            currentState = nextCallSessionState,
+                            setState = onCallSessionStateChanged,
                             openChat = { onRouteChanged(AppRoute.Chat) },
                         )
                     }
@@ -887,7 +887,7 @@ internal fun AppRouteHost(
                                         } else {
                                             CallSessionMode.Audio
                                         },
-                                        setState = { callSessionState = it },
+                                        setState = onCallSessionStateChanged,
                                         openCallSession = { onRouteChanged(AppRoute.CallSession) },
                                         shouldKeepTicking = { latestCurrentRoute == AppRoute.CallSession },
                                     )

@@ -9,6 +9,7 @@ import com.kzzz3.argus.lens.data.friend.FriendRequestsSnapshot
 import com.kzzz3.argus.lens.data.realtime.ConversationRealtimeConnectionState
 import com.kzzz3.argus.lens.data.session.SessionCredentials
 import com.kzzz3.argus.lens.feature.auth.AuthFormState
+import com.kzzz3.argus.lens.feature.call.CallSessionState
 import com.kzzz3.argus.lens.feature.contacts.FriendRequestStatusState
 import com.kzzz3.argus.lens.feature.register.RegisterFormState
 import com.kzzz3.argus.lens.model.session.AppSessionState
@@ -24,6 +25,7 @@ fun ArgusLensNavHost(
     currentRoute: AppRoute,
     authFormState: AuthFormState,
     registerFormState: RegisterFormState,
+    callSessionState: CallSessionState,
     selectedConversationId: String,
     chatStatusMessage: String?,
     chatStatusError: Boolean,
@@ -37,6 +39,7 @@ fun ArgusLensNavHost(
     onRouteChanged: (AppRoute) -> Unit,
     onAuthFormStateChanged: (AuthFormState) -> Unit,
     onRegisterFormStateChanged: (RegisterFormState) -> Unit,
+    onCallSessionStateChanged: (CallSessionState) -> Unit,
     onConversationOpened: (String) -> Unit,
     onConversationSelectionCleared: () -> Unit,
     onChatStatusChanged: (String?, Boolean) -> Unit,
@@ -67,6 +70,7 @@ fun ArgusLensNavHost(
                 currentRoute = currentRoute,
                 authFormState = authFormState,
                 registerFormState = registerFormState,
+                callSessionState = callSessionState,
                 selectedConversationId = selectedConversationId,
                 chatStatusMessage = chatStatusMessage,
                 chatStatusError = chatStatusError,
@@ -80,6 +84,7 @@ fun ArgusLensNavHost(
                 onRouteChanged = onRouteChanged,
                 onAuthFormStateChanged = onAuthFormStateChanged,
                 onRegisterFormStateChanged = onRegisterFormStateChanged,
+                onCallSessionStateChanged = onCallSessionStateChanged,
                 onConversationOpened = onConversationOpened,
                 onConversationSelectionCleared = onConversationSelectionCleared,
                 onChatStatusChanged = onChatStatusChanged,
