@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.kzzz3.argus.lens.app.navigation.AppRoute
 
 private object ArgusLensGraph {
     const val App = "app"
@@ -12,6 +13,8 @@ private object ArgusLensGraph {
 @Composable
 fun ArgusLensNavHost(
     dependencies: AppDependencies,
+    currentRoute: AppRoute,
+    onRouteChanged: (AppRoute) -> Unit,
 ) {
     val navController = rememberNavController()
     NavHost(
@@ -19,7 +22,11 @@ fun ArgusLensNavHost(
         startDestination = ArgusLensGraph.App,
     ) {
         composable(ArgusLensGraph.App) {
-            AppRouteHost(dependencies = dependencies)
+            AppRouteHost(
+                dependencies = dependencies,
+                currentRoute = currentRoute,
+                onRouteChanged = onRouteChanged,
+            )
         }
     }
 }

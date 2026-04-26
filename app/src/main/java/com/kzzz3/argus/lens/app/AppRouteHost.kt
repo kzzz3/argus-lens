@@ -83,7 +83,11 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 @Composable
-internal fun AppRouteHost(dependencies: AppDependencies) {
+internal fun AppRouteHost(
+    dependencies: AppDependencies,
+    currentRoute: AppRoute,
+    onRouteChanged: (AppRoute) -> Unit,
+) {
     val coroutineScope = rememberCoroutineScope()
     val navController = rememberNavController()
     val realtimeClient = dependencies.realtimeClient
@@ -102,11 +106,6 @@ internal fun AppRouteHost(dependencies: AppDependencies) {
         )
     }
     val initialSessionSnapshot = dependencies.initialSessionSnapshot
-    var currentRoute by rememberSaveable {
-        mutableStateOf(
-            if (initialSessionSnapshot.isAuthenticated && dependencies.initialSessionCredentials.hasAccessToken) AppRoute.Inbox else AppRoute.AuthEntry
-        )
-    }
     var authFormState by rememberSaveable {
         mutableStateOf(AuthFormState())
     }
@@ -155,13 +154,7 @@ internal fun AppRouteHost(dependencies: AppDependencies) {
     var conversationThreadsState by remember {
         mutableStateOf(previewThreadsState)
     }
-    val startDestination = remember {
-        if (initialSessionSnapshot.isAuthenticated && dependencies.initialSessionCredentials.hasAccessToken) {
-            AppRoute.Inbox.name
-        } else {
-            AppRoute.AuthEntry.name
-        }
-    }
+    val startDestination = remember { currentRoute.name }
     val conversationThreads = conversationThreadsState.threads
 
     val authState = remember(authFormState) {
@@ -282,7 +275,7 @@ internal fun AppRouteHost(dependencies: AppDependencies) {
         if (initialSessionSnapshot.isAuthenticated && initialSessionSnapshot.accountId.isNotBlank() && dependencies.initialSessionCredentials.hasAccessToken) {
             conversationThreadsState = appShellCoordinator.loadInitialAuthenticatedConversations(initialSessionSnapshot)
             hydratedConversationAccountId = initialSessionSnapshot.accountId
-            currentRoute = AppRoute.Inbox
+            onRouteChanged(AppRoute.Inbox)
             return@LaunchedEffect
         }
 
@@ -291,7 +284,7 @@ internal fun AppRouteHost(dependencies: AppDependencies) {
         conversationThreadsState = hydratedState.conversationThreadsState
         hydratedConversationAccountId = hydratedState.hydratedConversationAccountId
         if (hydratedState.session.isAuthenticated) {
-            currentRoute = AppRoute.Inbox
+            onRouteChanged(AppRoute.Inbox)
         }
     }
 
@@ -316,7 +309,7 @@ internal fun AppRouteHost(dependencies: AppDependencies) {
         if (route == AppRoute.Wallet) {
             walletStateModel = walletStateModel.withCurrentAccount(appSessionState.accountId)
         }
-        currentRoute = route
+        onRouteChanged(route)
     }
 
     fun openShellDestination(destination: ShellDestination) {
@@ -336,7 +329,7 @@ internal fun AppRouteHost(dependencies: AppDependencies) {
         )
         conversationThreadsState = openResult.conversationThreadsState
         selectedConversationId = openResult.conversationId
-        currentRoute = AppRoute.Chat
+        onRouteChanged(AppRoute.Chat)
         coroutineScope.launch {
             conversationThreadsState = chatCoordinator.synchronizeConversation(
                 state = conversationThreadsState,
@@ -380,7 +373,7 @@ internal fun AppRouteHost(dependencies: AppDependencies) {
             postAuthUiState.nextAuthFormState
         }
         realtimeReconnectGeneration += postAuthUiState.realtimeReconnectIncrement
-        currentRoute = AppRoute.Inbox
+        onRouteChanged(AppRoute.Inbox)
     }
 
     fun applyFriendRequestStatus(statusState: FriendRequestStatusState) {
@@ -412,7 +405,7 @@ internal fun AppRouteHost(dependencies: AppDependencies) {
         friendRequestsSnapshot = FriendRequestsSnapshot(emptyList(), emptyList())
         friendRequestsStatusMessage = null
         friendRequestsStatusError = false
-        currentRoute = AppRoute.AuthEntry
+        onRouteChanged(AppRoute.AuthEntry)
     }
 
     suspend fun refreshSessionTokens(): AuthRepositoryResult {
@@ -590,7 +583,7 @@ internal fun AppRouteHost(dependencies: AppDependencies) {
 
                 when (val effect = result.effect) {
                     AuthEntryEffect.NavigateBack -> Unit
-                    AuthEntryEffect.NavigateToRegister -> currentRoute = AppRoute.RegisterEntry
+                    AuthEntryEffect.NavigateToRegister -> onRouteChanged(AppRoute.RegisterEntry)
                     is AuthEntryEffect.SubmitPasswordLogin -> {
                         coroutineScope.launch {
                             when (val authResult = authCoordinator.login(
@@ -628,7 +621,7 @@ internal fun AppRouteHost(dependencies: AppDependencies) {
                 registerFormState = result.formState
 
                 when (val effect = result.effect) {
-                    RegisterEffect.NavigateBackToLogin -> currentRoute = AppRoute.AuthEntry
+                    RegisterEffect.NavigateBackToLogin -> onRouteChanged(AppRoute.AuthEntry)
                     is RegisterEffect.SubmitRegistration -> {
                         coroutineScope.launch {
                             when (val authResult = authCoordinator.register(
@@ -699,7 +692,7 @@ internal fun AppRouteHost(dependencies: AppDependencies) {
                                 )
                                 conversationThreadsState = openResult.conversationThreadsState
                                 selectedConversationId = openResult.conversationId
-                                currentRoute = AppRoute.Chat
+                                onRouteChanged(AppRoute.Chat)
                             }
                         }
 
@@ -713,7 +706,7 @@ internal fun AppRouteHost(dependencies: AppDependencies) {
                                 addFriendResult.friendRequestsSnapshot?.let { friendRequestsSnapshot = it }
                             }
                         }
-                        ContactsEffect.OpenNewFriends -> currentRoute = AppRoute.NewFriends
+                        ContactsEffect.OpenNewFriends -> onRouteChanged(AppRoute.NewFriends)
 
                         ContactsEffect.NavigateBackToInbox -> openTopLevelRoute(AppRoute.Inbox)
                         null -> Unit
@@ -731,7 +724,7 @@ internal fun AppRouteHost(dependencies: AppDependencies) {
                 state = newFriendsUiState,
                 onAction = { action ->
                     when (action) {
-                        NewFriendsAction.NavigateBack -> currentRoute = AppRoute.Contacts
+                        NewFriendsAction.NavigateBack -> onRouteChanged(AppRoute.Contacts)
                         is NewFriendsAction.Accept -> {
                             coroutineScope.launch {
                                 val result = newFriendsCoordinator.accept(
@@ -780,7 +773,7 @@ internal fun AppRouteHost(dependencies: AppDependencies) {
                         callSessionRuntime.endCall(
                             currentState = callSessionState,
                             setState = { callSessionState = it },
-                            openChat = { currentRoute = AppRoute.Chat },
+                            openChat = { onRouteChanged(AppRoute.Chat) },
                         )
                     }
                 },
@@ -902,7 +895,7 @@ internal fun AppRouteHost(dependencies: AppDependencies) {
                                             CallSessionMode.Audio
                                         },
                                         setState = { callSessionState = it },
-                                        openCallSession = { currentRoute = AppRoute.CallSession },
+                                        openCallSession = { onRouteChanged(AppRoute.CallSession) },
                                         shouldKeepTicking = { currentRoute == AppRoute.CallSession },
                                     )
                                 }
