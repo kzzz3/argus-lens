@@ -22,10 +22,8 @@ import com.kzzz3.argus.lens.data.friend.FriendRequestsSnapshot
 import com.kzzz3.argus.lens.data.realtime.ConversationRealtimeConnectionState
 import com.kzzz3.argus.lens.data.session.SessionCredentials
 import com.kzzz3.argus.lens.feature.auth.AuthEntryAction
-import com.kzzz3.argus.lens.feature.auth.AuthEntryEffect
 import com.kzzz3.argus.lens.feature.auth.AuthEntryScreen
 import com.kzzz3.argus.lens.feature.auth.AuthFormState
-import com.kzzz3.argus.lens.feature.auth.AuthSubmissionResult
 import com.kzzz3.argus.lens.feature.auth.createAuthEntryUiState
 import com.kzzz3.argus.lens.feature.auth.reduceAuthFormState
 import com.kzzz3.argus.lens.feature.call.CallSessionAction
@@ -58,7 +56,6 @@ import com.kzzz3.argus.lens.feature.inbox.createInboxUiState
 import com.kzzz3.argus.lens.feature.me.MeScreen
 import com.kzzz3.argus.lens.feature.me.createMeUiState
 import com.kzzz3.argus.lens.feature.register.RegisterAction
-import com.kzzz3.argus.lens.feature.register.RegisterEffect
 import com.kzzz3.argus.lens.feature.register.RegisterFormState
 import com.kzzz3.argus.lens.feature.register.RegisterScreen
 import com.kzzz3.argus.lens.feature.register.createRegisterUiState
@@ -180,6 +177,15 @@ internal fun AppRouteHost(
             dispatchOutgoingMessages = chatCoordinator::dispatchOutgoingMessages,
             downloadAttachment = chatCoordinator::downloadAttachment,
             recallMessage = chatCoordinator::recallMessage,
+        )
+    }
+    val entryRouteRuntime = remember(coroutineScope, authCoordinator) {
+        EntryRouteRuntime(
+            scope = coroutineScope,
+            reduceAuthAction = ::reduceAuthFormState,
+            reduceRegisterAction = ::reduceRegisterFormState,
+            login = authCoordinator::login,
+            register = authCoordinator::register,
         )
     }
     val walletRouteRuntime = remember(walletRequestRuntime, walletRequestCoordinator) {
@@ -430,6 +436,22 @@ internal fun AppRouteHost(
         onFriendRequestStatusChanged(statusState)
     }
 
+    fun entryRouteRequest(): EntryRouteRequest {
+        return EntryRouteRequest(
+            authFormState = authFormState,
+            registerFormState = registerFormState,
+        )
+    }
+
+    fun entryRouteCallbacks(): EntryRouteCallbacks {
+        return EntryRouteCallbacks(
+            onRouteChanged = onRouteChanged,
+            onAuthFormStateChanged = onAuthFormStateChanged,
+            onRegisterFormStateChanged = onRegisterFormStateChanged,
+            applySuccessfulAuthResult = ::applySuccessfulAuthResult,
+        )
+    }
+
     fun contactsRouteRequest(contactsStateSnapshot: ContactsState = contactsState): ContactsRouteRequest {
         return ContactsRouteRequest(
             session = appSessionState,
@@ -553,37 +575,11 @@ internal fun AppRouteHost(
             AuthEntryScreen(
             state = authState,
             onAction = { action ->
-                val result = reduceAuthFormState(
-                    currentState = authFormState,
+                entryRouteRuntime.handleAuthAction(
                     action = action,
+                    request = entryRouteRequest(),
+                    callbacks = entryRouteCallbacks(),
                 )
-                onAuthFormStateChanged(result.formState)
-
-                when (val effect = result.effect) {
-                    AuthEntryEffect.NavigateBack -> Unit
-                    AuthEntryEffect.NavigateToRegister -> onRouteChanged(AppRoute.RegisterEntry)
-                    is AuthEntryEffect.SubmitPasswordLogin -> {
-                        coroutineScope.launch {
-                            when (val authResult = authCoordinator.login(
-                                formState = authFormState,
-                                account = effect.account,
-                                password = effect.password,
-                            )) {
-                                is AuthSubmissionResult.Success -> {
-                                    onAuthFormStateChanged(authResult.formState)
-                                    applySuccessfulAuthResult(
-                                        authResult = authResult.authResult,
-                                        keepSubmitMessageOnAuthForm = true,
-                                    )
-                                }
-                                is AuthSubmissionResult.Failure -> {
-                                    onAuthFormStateChanged(authResult.formState)
-                                }
-                            }
-                        }
-                    }
-                    null -> Unit
-                }
             }
             )
         }
@@ -592,37 +588,11 @@ internal fun AppRouteHost(
             RegisterScreen(
             state = registerState,
             onAction = { action ->
-                val result = reduceRegisterFormState(
-                    currentState = registerFormState,
+                entryRouteRuntime.handleRegisterAction(
                     action = action,
+                    request = entryRouteRequest(),
+                    callbacks = entryRouteCallbacks(),
                 )
-                onRegisterFormStateChanged(result.formState)
-
-                when (val effect = result.effect) {
-                    RegisterEffect.NavigateBackToLogin -> onRouteChanged(AppRoute.AuthEntry)
-                    is RegisterEffect.SubmitRegistration -> {
-                        coroutineScope.launch {
-                            when (val authResult = authCoordinator.register(
-                                formState = registerFormState,
-                                displayName = effect.displayName,
-                                account = effect.account,
-                                password = effect.password,
-                            )) {
-                                is AuthSubmissionResult.Success -> {
-                                    onRegisterFormStateChanged(authResult.formState)
-                                    applySuccessfulAuthResult(
-                                        authResult = authResult.authResult,
-                                        keepSubmitMessageOnAuthForm = false,
-                                    )
-                                }
-                                is AuthSubmissionResult.Failure -> {
-                                    onRegisterFormStateChanged(authResult.formState)
-                                }
-                            }
-                        }
-                    }
-                    null -> Unit
-                }
             }
             )
         }
