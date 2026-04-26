@@ -91,6 +91,8 @@ internal fun AppRouteHost(
     authFormState: AuthFormState,
     registerFormState: RegisterFormState,
     selectedConversationId: String,
+    chatStatusMessage: String?,
+    chatStatusError: Boolean,
     hydratedConversationAccountId: String?,
     realtimeConnectionState: ConversationRealtimeConnectionState,
     realtimeLastEventId: String,
@@ -100,6 +102,8 @@ internal fun AppRouteHost(
     onRegisterFormStateChanged: (RegisterFormState) -> Unit,
     onConversationOpened: (String) -> Unit,
     onConversationSelectionCleared: () -> Unit,
+    onChatStatusChanged: (String?, Boolean) -> Unit,
+    onChatStatusCleared: () -> Unit,
     onHydratedSessionApplied: (AppSessionState, String?) -> Unit,
     onAuthenticatedSessionApplied: (AppSessionState, SessionCredentials, String, Int) -> Unit,
     onSessionRefreshed: (AppSessionState) -> Unit,
@@ -138,8 +142,6 @@ internal fun AppRouteHost(
     var walletStateModel by rememberSaveable {
         mutableStateOf(WalletState())
     }
-    var chatStatusMessage by rememberSaveable { mutableStateOf<String?>(null) }
-    var chatStatusError by rememberSaveable { mutableStateOf(false) }
     var friendRequestsSnapshot by remember { mutableStateOf(FriendRequestsSnapshot(emptyList(), emptyList())) }
     var friendRequestsStatusMessage by rememberSaveable { mutableStateOf<String?>(null) }
     var friendRequestsStatusError by rememberSaveable { mutableStateOf(false) }
@@ -295,8 +297,7 @@ internal fun AppRouteHost(
     }
 
     LaunchedEffect(selectedConversationId) {
-        chatStatusMessage = null
-        chatStatusError = false
+        onChatStatusCleared()
     }
 
     fun scheduleRealtimeReconnect() {
@@ -904,8 +905,7 @@ internal fun AppRouteHost(
                                         conversationThreadsState = dispatchResult.conversationThreadsState
                                         val summary = dispatchResult.summary
                                         if (summary?.failureMessage != null) {
-                                            chatStatusMessage = summary.failureMessage
-                                            chatStatusError = true
+                                            onChatStatusChanged(summary.failureMessage, true)
                                         }
                                     }
                                 }
@@ -918,8 +918,7 @@ internal fun AppRouteHost(
                                         attachmentId = action.attachmentId,
                                         fileName = action.fileName,
                                     )
-                                    chatStatusMessage = downloadResult.message
-                                    chatStatusError = downloadResult.isError
+                                    onChatStatusChanged(downloadResult.message, downloadResult.isError)
                                 }
                             }
 

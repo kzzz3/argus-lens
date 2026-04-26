@@ -49,6 +49,19 @@ class ArgusLensAppViewModel @Inject constructor(
         _uiState.update { state -> state.copy(selectedConversationId = "") }
     }
 
+    fun updateChatStatus(message: String?, isError: Boolean) {
+        _uiState.update { state ->
+            state.copy(
+                chatStatusMessage = message,
+                chatStatusError = isError,
+            )
+        }
+    }
+
+    fun clearChatStatus() {
+        updateChatStatus(message = null, isError = false)
+    }
+
     fun updateAuthFormState(formState: AuthFormState) {
         _uiState.update { state -> state.copy(authFormState = formState) }
     }
@@ -129,6 +142,8 @@ data class ArgusLensAppUiState(
     val authFormState: AuthFormState = AuthFormState(),
     val registerFormState: RegisterFormState = RegisterFormState(),
     val selectedConversationId: String = "",
+    val chatStatusMessage: String? = null,
+    val chatStatusError: Boolean = false,
     val hydratedConversationAccountId: String? = null,
     val realtimeConnectionState: ConversationRealtimeConnectionState = ConversationRealtimeConnectionState.DISABLED,
     val realtimeLastEventId: String = "",
