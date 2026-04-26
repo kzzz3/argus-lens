@@ -88,12 +88,16 @@ internal fun AppRouteHost(
     dependencies: AppDependencies,
     appSessionState: AppSessionState,
     currentRoute: AppRoute,
+    authFormState: AuthFormState,
+    registerFormState: RegisterFormState,
     selectedConversationId: String,
     hydratedConversationAccountId: String?,
     realtimeConnectionState: ConversationRealtimeConnectionState,
     realtimeLastEventId: String,
     realtimeReconnectGeneration: Int,
     onRouteChanged: (AppRoute) -> Unit,
+    onAuthFormStateChanged: (AuthFormState) -> Unit,
+    onRegisterFormStateChanged: (RegisterFormState) -> Unit,
     onConversationOpened: (String) -> Unit,
     onConversationSelectionCleared: () -> Unit,
     onHydratedSessionApplied: (AppSessionState, String?) -> Unit,
@@ -125,12 +129,6 @@ internal fun AppRouteHost(
         )
     }
     val initialSessionSnapshot = dependencies.initialSessionSnapshot
-    var authFormState by rememberSaveable {
-        mutableStateOf(AuthFormState())
-    }
-    var registerFormState by rememberSaveable {
-        mutableStateOf(RegisterFormState())
-    }
     var contactsStateModel by rememberSaveable {
         mutableStateOf(ContactsState())
     }
@@ -374,11 +372,11 @@ internal fun AppRouteHost(
             postAuthUiState.hydratedConversationAccountId,
             postAuthUiState.realtimeReconnectIncrement,
         )
-        authFormState = if (keepSubmitMessageOnAuthForm) {
+        onAuthFormStateChanged(if (keepSubmitMessageOnAuthForm) {
             postAuthUiState.nextAuthFormState.copy(submitResult = authResult.session.message)
         } else {
             postAuthUiState.nextAuthFormState
-        }
+        })
     }
 
     fun applyFriendRequestStatus(statusState: FriendRequestStatusState) {
@@ -396,8 +394,8 @@ internal fun AppRouteHost(
         sessionRefreshRuntime.cancel()
         walletRequestRuntime.invalidate()
         onSessionCleared()
-        authFormState = signedOutState.authFormState.copy(submitResult = message)
-        registerFormState = signedOutState.registerFormState
+        onAuthFormStateChanged(signedOutState.authFormState.copy(submitResult = message))
+        onRegisterFormStateChanged(signedOutState.registerFormState)
         contactsStateModel = signedOutState.contactsState
         callSessionRuntime.cancel()
         callSessionState = signedOutState.callSessionState
@@ -575,7 +573,7 @@ internal fun AppRouteHost(
                     currentState = authFormState,
                     action = action,
                 )
-                authFormState = result.formState
+                onAuthFormStateChanged(result.formState)
 
                 when (val effect = result.effect) {
                     AuthEntryEffect.NavigateBack -> Unit
@@ -588,14 +586,14 @@ internal fun AppRouteHost(
                                 password = effect.password,
                             )) {
                                 is AuthSubmissionResult.Success -> {
-                                    authFormState = authResult.formState
+                                    onAuthFormStateChanged(authResult.formState)
                                     applySuccessfulAuthResult(
                                         authResult = authResult.authResult,
                                         keepSubmitMessageOnAuthForm = true,
                                     )
                                 }
                                 is AuthSubmissionResult.Failure -> {
-                                    authFormState = authResult.formState
+                                    onAuthFormStateChanged(authResult.formState)
                                 }
                             }
                         }
@@ -614,7 +612,7 @@ internal fun AppRouteHost(
                     currentState = registerFormState,
                     action = action,
                 )
-                registerFormState = result.formState
+                onRegisterFormStateChanged(result.formState)
 
                 when (val effect = result.effect) {
                     RegisterEffect.NavigateBackToLogin -> onRouteChanged(AppRoute.AuthEntry)
@@ -627,14 +625,14 @@ internal fun AppRouteHost(
                                 password = effect.password,
                             )) {
                                 is AuthSubmissionResult.Success -> {
-                                    registerFormState = authResult.formState
+                                    onRegisterFormStateChanged(authResult.formState)
                                     applySuccessfulAuthResult(
                                         authResult = authResult.authResult,
                                         keepSubmitMessageOnAuthForm = false,
                                     )
                                 }
                                 is AuthSubmissionResult.Failure -> {
-                                    registerFormState = authResult.formState
+                                    onRegisterFormStateChanged(authResult.formState)
                                 }
                             }
                         }

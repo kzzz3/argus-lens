@@ -7,6 +7,8 @@ import androidx.navigation.compose.rememberNavController
 import com.kzzz3.argus.lens.app.navigation.AppRoute
 import com.kzzz3.argus.lens.data.realtime.ConversationRealtimeConnectionState
 import com.kzzz3.argus.lens.data.session.SessionCredentials
+import com.kzzz3.argus.lens.feature.auth.AuthFormState
+import com.kzzz3.argus.lens.feature.register.RegisterFormState
 import com.kzzz3.argus.lens.model.session.AppSessionState
 
 private object ArgusLensGraph {
@@ -18,12 +20,16 @@ fun ArgusLensNavHost(
     dependencies: AppDependencies,
     appSessionState: AppSessionState,
     currentRoute: AppRoute,
+    authFormState: AuthFormState,
+    registerFormState: RegisterFormState,
     selectedConversationId: String,
     hydratedConversationAccountId: String?,
     realtimeConnectionState: ConversationRealtimeConnectionState,
     realtimeLastEventId: String,
     realtimeReconnectGeneration: Int,
     onRouteChanged: (AppRoute) -> Unit,
+    onAuthFormStateChanged: (AuthFormState) -> Unit,
+    onRegisterFormStateChanged: (RegisterFormState) -> Unit,
     onConversationOpened: (String) -> Unit,
     onConversationSelectionCleared: () -> Unit,
     onHydratedSessionApplied: (AppSessionState, String?) -> Unit,
@@ -47,12 +53,16 @@ fun ArgusLensNavHost(
                 dependencies = dependencies,
                 appSessionState = appSessionState,
                 currentRoute = currentRoute,
+                authFormState = authFormState,
+                registerFormState = registerFormState,
                 selectedConversationId = selectedConversationId,
                 hydratedConversationAccountId = hydratedConversationAccountId,
                 realtimeConnectionState = realtimeConnectionState,
                 realtimeLastEventId = realtimeLastEventId,
                 realtimeReconnectGeneration = realtimeReconnectGeneration,
                 onRouteChanged = onRouteChanged,
+                onAuthFormStateChanged = onAuthFormStateChanged,
+                onRegisterFormStateChanged = onRegisterFormStateChanged,
                 onConversationOpened = onConversationOpened,
                 onConversationSelectionCleared = onConversationSelectionCleared,
                 onHydratedSessionApplied = onHydratedSessionApplied,

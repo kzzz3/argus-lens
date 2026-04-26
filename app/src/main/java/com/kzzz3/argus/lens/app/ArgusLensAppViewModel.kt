@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import com.kzzz3.argus.lens.app.navigation.AppRoute
 import com.kzzz3.argus.lens.data.realtime.ConversationRealtimeConnectionState
 import com.kzzz3.argus.lens.data.session.SessionCredentials
+import com.kzzz3.argus.lens.feature.auth.AuthFormState
+import com.kzzz3.argus.lens.feature.register.RegisterFormState
 import com.kzzz3.argus.lens.model.session.AppSessionState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -45,6 +47,14 @@ class ArgusLensAppViewModel @Inject constructor(
 
     fun clearSelectedConversation() {
         _uiState.update { state -> state.copy(selectedConversationId = "") }
+    }
+
+    fun updateAuthFormState(formState: AuthFormState) {
+        _uiState.update { state -> state.copy(authFormState = formState) }
+    }
+
+    fun updateRegisterFormState(formState: RegisterFormState) {
+        _uiState.update { state -> state.copy(registerFormState = formState) }
     }
 
     fun applyHydratedSession(
@@ -116,6 +126,8 @@ class ArgusLensAppViewModel @Inject constructor(
 data class ArgusLensAppUiState(
     val appSessionState: AppSessionState,
     val currentRoute: AppRoute,
+    val authFormState: AuthFormState = AuthFormState(),
+    val registerFormState: RegisterFormState = RegisterFormState(),
     val selectedConversationId: String = "",
     val hydratedConversationAccountId: String? = null,
     val realtimeConnectionState: ConversationRealtimeConnectionState = ConversationRealtimeConnectionState.DISABLED,
