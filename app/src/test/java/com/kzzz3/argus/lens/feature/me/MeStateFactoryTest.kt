@@ -17,8 +17,6 @@ class MeStateFactoryTest {
                 isAuthenticated = true,
                 accountId = "tester",
                 displayName = "Argus Tester",
-                accessToken = "access-token",
-                refreshToken = "refresh-token",
             ),
             walletState = WalletState(
                 summary = WalletSummaryUi(

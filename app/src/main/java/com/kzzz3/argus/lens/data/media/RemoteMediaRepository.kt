@@ -26,8 +26,7 @@ class RemoteMediaRepository(
         contentLength: Long,
         durationSeconds: Int?,
     ): MediaRepositoryResult {
-        val session = sessionRepository.loadSession()
-        val accessToken = session.accessToken
+        val accessToken = sessionRepository.loadCredentials().accessToken
         if (accessToken.isBlank()) {
             return MediaRepositoryResult.Failure(
                 code = "INVALID_CREDENTIALS",
@@ -82,8 +81,7 @@ class RemoteMediaRepository(
         contentLength: Long,
         objectKey: String,
     ): MediaRepositoryResult {
-        val session = sessionRepository.loadSession()
-        val accessToken = session.accessToken
+        val accessToken = sessionRepository.loadCredentials().accessToken
         if (accessToken.isBlank()) {
             return MediaRepositoryResult.Failure(
                 code = "INVALID_CREDENTIALS",
@@ -127,8 +125,7 @@ class RemoteMediaRepository(
         uploadSession: MediaUploadSession,
         contentBytes: ByteArray,
     ): MediaRepositoryResult {
-        val currentSession = sessionRepository.loadSession()
-        val accessToken = currentSession.accessToken
+        val accessToken = sessionRepository.loadCredentials().accessToken
         if (accessToken.isBlank()) {
             return MediaRepositoryResult.Failure(
                 code = "INVALID_CREDENTIALS",
@@ -174,8 +171,7 @@ class RemoteMediaRepository(
         attachmentId: String,
         fileName: String,
     ): MediaRepositoryResult {
-        val session = sessionRepository.loadSession()
-        val accessToken = session.accessToken
+        val accessToken = sessionRepository.loadCredentials().accessToken
         if (accessToken.isBlank()) {
             return MediaRepositoryResult.Failure(
                 code = "INVALID_CREDENTIALS",

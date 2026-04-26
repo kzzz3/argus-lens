@@ -1,21 +1,20 @@
 package com.kzzz3.argus.lens.feature.realtime
 
-import com.kzzz3.argus.lens.app.REALTIME_EVENT_HEARTBEAT
-import com.kzzz3.argus.lens.app.REALTIME_EVENT_STREAM_READY
 import com.kzzz3.argus.lens.app.handleConversationRealtimeEvent
 import com.kzzz3.argus.lens.app.navigation.AppRoute
 import com.kzzz3.argus.lens.app.session.AppSessionState
 import com.kzzz3.argus.lens.data.conversation.ConversationRepository
 import com.kzzz3.argus.lens.data.realtime.ConversationRealtimeEvent
+import com.kzzz3.argus.lens.data.realtime.ConversationRealtimeEventKind
 import com.kzzz3.argus.lens.feature.inbox.ConversationThreadsState
 
 class RealtimeCoordinator(
     private val conversationRepository: ConversationRepository,
 ) {
     fun classifyEvent(event: ConversationRealtimeEvent): RealtimeEventKind {
-        return when (event.eventType) {
-            REALTIME_EVENT_STREAM_READY -> RealtimeEventKind.StreamReady
-            REALTIME_EVENT_HEARTBEAT -> RealtimeEventKind.Heartbeat
+        return when (event.kind) {
+            ConversationRealtimeEventKind.StreamReady -> RealtimeEventKind.StreamReady
+            ConversationRealtimeEventKind.Heartbeat -> RealtimeEventKind.Heartbeat
             else -> RealtimeEventKind.DomainEvent
         }
     }

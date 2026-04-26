@@ -4,14 +4,18 @@ import com.kzzz3.argus.lens.app.session.AppSessionState
 import com.kzzz3.argus.lens.data.auth.AuthFailureKind
 import com.kzzz3.argus.lens.data.auth.AuthRepository
 import com.kzzz3.argus.lens.data.auth.AuthRepositoryResult
+import com.kzzz3.argus.lens.data.session.SessionCredentials
+import com.kzzz3.argus.lens.data.session.SessionRepository
 
 class AppSessionCoordinator(
     private val authRepository: AuthRepository,
+    private val sessionRepository: SessionRepository,
 ) {
     suspend fun refreshSession(
         session: AppSessionState,
     ): SessionRefreshResult {
-        val refreshToken = session.refreshToken
+        val currentCredentials = sessionRepository.loadCredentials()
+        val refreshToken = currentCredentials.refreshToken
         if (refreshToken.isBlank()) {
             return SessionRefreshResult(
                 repositoryResult = AuthRepositoryResult.Failure(
@@ -20,10 +24,12 @@ class AppSessionCoordinator(
                     kind = AuthFailureKind.UNAUTHORIZED,
                 ),
                 session = session,
+                credentials = currentCredentials,
             )
         }
         return applyRefreshResult(
             currentSession = session,
+            currentCredentials = currentCredentials,
             repositoryResult = authRepository.refreshSession(refreshToken),
         )
     }
@@ -32,29 +38,40 @@ class AppSessionCoordinator(
         session: AppSessionState,
         refreshToken: String,
     ): SessionRefreshResult {
+        val currentCredentials = sessionRepository.loadCredentials()
         return applyRefreshResult(
             currentSession = session,
+            currentCredentials = currentCredentials,
             repositoryResult = authRepository.refreshSession(refreshToken),
         )
     }
 
     private fun applyRefreshResult(
         currentSession: AppSessionState,
+        currentCredentials: SessionCredentials,
         repositoryResult: AuthRepositoryResult,
     ): SessionRefreshResult {
         val nextSession = if (repositoryResult is AuthRepositoryResult.Success) {
             createSessionFromAuthSession(
                 session = repositoryResult.session,
-                fallbackRefreshToken = currentSession.refreshToken,
             )
         } else {
             currentSession
         }
-        return SessionRefreshResult(repositoryResult, nextSession)
+        val nextCredentials = if (repositoryResult is AuthRepositoryResult.Success) {
+            createSessionCredentialsFromAuthSession(
+                session = repositoryResult.session,
+                fallbackRefreshToken = currentCredentials.refreshToken,
+            )
+        } else {
+            currentCredentials
+        }
+        return SessionRefreshResult(repositoryResult, nextSession, nextCredentials)
     }
 }
 
 data class SessionRefreshResult(
     val repositoryResult: AuthRepositoryResult,
     val session: AppSessionState,
+    val credentials: SessionCredentials,
 )

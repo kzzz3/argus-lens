@@ -5,12 +5,18 @@ import com.kzzz3.argus.lens.data.friend.FriendEntry
 import com.kzzz3.argus.lens.data.friend.FriendRequestsSnapshot
 import com.kzzz3.argus.lens.feature.inbox.ConversationThreadsState
 import com.kzzz3.argus.lens.feature.inbox.InboxConversationThread
+import com.kzzz3.argus.lens.ui.status.UiStatusMessage
 
 data class FriendRequestStatusState(
     val snapshot: FriendRequestsSnapshot,
-    val message: String?,
-    val isError: Boolean,
-)
+    val status: UiStatusMessage?,
+) {
+    val message: String?
+        get() = status?.text
+
+    val isError: Boolean
+        get() = status?.isError ?: false
+}
 
 data class DirectConversationTarget(
     val conversationId: String,
@@ -37,8 +43,9 @@ fun createFriendRequestStatusState(
 ): FriendRequestStatusState {
     return FriendRequestStatusState(
         snapshot = snapshot,
-        message = message,
-        isError = isError,
+        status = message?.let { text ->
+            if (isError) UiStatusMessage.error(text) else UiStatusMessage.success(text)
+        },
     )
 }
 

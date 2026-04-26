@@ -56,13 +56,11 @@ class ArgusLensAppFunctionTest {
         assertTrue(session.isAuthenticated)
         assertEquals("tester", session.accountId)
         assertEquals("Argus Tester", session.displayName)
-        assertEquals("access-token", session.accessToken)
-        assertEquals("refresh-token", session.refreshToken)
     }
 
     @Test
     fun createSessionFromAuthSession_keepsFallbackRefreshTokenWhenResponseIsBlank() {
-        val session = createSessionFromAuthSession(
+        val credentials = createSessionCredentialsFromAuthSession(
             AuthSession(
                 accountId = "tester",
                 displayName = "Argus Tester",
@@ -73,7 +71,7 @@ class ArgusLensAppFunctionTest {
             fallbackRefreshToken = "persisted-refresh",
         )
 
-        assertEquals("persisted-refresh", session.refreshToken)
+        assertEquals("persisted-refresh", credentials.refreshToken)
     }
 
     @Test

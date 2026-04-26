@@ -1,11 +1,11 @@
 package com.kzzz3.argus.lens.app
 
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalContext
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 
 @Composable
-fun ArgusLensApp() {
-    val context = LocalContext.current
-    val dependencies = rememberAppDependencies(context)
-    AppRouteHost(dependencies = dependencies)
+fun ArgusLensApp(
+    viewModel: ArgusLensAppViewModel = hiltViewModel(),
+) {
+    ArgusLensNavHost(dependencies = viewModel.dependencies)
 }

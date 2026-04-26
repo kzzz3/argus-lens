@@ -33,7 +33,7 @@ class NewFriendsCoordinatorTest {
 
         val result = coordinator.accept(
             requestId = "request-1",
-            session = createAuthenticatedSession("tester", "Tester", "token"),
+            session = createAuthenticatedSession("tester", "Tester"),
             currentSnapshot = FriendRequestsSnapshot(
                 incoming = listOf(FriendRequestEntry("request-1", "alice", "Alice", "INCOMING", "PENDING", "")),
                 outgoing = emptyList(),

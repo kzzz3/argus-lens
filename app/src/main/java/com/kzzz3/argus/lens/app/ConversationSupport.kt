@@ -3,6 +3,7 @@ package com.kzzz3.argus.lens.app
 import com.kzzz3.argus.lens.app.session.AppSessionState
 import com.kzzz3.argus.lens.data.conversation.ConversationRepository
 import com.kzzz3.argus.lens.data.realtime.ConversationRealtimeEvent
+import com.kzzz3.argus.lens.data.realtime.ConversationRealtimeEventKind
 import com.kzzz3.argus.lens.feature.inbox.ChatMessageDeliveryStatus
 import com.kzzz3.argus.lens.feature.inbox.ConversationThreadsState
 import com.kzzz3.argus.lens.feature.inbox.InboxConversationThread
@@ -48,16 +49,11 @@ internal suspend fun handleConversationRealtimeEvent(
 ): ConversationThreadsState {
     if (session.accountId.isBlank()) return currentState
 
-    return when (event.eventType) {
-        REALTIME_EVENT_STREAM_READY,
-        REALTIME_EVENT_HEARTBEAT -> currentState
+    return when {
+        event.kind == ConversationRealtimeEventKind.StreamReady ||
+            event.kind == ConversationRealtimeEventKind.Heartbeat -> currentState
 
-        REALTIME_EVENT_MESSAGE_CREATED,
-        REALTIME_EVENT_MESSAGE_STATUS_UPDATED,
-        REALTIME_EVENT_MESSAGE_RECALLED,
-        REALTIME_EVENT_CONVERSATION_READ,
-        REALTIME_EVENT_CONVERSATION_CREATED,
-        REALTIME_EVENT_CONVERSATION_UPDATED -> {
+        event.kind.isDomainEvent -> {
             val refreshedState = conversationRepository.loadOrCreateConversationThreads(
                 accountId = session.accountId,
                 currentUserDisplayName = session.displayName,
@@ -124,14 +120,3 @@ private suspend fun acknowledgeVisibleRemoteMessagesAsRead(
         )
     }
 }
-
-internal const val REALTIME_EVENT_STREAM_READY = "STREAM_READY"
-internal const val REALTIME_EVENT_HEARTBEAT = "HEARTBEAT"
-internal const val REALTIME_EVENT_MESSAGE_CREATED = "MESSAGE_CREATED"
-internal const val REALTIME_EVENT_MESSAGE_STATUS_UPDATED = "MESSAGE_STATUS_UPDATED"
-internal const val REALTIME_EVENT_MESSAGE_RECALLED = "MESSAGE_RECALLED"
-internal const val REALTIME_EVENT_CONVERSATION_READ = "CONVERSATION_READ"
-internal const val REALTIME_EVENT_CONVERSATION_CREATED = "CONVERSATION_CREATED"
-internal const val REALTIME_EVENT_CONVERSATION_UPDATED = "CONVERSATION_UPDATED"
-
-

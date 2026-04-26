@@ -43,14 +43,17 @@ class LocalSessionStore(
                 isAuthenticated = preferences[IsAuthenticatedKey] ?: false,
                 accountId = preferences[AccountIdKey].orEmpty(),
                 displayName = preferences[DisplayNameKey].orEmpty(),
-                accessToken = decryptToken(context, secureTokenPreferences.getString(AccessTokenKeyName, null)),
-                refreshToken = decryptToken(context, secureTokenPreferences.getString(RefreshTokenKeyName, null)),
             )
         }.first()
     }
 
+    override suspend fun loadCredentials(): SessionCredentials {
+        return loadSecureCredentials(context, secureTokenPreferences)
+    }
+
     override suspend fun saveSession(
         state: AppSessionState,
+        credentials: SessionCredentials,
     ) {
         dataStore.edit { preferences ->
             preferences[IsAuthenticatedKey] = state.isAuthenticated
@@ -58,7 +61,7 @@ class LocalSessionStore(
             preferences[DisplayNameKey] = state.displayName
         }
         saveSessionSnapshot(state)
-        saveSecureTokens(state)
+        saveSecureTokens(credentials)
     }
 
     override suspend fun clearSession() {
@@ -77,10 +80,10 @@ class LocalSessionStore(
             .apply()
     }
 
-    private fun saveSecureTokens(state: AppSessionState) {
+    private fun saveSecureTokens(credentials: SessionCredentials) {
         secureTokenPreferences.edit()
-            .putString(AccessTokenKeyName, encryptToken(context, state.accessToken))
-            .putString(RefreshTokenKeyName, encryptToken(context, state.refreshToken))
+            .putString(AccessTokenKeyName, encryptToken(context, credentials.accessToken))
+            .putString(RefreshTokenKeyName, encryptToken(context, credentials.refreshToken))
             .apply()
     }
 
@@ -112,13 +115,27 @@ fun createLocalSessionSnapshot(
     context: Context,
 ): AppSessionState {
     val preferences = context.applicationContext.getSharedPreferences(SessionSnapshotFileName, Context.MODE_PRIVATE)
-    val secureTokenPreferences = context.applicationContext.getSharedPreferences(SecureSessionFileName, Context.MODE_PRIVATE)
     return AppSessionState(
         isAuthenticated = preferences.getBoolean("is_authenticated", false),
         accountId = preferences.getString("account_id", "").orEmpty(),
         displayName = preferences.getString("display_name", "").orEmpty(),
-        accessToken = decryptToken(context.applicationContext, secureTokenPreferences.getString(AccessTokenKeyName, null)),
-        refreshToken = decryptToken(context.applicationContext, secureTokenPreferences.getString(RefreshTokenKeyName, null)),
+    )
+}
+
+fun createLocalSessionCredentialsSnapshot(
+    context: Context,
+): SessionCredentials {
+    val secureTokenPreferences = context.applicationContext.getSharedPreferences(SecureSessionFileName, Context.MODE_PRIVATE)
+    return loadSecureCredentials(context.applicationContext, secureTokenPreferences)
+}
+
+private fun loadSecureCredentials(
+    context: Context,
+    secureTokenPreferences: SharedPreferences,
+): SessionCredentials {
+    return SessionCredentials(
+        accessToken = decryptToken(context, secureTokenPreferences.getString(AccessTokenKeyName, null)),
+        refreshToken = decryptToken(context, secureTokenPreferences.getString(RefreshTokenKeyName, null)),
     )
 }
 

@@ -12,12 +12,14 @@ import androidx.room.RoomDatabase
         LocalDraftAttachmentEntity::class,
     ],
     version = 1,
-    exportSchema = false,
+    exportSchema = true,
 )
 abstract class ArgusLensDatabase : RoomDatabase() {
     abstract fun localConversationDao(): LocalConversationDao
 
     companion object {
+        const val CURRENT_VERSION = 1
+
         @Volatile
         private var INSTANCE: ArgusLensDatabase? = null
 
@@ -27,7 +29,10 @@ abstract class ArgusLensDatabase : RoomDatabase() {
                     context = context.applicationContext,
                     klass = ArgusLensDatabase::class.java,
                     name = "argus-lens-v1.db",
-                ).build().also { INSTANCE = it }
+                )
+                    .addMigrations(*ArgusLensMigrations.all.toTypedArray())
+                    .build()
+                    .also { INSTANCE = it }
             }
         }
     }

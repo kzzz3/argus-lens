@@ -12,6 +12,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.Modifier
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
 import com.kzzz3.argus.lens.app.navigation.AppRoute
 import com.kzzz3.argus.lens.app.session.AppSessionState
 import com.kzzz3.argus.lens.data.auth.AuthFailureKind
@@ -31,12 +35,9 @@ import com.kzzz3.argus.lens.feature.call.CallSessionAction
 import com.kzzz3.argus.lens.feature.call.CallSessionMode
 import com.kzzz3.argus.lens.feature.call.CallSessionScreen
 import com.kzzz3.argus.lens.feature.call.CallSessionState
-import com.kzzz3.argus.lens.feature.call.CallSessionStatus
-import com.kzzz3.argus.lens.feature.call.activateConnectingCallSession
+import com.kzzz3.argus.lens.feature.call.CallSessionRuntime
 import com.kzzz3.argus.lens.feature.call.createCallSessionUiState
 import com.kzzz3.argus.lens.feature.call.reduceCallSessionState
-import com.kzzz3.argus.lens.feature.call.startCallSession
-import com.kzzz3.argus.lens.feature.call.tickActiveCallSession
 import com.kzzz3.argus.lens.feature.contacts.ContactsAction
 import com.kzzz3.argus.lens.feature.contacts.ContactsEffect
 import com.kzzz3.argus.lens.feature.contacts.ContactsScreen
@@ -68,7 +69,6 @@ import com.kzzz3.argus.lens.feature.register.reduceRegisterFormState
 import com.kzzz3.argus.lens.feature.realtime.buildRealtimeStatusLabel
 import com.kzzz3.argus.lens.feature.realtime.isSseAuthFailure
 import com.kzzz3.argus.lens.feature.realtime.RealtimeEventKind
-import com.kzzz3.argus.lens.feature.realtime.realtimeReconnectDelayMillis
 import com.kzzz3.argus.lens.feature.wallet.WalletAction
 import com.kzzz3.argus.lens.feature.wallet.WalletEffect
 import com.kzzz3.argus.lens.feature.wallet.WalletScreen
@@ -77,8 +77,6 @@ import com.kzzz3.argus.lens.feature.wallet.createWalletUiState
 import com.kzzz3.argus.lens.feature.wallet.reduceWalletState
 import com.kzzz3.argus.lens.feature.wallet.withCurrentAccount
 import com.kzzz3.argus.lens.ui.shell.AuthenticatedShell
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -86,6 +84,7 @@ import kotlinx.coroutines.sync.withLock
 @Composable
 internal fun AppRouteHost(dependencies: AppDependencies) {
     val coroutineScope = rememberCoroutineScope()
+    val navController = rememberNavController()
     val realtimeClient = dependencies.realtimeClient
     val appShellCoordinator = dependencies.appShellCoordinator
     val appSessionCoordinator = dependencies.appSessionCoordinator
@@ -95,6 +94,7 @@ internal fun AppRouteHost(dependencies: AppDependencies) {
     val walletRequestCoordinator = dependencies.walletRequestCoordinator
     val chatCoordinator = dependencies.chatCoordinator
     val realtimeCoordinator = dependencies.realtimeCoordinator
+    val sessionCredentialsStore = dependencies.sessionCredentialsStore
     val previewThreadsState = remember {
         appShellCoordinator.createPreviewConversationThreads(
             currentUserDisplayName = DEFAULT_PREVIEW_DISPLAY_NAME,
@@ -103,7 +103,7 @@ internal fun AppRouteHost(dependencies: AppDependencies) {
     val initialSessionSnapshot = dependencies.initialSessionSnapshot
     var currentRoute by rememberSaveable {
         mutableStateOf(
-            if (initialSessionSnapshot.isAuthenticated && initialSessionSnapshot.accessToken.isNotBlank()) AppRoute.Inbox else AppRoute.AuthEntry
+            if (initialSessionSnapshot.isAuthenticated && dependencies.initialSessionCredentials.hasAccessToken) AppRoute.Inbox else AppRoute.AuthEntry
         )
     }
     var authFormState by rememberSaveable {
@@ -130,7 +130,7 @@ internal fun AppRouteHost(dependencies: AppDependencies) {
     var friendRequestsSnapshot by remember { mutableStateOf(FriendRequestsSnapshot(emptyList(), emptyList())) }
     var friendRequestsStatusMessage by rememberSaveable { mutableStateOf<String?>(null) }
     var friendRequestsStatusError by rememberSaveable { mutableStateOf(false) }
-    var callSessionJob by remember { mutableStateOf<Job?>(null) }
+    val callSessionRuntime = remember(coroutineScope) { CallSessionRuntime(coroutineScope) }
     var hydratedConversationAccountId by remember {
         mutableStateOf(if (initialSessionSnapshot.isAuthenticated) initialSessionSnapshot.accountId else null)
     }
@@ -138,17 +138,28 @@ internal fun AppRouteHost(dependencies: AppDependencies) {
     var realtimeSubscription by remember { mutableStateOf<ConversationRealtimeSubscription?>(null) }
     var realtimeConnectionState by remember { mutableStateOf(ConversationRealtimeConnectionState.DISABLED) }
     var realtimeLastEventId by rememberSaveable { mutableStateOf("") }
-    var realtimeReconnectAttempt by remember { mutableStateOf(0) }
     var realtimeReconnectGeneration by remember { mutableStateOf(0) }
-    var realtimeReconnectJob by remember { mutableStateOf<Job?>(null) }
-    var sessionRefreshJob by remember { mutableStateOf<Job?>(null) }
-    var walletRequestGeneration by remember { mutableStateOf(0) }
+    val realtimeReconnectRuntime = remember(coroutineScope) { RealtimeReconnectRuntime(coroutineScope) }
+    val sessionRefreshRuntime = remember(coroutineScope, appSessionCoordinator, sessionCredentialsStore) {
+        SessionRefreshRuntime(
+            scope = coroutineScope,
+            appSessionCoordinator = appSessionCoordinator,
+            credentialsStore = sessionCredentialsStore,
+        )
+    }
+    val walletRequestRuntime = remember(coroutineScope) { WalletRequestRuntime(coroutineScope) }
     var activeRealtimeConnectionId by remember { mutableStateOf("") }
     val realtimeEventMutex = remember { Mutex() }
-    val walletRequestJobs = remember { mutableSetOf<Job>() }
     var friends by remember { mutableStateOf<List<FriendEntry>>(emptyList()) }
     var conversationThreadsState by remember {
         mutableStateOf(previewThreadsState)
+    }
+    val startDestination = remember {
+        if (initialSessionSnapshot.isAuthenticated && dependencies.initialSessionCredentials.hasAccessToken) {
+            AppRoute.Inbox.name
+        } else {
+            AppRoute.AuthEntry.name
+        }
     }
     val conversationThreads = conversationThreadsState.threads
 
@@ -205,7 +216,7 @@ internal fun AppRouteHost(dependencies: AppDependencies) {
     val latestAppSessionState by rememberUpdatedState(appSessionState)
     val latestCurrentRoute by rememberUpdatedState(currentRoute)
     val latestRealtimeEnabled by rememberUpdatedState(
-        hydratedSession && appSessionState.isAuthenticated && appSessionState.accessToken.isNotBlank()
+        hydratedSession && appSessionState.isAuthenticated && sessionCredentialsStore.current.hasAccessToken
     )
     val chatState = remember(selectedConversation, sessionDisplayName) {
         selectedConversation?.let { conversation ->
@@ -266,8 +277,8 @@ internal fun AppRouteHost(dependencies: AppDependencies) {
         )
     }
 
-    LaunchedEffect(initialSessionSnapshot.isAuthenticated, initialSessionSnapshot.accountId, initialSessionSnapshot.accessToken) {
-        if (initialSessionSnapshot.isAuthenticated && initialSessionSnapshot.accountId.isNotBlank()) {
+    LaunchedEffect(initialSessionSnapshot.isAuthenticated, initialSessionSnapshot.accountId) {
+        if (initialSessionSnapshot.isAuthenticated && initialSessionSnapshot.accountId.isNotBlank() && dependencies.initialSessionCredentials.hasAccessToken) {
             conversationThreadsState = appShellCoordinator.loadInitialAuthenticatedConversations(initialSessionSnapshot)
             hydratedConversationAccountId = initialSessionSnapshot.accountId
             currentRoute = AppRoute.Inbox
@@ -284,7 +295,7 @@ internal fun AppRouteHost(dependencies: AppDependencies) {
     }
 
     LaunchedEffect(hydratedSession, appSessionState) {
-        appShellCoordinator.persistSession(hydratedSession, appSessionState)
+        appShellCoordinator.persistSession(hydratedSession, appSessionState, sessionCredentialsStore.current)
     }
 
     LaunchedEffect(selectedConversationId) {
@@ -293,17 +304,11 @@ internal fun AppRouteHost(dependencies: AppDependencies) {
     }
 
     fun scheduleRealtimeReconnect() {
-        if (!latestRealtimeEnabled) return
-        if (realtimeReconnectJob?.isActive == true) return
-        val nextAttempt = realtimeReconnectAttempt + 1
-        realtimeReconnectAttempt = nextAttempt
-        realtimeConnectionState = ConversationRealtimeConnectionState.RECOVERING
-        realtimeReconnectJob = coroutineScope.launch {
-            delay(realtimeReconnectDelayMillis(nextAttempt))
-            if (latestRealtimeEnabled) {
-                realtimeReconnectGeneration += 1
-            }
-        }
+        realtimeReconnectRuntime.schedule(
+            isEnabled = { latestRealtimeEnabled },
+            markRecovering = { realtimeConnectionState = ConversationRealtimeConnectionState.RECOVERING },
+            incrementGeneration = { realtimeReconnectGeneration += 1 },
+        )
     }
 
     fun openTopLevelRoute(route: AppRoute) {
@@ -329,41 +334,14 @@ internal fun AppRouteHost(dependencies: AppDependencies) {
         }
     }
 
-    fun invalidateWalletRequests() {
-        walletRequestGeneration += 1
-        walletRequestJobs.toList().forEach { it.cancel() }
-        walletRequestJobs.clear()
-    }
-
-    fun isActiveWalletRequest(accountId: String, generation: Int): Boolean {
-        return shouldApplyWalletRequestResult(
-            currentSession = appSessionState,
-            requestAccountId = accountId,
-            requestGeneration = generation,
-            activeGeneration = walletRequestGeneration,
-        )
-    }
-
-    fun launchWalletRequest(block: suspend (String, Int) -> Unit) {
-        val requestAccountId = appSessionState.accountId
-        val requestGeneration = walletRequestGeneration
-        val job = coroutineScope.launch {
-            block(requestAccountId, requestGeneration)
-        }
-        walletRequestJobs += job
-        job.invokeOnCompletion {
-            walletRequestJobs.remove(job)
-        }
-    }
-
     fun launchWalletStateRequest(block: suspend (WalletState) -> WalletState) {
-        launchWalletRequest { requestAccountId, requestGeneration ->
-            val nextState = block(walletStateModel)
-            walletStateModel = applyWalletRequestResult(
-                currentState = walletStateModel,
-                isActive = isActiveWalletRequest(requestAccountId, requestGeneration),
-            ) { nextState }
-        }
+        walletRequestRuntime.launchStateRequest(
+            requestSession = appSessionState,
+            getCurrentSession = { appSessionState },
+            getCurrentState = { walletStateModel },
+            setState = { walletStateModel = it },
+            block = block,
+        )
     }
 
     suspend fun applySuccessfulAuthResult(
@@ -371,9 +349,10 @@ internal fun AppRouteHost(dependencies: AppDependencies) {
         keepSubmitMessageOnAuthForm: Boolean,
     ) {
         appSessionState = createSessionFromAuthSession(authResult.session)
-        invalidateWalletRequests()
+        sessionCredentialsStore.update(createSessionCredentialsFromAuthSession(authResult.session))
+        walletRequestRuntime.invalidate()
         hydratedConversationAccountId = null
-        callSessionJob?.cancel()
+        callSessionRuntime.cancel()
         val signedInState = appShellCoordinator.handleSignedIn(appSessionState)
         val postAuthUiState = createPostAuthUiState(
             signedInState = signedInState,
@@ -405,14 +384,14 @@ internal fun AppRouteHost(dependencies: AppDependencies) {
             previewThreadsState = previewThreadsState,
             signedOutAccountId = signedOutAccountId,
         )
-        sessionRefreshJob?.cancel()
-        sessionRefreshJob = null
-        invalidateWalletRequests()
+        sessionRefreshRuntime.cancel()
+        walletRequestRuntime.invalidate()
+        sessionCredentialsStore.clear()
         appSessionState = AppSessionState()
         authFormState = signedOutState.authFormState.copy(submitResult = message)
         registerFormState = signedOutState.registerFormState
         contactsStateModel = signedOutState.contactsState
-        callSessionJob?.cancel()
+        callSessionRuntime.cancel()
         callSessionState = signedOutState.callSessionState
         walletStateModel = WalletState()
         hydratedConversationAccountId = null
@@ -426,39 +405,19 @@ internal fun AppRouteHost(dependencies: AppDependencies) {
     }
 
     suspend fun refreshSessionTokens(): AuthRepositoryResult {
-        val refreshResult = appSessionCoordinator.refreshSession(appSessionState)
-        appSessionState = refreshResult.session
-        return refreshResult.repositoryResult
+        return sessionRefreshRuntime.refreshOnce(
+            session = appSessionState,
+            setSession = { appSessionState = it },
+        )
     }
 
     fun scheduleSessionRefreshLoop() {
-        if (sessionRefreshJob?.isActive == true) return
-        if (!appSessionState.isAuthenticated || appSessionState.refreshToken.isBlank()) return
-        sessionRefreshJob = coroutineScope.launch {
-            while (appSessionState.isAuthenticated && realtimeConnectionState == ConversationRealtimeConnectionState.LIVE) {
-                delay(60 * 60 * 1000L)
-                if (!appSessionState.isAuthenticated || appSessionState.refreshToken.isBlank()) {
-                    break
-                }
-                val refreshResult = appSessionCoordinator.refreshSessionWithToken(
-                    session = appSessionState,
-                    refreshToken = appSessionState.refreshToken,
-                )
-                appSessionState = refreshResult.session
-                when (val repositoryResult = refreshResult.repositoryResult) {
-                    is AuthRepositoryResult.Success -> {
-                        Unit
-                    }
-                    is AuthRepositoryResult.Failure -> {
-                        if (repositoryResult.kind == AuthFailureKind.UNAUTHORIZED) {
-                            signOutToEntry("Session expired or was revoked. Please sign in again.")
-                            break
-                        }
-                    }
-                }
-            }
-            sessionRefreshJob = null
-        }
+        sessionRefreshRuntime.startLoopIfNeeded(
+            getSession = { appSessionState },
+            getConnectionState = { realtimeConnectionState },
+            setSession = { appSessionState = it },
+            onUnauthorized = { signOutToEntry("Session expired or was revoked. Please sign in again.") },
+        )
     }
 
     LaunchedEffect(appSessionState.isAuthenticated, appSessionState.accountId, appSessionState.displayName) {
@@ -472,16 +431,15 @@ internal fun AppRouteHost(dependencies: AppDependencies) {
         }
     }
 
-    LaunchedEffect(hydratedSession, appSessionState.isAuthenticated, appSessionState.accessToken, realtimeReconnectGeneration) {
+    LaunchedEffect(hydratedSession, appSessionState.isAuthenticated, appSessionState.accountId, realtimeReconnectGeneration) {
         activeRealtimeConnectionId = ""
         realtimeSubscription?.close()
         realtimeSubscription = null
 
-        val realtimeEnabled = hydratedSession && appSessionState.isAuthenticated && appSessionState.accessToken.isNotBlank()
+        val realtimeCredentials = sessionCredentialsStore.current
+        val realtimeEnabled = hydratedSession && appSessionState.isAuthenticated && realtimeCredentials.hasAccessToken
         if (!realtimeEnabled) {
-            realtimeReconnectJob?.cancel()
-            realtimeReconnectJob = null
-            realtimeReconnectAttempt = 0
+            realtimeReconnectRuntime.disable()
             realtimeLastEventId = ""
             realtimeConnectionState = ConversationRealtimeConnectionState.DISABLED
             return@LaunchedEffect
@@ -489,21 +447,19 @@ internal fun AppRouteHost(dependencies: AppDependencies) {
 
         val connectionId = "realtime-${appSessionState.accountId}-${realtimeReconnectGeneration}"
         activeRealtimeConnectionId = connectionId
-        realtimeConnectionState = if (realtimeReconnectAttempt > 0) {
+        realtimeConnectionState = if (realtimeReconnectRuntime.currentAttempt > 0) {
             ConversationRealtimeConnectionState.RECOVERING
         } else {
             ConversationRealtimeConnectionState.CONNECTING
         }
         realtimeSubscription = realtimeClient.connect(
-            accessToken = appSessionState.accessToken,
+            accessToken = realtimeCredentials.accessToken,
             lastEventId = realtimeLastEventId.ifBlank { null },
             onConnected = {
                 coroutineScope.launch {
                     if (activeRealtimeConnectionId == connectionId) {
                         realtimeConnectionState = ConversationRealtimeConnectionState.LIVE
-                        realtimeReconnectAttempt = 0
-                        realtimeReconnectJob?.cancel()
-                        realtimeReconnectJob = null
+                        realtimeReconnectRuntime.markConnected()
                         scheduleSessionRefreshLoop()
                     }
                 }
@@ -546,7 +502,7 @@ internal fun AppRouteHost(dependencies: AppDependencies) {
                         if (isSseAuthFailure(it)) {
                             when (val refreshResult = refreshSessionTokens()) {
                                 is AuthRepositoryResult.Success -> {
-                                    realtimeReconnectAttempt = 0
+                                    realtimeReconnectRuntime.markConnected()
                                     realtimeReconnectGeneration += 1
                                 }
                                 is AuthRepositoryResult.Failure -> {
@@ -569,10 +525,8 @@ internal fun AppRouteHost(dependencies: AppDependencies) {
     DisposableEffect(realtimeClient) {
         onDispose {
             activeRealtimeConnectionId = ""
-            realtimeReconnectJob?.cancel()
-            realtimeReconnectJob = null
-            sessionRefreshJob?.cancel()
-            sessionRefreshJob = null
+            realtimeReconnectRuntime.disable()
+            sessionRefreshRuntime.cancel()
             realtimeSubscription?.close()
             realtimeSubscription = null
         }
@@ -600,8 +554,21 @@ internal fun AppRouteHost(dependencies: AppDependencies) {
         return
     }
 
-    when (currentRoute) {
-        AppRoute.AuthEntry -> AuthEntryScreen(
+    val currentBackStackEntry by navController.currentBackStackEntryAsState()
+    LaunchedEffect(currentRoute, currentBackStackEntry?.destination?.route) {
+        if (currentBackStackEntry?.destination?.route != currentRoute.name) {
+            navController.navigate(currentRoute.name) {
+                launchSingleTop = true
+            }
+        }
+    }
+
+    NavHost(
+        navController = navController,
+        startDestination = startDestination,
+    ) {
+        composable(AppRoute.AuthEntry.name) {
+            AuthEntryScreen(
             state = authState,
             onAction = { action ->
                 val result = reduceAuthFormState(
@@ -636,9 +603,11 @@ internal fun AppRouteHost(dependencies: AppDependencies) {
                     null -> Unit
                 }
             }
-        )
+            )
+        }
 
-        AppRoute.RegisterEntry -> RegisterScreen(
+        composable(AppRoute.RegisterEntry.name) {
+            RegisterScreen(
             state = registerState,
             onAction = { action ->
                 val result = reduceRegisterFormState(
@@ -673,9 +642,10 @@ internal fun AppRouteHost(dependencies: AppDependencies) {
                     null -> Unit
                 }
             }
-        )
+            )
+        }
 
-        AppRoute.Inbox -> AuthenticatedShell(
+        composable(AppRoute.Inbox.name) { AuthenticatedShell(
             currentRoute = currentRoute,
             onTabSelected = ::openTopLevelRoute,
         ) { innerPadding ->
@@ -692,9 +662,9 @@ internal fun AppRouteHost(dependencies: AppDependencies) {
                 },
                 modifier = Modifier.padding(innerPadding),
             )
-        }
+        } }
 
-        AppRoute.Contacts -> AuthenticatedShell(
+        composable(AppRoute.Contacts.name) { AuthenticatedShell(
             currentRoute = currentRoute,
             onTabSelected = ::openTopLevelRoute,
         ) { innerPadding ->
@@ -740,9 +710,9 @@ internal fun AppRouteHost(dependencies: AppDependencies) {
                 },
                 modifier = Modifier.padding(innerPadding),
             )
-        }
+        } }
 
-        AppRoute.NewFriends -> AuthenticatedShell(
+        composable(AppRoute.NewFriends.name) { AuthenticatedShell(
             currentRoute = AppRoute.Contacts,
             onTabSelected = ::openTopLevelRoute,
         ) { innerPadding ->
@@ -786,8 +756,8 @@ internal fun AppRouteHost(dependencies: AppDependencies) {
                 },
                 modifier = Modifier.padding(innerPadding),
             )
-        }
-        AppRoute.CallSession -> AuthenticatedShell(
+        } }
+        composable(AppRoute.CallSession.name) { AuthenticatedShell(
             currentRoute = currentRoute,
             onTabSelected = ::openTopLevelRoute,
         ) { innerPadding ->
@@ -796,18 +766,18 @@ internal fun AppRouteHost(dependencies: AppDependencies) {
                 onAction = { action ->
                     callSessionState = reduceCallSessionState(callSessionState, action)
                     if (action == CallSessionAction.EndCall) {
-                        callSessionJob?.cancel()
-                        coroutineScope.launch {
-                            delay(300)
-                            currentRoute = AppRoute.Chat
-                        }
+                        callSessionRuntime.endCall(
+                            currentState = callSessionState,
+                            setState = { callSessionState = it },
+                            openChat = { currentRoute = AppRoute.Chat },
+                        )
                     }
                 },
                 modifier = Modifier.padding(innerPadding),
             )
-        }
+        } }
 
-        AppRoute.Wallet -> AuthenticatedShell(
+        composable(AppRoute.Wallet.name) { AuthenticatedShell(
             currentRoute = currentRoute,
             onTabSelected = ::openTopLevelRoute,
         ) { innerPadding ->
@@ -858,9 +828,9 @@ internal fun AppRouteHost(dependencies: AppDependencies) {
                 },
                 modifier = Modifier.padding(innerPadding),
             )
-        }
+        } }
 
-        AppRoute.Me -> AuthenticatedShell(
+        composable(AppRoute.Me.name) { AuthenticatedShell(
             currentRoute = currentRoute,
             onTabSelected = ::openTopLevelRoute,
         ) { innerPadding ->
@@ -869,9 +839,9 @@ internal fun AppRouteHost(dependencies: AppDependencies) {
                 onSignOut = ::signOutToEntry,
                 modifier = Modifier.padding(innerPadding),
             )
-        }
+        } }
 
-        AppRoute.Chat -> {
+        composable(AppRoute.Chat.name) {
             val resolvedChatUiState = chatUiState
             val resolvedChatState = chatState
 
@@ -912,7 +882,7 @@ internal fun AppRouteHost(dependencies: AppDependencies) {
                             when (val effect = result.effect) {
                                 ChatEffect.NavigateBackToInbox -> openTopLevelRoute(AppRoute.Inbox)
                                 is ChatEffect.StartCall -> {
-                                    callSessionState = startCallSession(
+                                    callSessionRuntime.startCall(
                                         conversationId = effect.conversationId,
                                         contactDisplayName = effect.contactDisplayName,
                                         mode = if (effect.mode == ChatCallMode.Video) {
@@ -920,17 +890,10 @@ internal fun AppRouteHost(dependencies: AppDependencies) {
                                         } else {
                                             CallSessionMode.Audio
                                         },
+                                        setState = { callSessionState = it },
+                                        openCallSession = { currentRoute = AppRoute.CallSession },
+                                        shouldKeepTicking = { currentRoute == AppRoute.CallSession },
                                     )
-                                    callSessionJob?.cancel()
-                                    callSessionJob = coroutineScope.launch {
-                                        delay(800)
-                                        callSessionState = activateConnectingCallSession(callSessionState)
-                                        while (callSessionState.status == CallSessionStatus.Active && currentRoute == AppRoute.CallSession) {
-                                            delay(1000)
-                                            callSessionState = tickActiveCallSession(callSessionState)
-                                        }
-                                    }
-                                    currentRoute = AppRoute.CallSession
                                 }
                                 is ChatEffect.DispatchOutgoingMessages -> {
                                     coroutineScope.launch {

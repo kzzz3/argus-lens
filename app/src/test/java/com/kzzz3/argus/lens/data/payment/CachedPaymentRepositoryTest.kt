@@ -134,7 +134,12 @@ class CachedPaymentRepositoryTest {
     private class FakeSessionRepository : com.kzzz3.argus.lens.data.session.SessionRepository {
         override suspend fun loadSession(): com.kzzz3.argus.lens.app.session.AppSessionState = com.kzzz3.argus.lens.app.session.AppSessionState()
 
-        override suspend fun saveSession(state: com.kzzz3.argus.lens.app.session.AppSessionState) = Unit
+        override suspend fun loadCredentials(): com.kzzz3.argus.lens.data.session.SessionCredentials = com.kzzz3.argus.lens.data.session.SessionCredentials()
+
+        override suspend fun saveSession(
+            state: com.kzzz3.argus.lens.app.session.AppSessionState,
+            credentials: com.kzzz3.argus.lens.data.session.SessionCredentials,
+        ) = Unit
 
         override suspend fun clearSession() = Unit
     }

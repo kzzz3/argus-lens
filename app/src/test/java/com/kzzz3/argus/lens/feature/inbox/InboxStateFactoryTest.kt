@@ -13,7 +13,6 @@ class InboxStateFactoryTest {
             sessionState = createAuthenticatedSession(
                 accountId = "argus_tester",
                 displayName = "Argus Tester",
-                accessToken = "token",
             ),
             realtimeStatusLabel = "live",
             shellStatusLabel = "Online",
@@ -48,7 +47,6 @@ class InboxStateFactoryTest {
             sessionState = createAuthenticatedSession(
                 accountId = "argus_tester",
                 displayName = "Argus Tester",
-                accessToken = "token",
             ),
             realtimeStatusLabel = "live",
             shellStatusLabel = "Online",
@@ -83,7 +81,6 @@ class InboxStateFactoryTest {
             sessionState = createAuthenticatedSession(
                 accountId = "argus_tester",
                 displayName = "Argus Tester",
-                accessToken = "token",
             ),
             threads = emptyList(),
             realtimeStatusLabel = "recovering",
@@ -99,7 +96,6 @@ class InboxStateFactoryTest {
             sessionState = createAuthenticatedSession(
                 accountId = "argus_tester",
                 displayName = "Argus Tester",
-                accessToken = "token",
             ),
             realtimeStatusLabel = "live",
             shellStatusLabel = "Online",
@@ -140,7 +136,6 @@ class InboxStateFactoryTest {
             sessionState = createAuthenticatedSession(
                 accountId = "argus_tester",
                 displayName = "Argus Tester",
-                accessToken = "token",
             ),
             realtimeStatusLabel = "live",
             shellStatusLabel = "Online",

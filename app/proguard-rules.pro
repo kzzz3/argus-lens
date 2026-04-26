@@ -1,21 +1,18 @@
-# Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles setting in build.gradle.
-#
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
+# Preserve enough metadata for Room, Retrofit, Gson, Hilt, and coroutine stack traces
+# while still allowing R8 to shrink and optimize release builds.
+-keepattributes Signature,InnerClasses,EnclosingMethod,RuntimeVisibleAnnotations,RuntimeVisibleParameterAnnotations,AnnotationDefault,SourceFile,LineNumberTable
+-renamesourcefileattribute SourceFile
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+# Retrofit service interfaces are invoked reflectively through generated proxies.
+-keep interface com.kzzz3.argus.lens.data.**.*ApiService { *; }
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+# Keep model field names used by Gson at app/backend JSON boundaries.
+-keepclassmembers class com.kzzz3.argus.lens.data.**.*Api* { <fields>; }
+-keepclassmembers class com.kzzz3.argus.lens.data.**.*Request* { <fields>; }
+-keepclassmembers class com.kzzz3.argus.lens.data.**.*Response* { <fields>; }
+-keepclassmembers class com.kzzz3.argus.lens.data.**.*Dto* { <fields>; }
+-keepclassmembers class com.kzzz3.argus.lens.data.**.*Body { <fields>; }
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# Room entities and relation containers are schema boundaries.
+-keep class com.kzzz3.argus.lens.data.local.*Entity { *; }
+-keep class com.kzzz3.argus.lens.data.local.*With* { *; }

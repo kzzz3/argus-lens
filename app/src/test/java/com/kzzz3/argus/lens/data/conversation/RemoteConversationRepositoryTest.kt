@@ -1,6 +1,7 @@
 package com.kzzz3.argus.lens.data.conversation
 
 import com.kzzz3.argus.lens.app.session.AppSessionState
+import com.kzzz3.argus.lens.data.session.SessionCredentials
 import com.kzzz3.argus.lens.data.session.SessionRepository
 import com.kzzz3.argus.lens.feature.inbox.ChatMessageAttachment
 import com.kzzz3.argus.lens.feature.inbox.ChatMessageItem
@@ -152,10 +153,11 @@ class RemoteConversationRepositoryTest {
             isAuthenticated = true,
             accountId = "tester",
             displayName = "Argus Tester",
-            accessToken = "token",
         )
 
-        override suspend fun saveSession(state: AppSessionState) = Unit
+        override suspend fun loadCredentials(): SessionCredentials = SessionCredentials(accessToken = "token")
+
+        override suspend fun saveSession(state: AppSessionState, credentials: SessionCredentials) = Unit
         override suspend fun clearSession() = Unit
     }
 

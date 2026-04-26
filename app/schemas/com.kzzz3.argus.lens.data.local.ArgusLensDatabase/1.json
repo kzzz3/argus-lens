@@ -1,0 +1,358 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 1,
+    "identityHash": "f3f036f54a259ae63be09060678018a8",
+    "entities": [
+      {
+        "tableName": "local_conversation",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`storageId` TEXT NOT NULL, `id` TEXT NOT NULL, `accountId` TEXT NOT NULL, `title` TEXT NOT NULL, `subtitle` TEXT NOT NULL, `unreadCount` INTEGER NOT NULL, `syncCursor` TEXT NOT NULL, `draftMessage` TEXT NOT NULL, `isVoiceRecording` INTEGER NOT NULL, `voiceRecordingSeconds` INTEGER NOT NULL, `sortOrder` INTEGER NOT NULL, PRIMARY KEY(`storageId`))",
+        "fields": [
+          {
+            "fieldPath": "storageId",
+            "columnName": "storageId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "accountId",
+            "columnName": "accountId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "subtitle",
+            "columnName": "subtitle",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "unreadCount",
+            "columnName": "unreadCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "syncCursor",
+            "columnName": "syncCursor",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "draftMessage",
+            "columnName": "draftMessage",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isVoiceRecording",
+            "columnName": "isVoiceRecording",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "voiceRecordingSeconds",
+            "columnName": "voiceRecordingSeconds",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sortOrder",
+            "columnName": "sortOrder",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "storageId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_local_conversation_accountId_sortOrder",
+            "unique": false,
+            "columnNames": [
+              "accountId",
+              "sortOrder"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_local_conversation_accountId_sortOrder` ON `${TABLE_NAME}` (`accountId`, `sortOrder`)"
+          }
+        ]
+      },
+      {
+        "tableName": "local_message",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`storageId` TEXT NOT NULL, `id` TEXT NOT NULL, `accountId` TEXT NOT NULL, `conversationId` TEXT NOT NULL, `conversationStorageId` TEXT NOT NULL, `senderDisplayName` TEXT NOT NULL, `body` TEXT NOT NULL, `attachmentId` TEXT, `attachmentType` TEXT, `attachmentFileName` TEXT, `attachmentContentType` TEXT, `attachmentContentLength` INTEGER NOT NULL, `timestampLabel` TEXT NOT NULL, `isFromCurrentUser` INTEGER NOT NULL, `deliveryStatus` TEXT NOT NULL, `statusUpdatedAt` TEXT NOT NULL, `sortOrder` INTEGER NOT NULL, PRIMARY KEY(`storageId`), FOREIGN KEY(`conversationStorageId`) REFERENCES `local_conversation`(`storageId`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "storageId",
+            "columnName": "storageId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "accountId",
+            "columnName": "accountId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "conversationId",
+            "columnName": "conversationId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "conversationStorageId",
+            "columnName": "conversationStorageId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "senderDisplayName",
+            "columnName": "senderDisplayName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "body",
+            "columnName": "body",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "attachmentId",
+            "columnName": "attachmentId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "attachmentType",
+            "columnName": "attachmentType",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "attachmentFileName",
+            "columnName": "attachmentFileName",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "attachmentContentType",
+            "columnName": "attachmentContentType",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "attachmentContentLength",
+            "columnName": "attachmentContentLength",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "timestampLabel",
+            "columnName": "timestampLabel",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isFromCurrentUser",
+            "columnName": "isFromCurrentUser",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "deliveryStatus",
+            "columnName": "deliveryStatus",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "statusUpdatedAt",
+            "columnName": "statusUpdatedAt",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sortOrder",
+            "columnName": "sortOrder",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "storageId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_local_message_accountId_conversationId_sortOrder",
+            "unique": false,
+            "columnNames": [
+              "accountId",
+              "conversationId",
+              "sortOrder"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_local_message_accountId_conversationId_sortOrder` ON `${TABLE_NAME}` (`accountId`, `conversationId`, `sortOrder`)"
+          },
+          {
+            "name": "index_local_message_conversationStorageId",
+            "unique": false,
+            "columnNames": [
+              "conversationStorageId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_local_message_conversationStorageId` ON `${TABLE_NAME}` (`conversationStorageId`)"
+          },
+          {
+            "name": "index_local_message_conversationId",
+            "unique": false,
+            "columnNames": [
+              "conversationId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_local_message_conversationId` ON `${TABLE_NAME}` (`conversationId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "local_conversation",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "conversationStorageId"
+            ],
+            "referencedColumns": [
+              "storageId"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "local_draft_attachment",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`storageId` TEXT NOT NULL, `id` TEXT NOT NULL, `accountId` TEXT NOT NULL, `conversationId` TEXT NOT NULL, `conversationStorageId` TEXT NOT NULL, `kind` TEXT NOT NULL, `title` TEXT NOT NULL, `summary` TEXT NOT NULL, `sortOrder` INTEGER NOT NULL, PRIMARY KEY(`storageId`), FOREIGN KEY(`conversationStorageId`) REFERENCES `local_conversation`(`storageId`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "storageId",
+            "columnName": "storageId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "accountId",
+            "columnName": "accountId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "conversationId",
+            "columnName": "conversationId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "conversationStorageId",
+            "columnName": "conversationStorageId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kind",
+            "columnName": "kind",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "summary",
+            "columnName": "summary",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sortOrder",
+            "columnName": "sortOrder",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "storageId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_local_draft_attachment_accountId_conversationStorageId_sortOrder",
+            "unique": false,
+            "columnNames": [
+              "accountId",
+              "conversationStorageId",
+              "sortOrder"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_local_draft_attachment_accountId_conversationStorageId_sortOrder` ON `${TABLE_NAME}` (`accountId`, `conversationStorageId`, `sortOrder`)"
+          },
+          {
+            "name": "index_local_draft_attachment_conversationStorageId",
+            "unique": false,
+            "columnNames": [
+              "conversationStorageId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_local_draft_attachment_conversationStorageId` ON `${TABLE_NAME}` (`conversationStorageId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "local_conversation",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "conversationStorageId"
+            ],
+            "referencedColumns": [
+              "storageId"
+            ]
+          }
+        ]
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'f3f036f54a259ae63be09060678018a8')"
+    ]
+  }
+}

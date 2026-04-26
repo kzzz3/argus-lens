@@ -8,15 +8,11 @@ data class AppSessionState(
     val isAuthenticated: Boolean = false,
     val accountId: String = "",
     val displayName: String = "",
-    val accessToken: String = "",
-    val refreshToken: String = "",
 ) : Parcelable
 
 fun createAuthenticatedSession(
     accountId: String,
     displayName: String,
-    accessToken: String,
-    refreshToken: String = "",
 ): AppSessionState {
     val trimmedAccount = accountId.trim()
     val resolvedDisplayName = displayName.trim().ifEmpty { trimmedAccount.ifEmpty { "Argus User" } }
@@ -24,7 +20,5 @@ fun createAuthenticatedSession(
         isAuthenticated = true,
         accountId = trimmedAccount,
         displayName = resolvedDisplayName,
-        accessToken = accessToken,
-        refreshToken = refreshToken,
     )
 }

@@ -26,7 +26,7 @@ class RemoteConversationRepository(
         currentUserDisplayName: String,
     ): ConversationThreadsState {
         val localState = localRepository.loadOrCreateConversationThreads(accountId, currentUserDisplayName)
-        val accessToken = sessionRepository.loadSession().accessToken
+        val accessToken = sessionRepository.loadCredentials().accessToken
         if (accessToken.isBlank()) {
             return localState
         }
@@ -58,7 +58,7 @@ class RemoteConversationRepository(
         state: ConversationThreadsState,
         conversationId: String,
     ): ConversationThreadsState {
-        val accessToken = sessionRepository.loadSession().accessToken
+        val accessToken = sessionRepository.loadCredentials().accessToken
         if (accessToken.isBlank()) {
             return state
         }
@@ -134,7 +134,7 @@ class RemoteConversationRepository(
         state: ConversationThreadsState,
         conversationId: String,
     ): ConversationThreadsState {
-        val accessToken = sessionRepository.loadSession().accessToken
+        val accessToken = sessionRepository.loadCredentials().accessToken
         if (accessToken.isBlank()) {
             return state
         }
@@ -184,7 +184,8 @@ class RemoteConversationRepository(
         messageId: String,
     ): ConversationThreadsState {
         val session = sessionRepository.loadSession()
-        if (session.accessToken.isBlank()) {
+        val accessToken = sessionRepository.loadCredentials().accessToken
+        if (accessToken.isBlank()) {
             return state
         }
 
@@ -192,7 +193,7 @@ class RemoteConversationRepository(
             val response = conversationApiService.applyReceipt(
                 conversationId = conversationId,
                 messageId = messageId,
-                authorizationHeader = "Bearer ${session.accessToken}",
+                authorizationHeader = "Bearer $accessToken",
                 request = MessageReceiptRequest(receiptType = "READ"),
             )
             if (!response.isSuccessful) {
@@ -223,14 +224,15 @@ class RemoteConversationRepository(
         attachment: ChatMessageAttachment?,
     ): ConversationThreadsState {
         val session = sessionRepository.loadSession()
-        if (session.accessToken.isBlank()) {
+        val accessToken = sessionRepository.loadCredentials().accessToken
+        if (accessToken.isBlank()) {
             return markMessageFailed(state, conversationId, localMessageId)
         }
 
         return try {
             val response = conversationApiService.sendMessage(
                 conversationId = conversationId,
-                authorizationHeader = "Bearer ${session.accessToken}",
+                authorizationHeader = "Bearer $accessToken",
                 request = SendRemoteMessageRequest(clientMessageId = localMessageId, body = body.ifBlank { null }, attachment = attachment?.attachmentId?.takeIf { it.isNotBlank() }?.let(::SendRemoteMessageAttachmentRequest)),
             )
             if (!response.isSuccessful) {
@@ -274,7 +276,8 @@ class RemoteConversationRepository(
         messageId: String,
     ): ConversationThreadsState {
         val session = sessionRepository.loadSession()
-        if (session.accessToken.isBlank()) {
+        val accessToken = sessionRepository.loadCredentials().accessToken
+        if (accessToken.isBlank()) {
             return state
         }
 
@@ -282,7 +285,7 @@ class RemoteConversationRepository(
             val response = conversationApiService.applyReceipt(
                 conversationId = conversationId,
                 messageId = messageId,
-                authorizationHeader = "Bearer ${session.accessToken}",
+                authorizationHeader = "Bearer $accessToken",
                 request = MessageReceiptRequest(receiptType = "DELIVERED"),
             )
             if (!response.isSuccessful) {
@@ -311,7 +314,8 @@ class RemoteConversationRepository(
         messageId: String,
     ): ConversationThreadsState {
         val session = sessionRepository.loadSession()
-        if (session.accessToken.isBlank()) {
+        val accessToken = sessionRepository.loadCredentials().accessToken
+        if (accessToken.isBlank()) {
             return state
         }
 
@@ -319,7 +323,7 @@ class RemoteConversationRepository(
             val response = conversationApiService.recallMessage(
                 conversationId = conversationId,
                 messageId = messageId,
-                authorizationHeader = "Bearer ${session.accessToken}",
+                authorizationHeader = "Bearer $accessToken",
             )
             if (!response.isSuccessful) {
                 when (parseApiError(response.code(), response.errorBody()?.string().orEmpty())?.code) {
@@ -358,14 +362,15 @@ class RemoteConversationRepository(
         conversationId: String,
     ): ConversationThreadsState {
         val session = sessionRepository.loadSession()
-        if (session.accessToken.isBlank()) {
+        val accessToken = sessionRepository.loadCredentials().accessToken
+        if (accessToken.isBlank()) {
             return state
         }
 
         return try {
             val response = conversationApiService.markConversationRead(
                 conversationId = conversationId,
-                authorizationHeader = "Bearer ${session.accessToken}",
+                authorizationHeader = "Bearer $accessToken",
             )
             if (!response.isSuccessful) {
                 when (parseApiError(response.code(), response.errorBody()?.string().orEmpty())?.code) {

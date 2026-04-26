@@ -11,7 +11,7 @@ class RemoteFriendRepository(
     private val gson: Gson = Gson(),
 ) : FriendRepository {
     override suspend fun listFriends(): FriendRepositoryResult {
-        val token = sessionRepository.loadSession().accessToken
+        val token = sessionRepository.loadCredentials().accessToken
         if (token.isBlank()) {
             return FriendRepositoryResult.Failure("INVALID_CREDENTIALS", "No active session token.")
         }
@@ -31,7 +31,7 @@ class RemoteFriendRepository(
     }
 
     override suspend fun sendFriendRequest(friendAccountId: String): FriendRepositoryResult {
-        val token = sessionRepository.loadSession().accessToken
+        val token = sessionRepository.loadCredentials().accessToken
         if (token.isBlank()) {
             return FriendRepositoryResult.Failure("INVALID_CREDENTIALS", "No active session token.")
         }
@@ -56,7 +56,7 @@ class RemoteFriendRepository(
     }
 
     override suspend fun listFriendRequests(): FriendRepositoryResult {
-        val token = sessionRepository.loadSession().accessToken
+        val token = sessionRepository.loadCredentials().accessToken
         if (token.isBlank()) {
             return FriendRepositoryResult.Failure("INVALID_CREDENTIALS", "No active session token.")
         }
@@ -80,7 +80,7 @@ class RemoteFriendRepository(
     }
 
     override suspend fun acceptFriendRequest(requestId: String): FriendRepositoryResult {
-        val token = sessionRepository.loadSession().accessToken
+        val token = sessionRepository.loadCredentials().accessToken
         if (token.isBlank()) {
             return FriendRepositoryResult.Failure("INVALID_CREDENTIALS", "No active session token.")
         }
@@ -122,7 +122,7 @@ class RemoteFriendRepository(
         mutation: suspend (String) -> retrofit2.Response<FriendRequestResponse>,
         successMessage: String,
     ): FriendRepositoryResult {
-        val token = sessionRepository.loadSession().accessToken
+        val token = sessionRepository.loadCredentials().accessToken
         if (token.isBlank()) {
             return FriendRepositoryResult.Failure("INVALID_CREDENTIALS", "No active session token.")
         }

@@ -11,7 +11,7 @@ class RemotePaymentRepository(
     private val gson: Gson = Gson(),
 ) : PaymentRepository {
     override suspend fun getWalletSummary(): PaymentRepositoryResult {
-        val accessToken = sessionRepository.loadSession().accessToken
+        val accessToken = sessionRepository.loadCredentials().accessToken
         if (accessToken.isBlank()) {
             return PaymentRepositoryResult.Failure(
                 code = "INVALID_CREDENTIALS",
@@ -46,7 +46,7 @@ class RemotePaymentRepository(
     }
 
     override suspend fun resolveScanPayload(scanPayload: String): PaymentRepositoryResult {
-        val accessToken = sessionRepository.loadSession().accessToken
+        val accessToken = sessionRepository.loadCredentials().accessToken
         if (accessToken.isBlank()) {
             return PaymentRepositoryResult.Failure(
                 code = "INVALID_CREDENTIALS",
@@ -91,7 +91,7 @@ class RemotePaymentRepository(
         amount: Double?,
         note: String,
     ): PaymentRepositoryResult {
-        val accessToken = sessionRepository.loadSession().accessToken
+        val accessToken = sessionRepository.loadCredentials().accessToken
         if (accessToken.isBlank()) {
             return PaymentRepositoryResult.Failure(
                 code = "INVALID_CREDENTIALS",
@@ -142,7 +142,7 @@ class RemotePaymentRepository(
     }
 
     override suspend fun listPayments(): PaymentRepositoryResult {
-        val accessToken = sessionRepository.loadSession().accessToken
+        val accessToken = sessionRepository.loadCredentials().accessToken
         if (accessToken.isBlank()) {
             return PaymentRepositoryResult.Failure(
                 code = "INVALID_CREDENTIALS",
@@ -180,7 +180,7 @@ class RemotePaymentRepository(
     }
 
     override suspend fun getPaymentReceipt(paymentId: String): PaymentRepositoryResult {
-        val accessToken = sessionRepository.loadSession().accessToken
+        val accessToken = sessionRepository.loadCredentials().accessToken
         if (accessToken.isBlank()) {
             return PaymentRepositoryResult.Failure(
                 code = "INVALID_CREDENTIALS",

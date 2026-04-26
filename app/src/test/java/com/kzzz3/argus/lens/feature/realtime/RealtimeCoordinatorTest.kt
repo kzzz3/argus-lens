@@ -1,11 +1,10 @@
 package com.kzzz3.argus.lens.feature.realtime
 
-import com.kzzz3.argus.lens.app.REALTIME_EVENT_HEARTBEAT
-import com.kzzz3.argus.lens.app.REALTIME_EVENT_STREAM_READY
 import com.kzzz3.argus.lens.app.navigation.AppRoute
 import com.kzzz3.argus.lens.app.session.AppSessionState
 import com.kzzz3.argus.lens.data.conversation.ConversationRepository
 import com.kzzz3.argus.lens.data.realtime.ConversationRealtimeEvent
+import com.kzzz3.argus.lens.data.realtime.ConversationRealtimeEventKind
 import com.kzzz3.argus.lens.feature.inbox.ChatMessageAttachment
 import com.kzzz3.argus.lens.feature.inbox.ChatState
 import com.kzzz3.argus.lens.feature.inbox.ConversationThreadsState
@@ -18,9 +17,9 @@ class RealtimeCoordinatorTest {
     fun classifyEvent_recognizesStreamReadyHeartbeatAndDomainEvents() {
         val coordinator = RealtimeCoordinator(FakeConversationRepository())
 
-        assertEquals(RealtimeEventKind.StreamReady, coordinator.classifyEvent(ConversationRealtimeEvent(eventType = REALTIME_EVENT_STREAM_READY)))
-        assertEquals(RealtimeEventKind.Heartbeat, coordinator.classifyEvent(ConversationRealtimeEvent(eventType = REALTIME_EVENT_HEARTBEAT)))
-        assertEquals(RealtimeEventKind.DomainEvent, coordinator.classifyEvent(ConversationRealtimeEvent(eventType = "MESSAGE_CREATED")))
+        assertEquals(RealtimeEventKind.StreamReady, coordinator.classifyEvent(ConversationRealtimeEvent(kind = ConversationRealtimeEventKind.StreamReady)))
+        assertEquals(RealtimeEventKind.Heartbeat, coordinator.classifyEvent(ConversationRealtimeEvent(kind = ConversationRealtimeEventKind.Heartbeat)))
+        assertEquals(RealtimeEventKind.DomainEvent, coordinator.classifyEvent(ConversationRealtimeEvent(kind = ConversationRealtimeEventKind.MessageCreated)))
     }
 
     @Test
@@ -29,14 +28,21 @@ class RealtimeCoordinatorTest {
         val coordinator = RealtimeCoordinator(FakeConversationRepository())
 
         val result = coordinator.applyEvent(
-            event = ConversationRealtimeEvent(eventType = REALTIME_EVENT_HEARTBEAT),
-            session = AppSessionState(isAuthenticated = true, accountId = "tester", accessToken = "token"),
+            event = ConversationRealtimeEvent(kind = ConversationRealtimeEventKind.Heartbeat),
+            session = AppSessionState(isAuthenticated = true, accountId = "tester"),
             currentState = state,
             selectedConversationId = "conv-1",
             currentRoute = AppRoute.Chat,
         )
 
         assertEquals(state, result)
+    }
+
+    @Test
+    fun eventKind_mapsRawBackendStrings() {
+        assertEquals(ConversationRealtimeEventKind.StreamReady, ConversationRealtimeEventKind.fromBackendValue("STREAM_READY"))
+        assertEquals(ConversationRealtimeEventKind.MessageStatusUpdated, ConversationRealtimeEventKind.fromBackendValue("MESSAGE_STATUS_UPDATED"))
+        assertEquals(ConversationRealtimeEventKind.Unknown, ConversationRealtimeEventKind.fromBackendValue("UNEXPECTED"))
     }
 
     private class FakeConversationRepository : ConversationRepository {

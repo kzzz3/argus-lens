@@ -4,10 +4,12 @@ import com.kzzz3.argus.lens.app.session.AppSessionState
 import com.kzzz3.argus.lens.app.session.createAuthenticatedSession
 import com.kzzz3.argus.lens.data.conversation.ConversationRepository
 import com.kzzz3.argus.lens.data.payment.PaymentRepository
+import com.kzzz3.argus.lens.data.session.SessionCredentials
 import com.kzzz3.argus.lens.data.session.SessionRepository
 import com.kzzz3.argus.lens.feature.call.CallSessionState
 import com.kzzz3.argus.lens.feature.contacts.ContactsState
 import com.kzzz3.argus.lens.feature.inbox.ConversationThreadsState
+import com.kzzz3.argus.lens.worker.BackgroundSyncScheduler
 
 data class AppHydrationState(
     val session: AppSessionState,
@@ -35,12 +37,14 @@ class AppShellCoordinator(
     private val sessionRepository: SessionRepository,
     private val conversationRepository: ConversationRepository,
     private val paymentRepository: PaymentRepository,
+    private val backgroundSyncScheduler: BackgroundSyncScheduler,
 ) {
     suspend fun hydrateAppState(
         previewThreadsState: ConversationThreadsState,
     ): AppHydrationState {
         val persistedSession = sessionRepository.loadSession()
-        if (!persistedSession.isAuthenticated || persistedSession.accessToken.isBlank()) {
+        val credentials = sessionRepository.loadCredentials()
+        if (!persistedSession.isAuthenticated || !credentials.hasAccessToken) {
             return AppHydrationState(
                 session = AppSessionState(),
                 conversationThreadsState = previewThreadsState,
@@ -51,13 +55,12 @@ class AppShellCoordinator(
         val session = createAuthenticatedSession(
             accountId = persistedSession.accountId,
             displayName = persistedSession.displayName,
-            accessToken = persistedSession.accessToken,
-            refreshToken = persistedSession.refreshToken,
         )
         val threads = conversationRepository.loadOrCreateConversationThreads(
             accountId = session.accountId,
             currentUserDisplayName = resolvePreviewDisplayName(session.displayName),
         )
+        backgroundSyncScheduler.enqueue()
         return AppHydrationState(
             session = session,
             conversationThreadsState = threads,
@@ -68,10 +71,11 @@ class AppShellCoordinator(
     suspend fun persistSession(
         hydratedSession: Boolean,
         session: AppSessionState,
+        credentials: SessionCredentials,
     ) {
         if (!hydratedSession) return
         if (session.isAuthenticated) {
-            sessionRepository.saveSession(session)
+            sessionRepository.saveSession(session, credentials)
         } else {
             sessionRepository.clearSession()
         }
@@ -100,6 +104,7 @@ class AppShellCoordinator(
             accountId = session.accountId,
             currentUserDisplayName = session.displayName,
         )
+        backgroundSyncScheduler.enqueue()
         return AppSignedInState(
             conversationThreadsState = threads,
             hydratedConversationAccountId = session.accountId,

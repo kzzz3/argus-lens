@@ -3,6 +3,7 @@ package com.kzzz3.argus.lens.app
 import com.kzzz3.argus.lens.app.session.AppSessionState
 import com.kzzz3.argus.lens.app.session.createAuthenticatedSession
 import com.kzzz3.argus.lens.data.auth.AuthSession
+import com.kzzz3.argus.lens.data.session.SessionCredentials
 import com.kzzz3.argus.lens.feature.auth.AuthFormState
 import com.kzzz3.argus.lens.feature.inbox.ConversationThreadsState
 import com.kzzz3.argus.lens.feature.register.RegisterFormState
@@ -33,11 +34,18 @@ internal fun shouldApplyWalletRequestResult(
 
 internal fun createSessionFromAuthSession(
     session: AuthSession,
-    fallbackRefreshToken: String = "",
 ): AppSessionState {
     return createAuthenticatedSession(
         accountId = session.accountId,
         displayName = session.displayName,
+    )
+}
+
+internal fun createSessionCredentialsFromAuthSession(
+    session: AuthSession,
+    fallbackRefreshToken: String = "",
+): SessionCredentials {
+    return SessionCredentials(
         accessToken = session.accessToken,
         refreshToken = session.refreshToken.ifBlank { fallbackRefreshToken },
     )
