@@ -91,6 +91,7 @@ internal fun AppRouteHost(
     authFormState: AuthFormState,
     registerFormState: RegisterFormState,
     callSessionState: CallSessionState,
+    contactsState: ContactsState,
     selectedConversationId: String,
     chatStatusMessage: String?,
     chatStatusError: Boolean,
@@ -105,6 +106,7 @@ internal fun AppRouteHost(
     onAuthFormStateChanged: (AuthFormState) -> Unit,
     onRegisterFormStateChanged: (RegisterFormState) -> Unit,
     onCallSessionStateChanged: (CallSessionState) -> Unit,
+    onContactsStateChanged: (ContactsState) -> Unit,
     onConversationOpened: (String) -> Unit,
     onConversationSelectionCleared: () -> Unit,
     onChatStatusChanged: (String?, Boolean) -> Unit,
@@ -141,9 +143,6 @@ internal fun AppRouteHost(
         )
     }
     val initialSessionSnapshot = dependencies.initialSessionSnapshot
-    var contactsStateModel by rememberSaveable {
-        mutableStateOf(ContactsState())
-    }
     var walletStateModel by rememberSaveable {
         mutableStateOf(WalletState())
     }
@@ -204,9 +203,9 @@ internal fun AppRouteHost(
             shellStatusLabel = shellStatusLabel,
         )
     }
-    val contactsState = remember(contactsStateModel, friends, conversationThreads, appSessionState.accountId) {
+    val contactsUiState = remember(contactsState, friends, conversationThreads, appSessionState.accountId) {
         createContactsUiState(
-            state = contactsStateModel,
+            state = contactsState,
             friends = friends,
             threads = conversationThreads,
             currentAccountId = appSessionState.accountId,
@@ -397,7 +396,7 @@ internal fun AppRouteHost(
         onSessionCleared()
         onAuthFormStateChanged(signedOutState.authFormState.copy(submitResult = message))
         onRegisterFormStateChanged(signedOutState.registerFormState)
-        contactsStateModel = signedOutState.contactsState
+        onContactsStateChanged(signedOutState.contactsState)
         callSessionRuntime.cancel()
         onCallSessionStateChanged(signedOutState.callSessionState)
         walletStateModel = WalletState()
@@ -665,14 +664,14 @@ internal fun AppRouteHost(
             currentDestination = currentRoute.toShellDestination(),
             onTabSelected = ::openShellDestination,
         ) { innerPadding ->
-            ContactsScreen(
-                state = contactsState,
+        ContactsScreen(
+                state = contactsUiState,
                 onAction = { action ->
                     val result = reduceContactsState(
-                        currentState = contactsStateModel,
+                        currentState = contactsState,
                         action = action,
                     )
-                    contactsStateModel = result.state
+                    onContactsStateChanged(result.state)
 
                     when (val effect = result.effect) {
                         is ContactsEffect.OpenConversation -> {
@@ -691,10 +690,10 @@ internal fun AppRouteHost(
                         is ContactsEffect.AddFriend -> {
                             coroutineScope.launch {
                                 val addFriendResult = contactsCoordinator.addFriend(
-                                    currentContactsState = contactsStateModel,
+                                    currentContactsState = contactsState,
                                     friendAccountId = effect.friendAccountId,
                                 )
-                                contactsStateModel = addFriendResult.contactsState
+                                onContactsStateChanged(addFriendResult.contactsState)
                                 addFriendResult.friendRequestsSnapshot?.let(onFriendRequestsSnapshotChanged)
                             }
                         }
