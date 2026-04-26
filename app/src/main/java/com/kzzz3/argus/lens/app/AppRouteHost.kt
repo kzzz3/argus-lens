@@ -65,7 +65,6 @@ import com.kzzz3.argus.lens.feature.register.createRegisterUiState
 import com.kzzz3.argus.lens.feature.register.reduceRegisterFormState
 import com.kzzz3.argus.lens.feature.realtime.buildRealtimeStatusLabel
 import com.kzzz3.argus.lens.feature.wallet.WalletAction
-import com.kzzz3.argus.lens.feature.wallet.WalletEffect
 import com.kzzz3.argus.lens.feature.wallet.WalletScreen
 import com.kzzz3.argus.lens.feature.wallet.WalletState
 import com.kzzz3.argus.lens.feature.wallet.createWalletUiState
@@ -152,6 +151,16 @@ internal fun AppRouteHost(
         )
     }
     val walletRequestRuntime = remember(coroutineScope) { WalletRequestRuntime(coroutineScope) }
+    val walletRouteRuntime = remember(walletRequestRuntime, walletRequestCoordinator) {
+        WalletRouteRuntime(
+            requestRuntime = walletRequestRuntime,
+            loadWalletSummary = walletRequestCoordinator::loadWalletSummary,
+            resolvePayload = walletRequestCoordinator::resolvePayload,
+            confirmPayment = walletRequestCoordinator::confirmPayment,
+            loadPaymentHistory = walletRequestCoordinator::loadPaymentHistory,
+            loadPaymentReceipt = walletRequestCoordinator::loadPaymentReceipt,
+        )
+    }
     val realtimeConnectionRuntime = remember(coroutineScope, realtimeClient, realtimeCoordinator, realtimeReconnectRuntime) {
         RealtimeConnectionRuntime(
             scope = coroutineScope,
@@ -373,16 +382,6 @@ internal fun AppRouteHost(
                 conversationId = conversationId,
             ))
         }
-    }
-
-    fun launchWalletStateRequest(block: suspend (WalletState) -> WalletState) {
-        walletRequestRuntime.launchStateRequest(
-            requestSession = appSessionState,
-            getCurrentSession = { appSessionState },
-            getCurrentState = { walletStateModel },
-            setState = onWalletStateChanged,
-            block = block,
-        )
     }
 
     suspend fun applySuccessfulAuthResult(
@@ -721,40 +720,19 @@ internal fun AppRouteHost(
                     )
                     onWalletStateChanged(result.state)
 
-                    when (val effect = result.effect) {
-                        WalletEffect.NavigateBackToInbox -> openTopLevelRoute(AppRoute.Inbox)
-                        WalletEffect.LoadWalletSummary -> {
-                            launchWalletStateRequest { currentState ->
-                                walletRequestCoordinator.loadWalletSummary(currentState)
-                            }
-                        }
-                        is WalletEffect.ResolvePayload -> {
-                            launchWalletStateRequest { currentState ->
-                                walletRequestCoordinator.resolvePayload(currentState, effect.payload)
-                            }
-                        }
-                        is WalletEffect.ConfirmPayment -> {
-                            launchWalletStateRequest { currentState ->
-                                walletRequestCoordinator.confirmPayment(
-                                    currentState = currentState,
-                                    sessionId = effect.sessionId,
-                                    amountInput = effect.amountInput,
-                                    note = effect.note,
-                                )
-                            }
-                        }
-                        WalletEffect.LoadPaymentHistory -> {
-                            launchWalletStateRequest { currentState ->
-                                walletRequestCoordinator.loadPaymentHistory(currentState)
-                            }
-                        }
-                        is WalletEffect.LoadPaymentReceipt -> {
-                            launchWalletStateRequest { currentState ->
-                                walletRequestCoordinator.loadPaymentReceipt(currentState, effect.paymentId)
-                            }
-                        }
-                        null -> Unit
-                    }
+                    walletRouteRuntime.handleEffect(
+                        effect = result.effect,
+                        request = WalletRouteRequest(
+                            session = appSessionState,
+                            currentState = result.state,
+                        ),
+                        callbacks = WalletRouteCallbacks(
+                            getCurrentSession = { appSessionState },
+                            getCurrentState = { walletStateModel },
+                            onRouteChanged = ::openTopLevelRoute,
+                            onStateChanged = onWalletStateChanged,
+                        ),
+                    )
                 },
                 modifier = Modifier.padding(innerPadding),
             )
