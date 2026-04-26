@@ -220,6 +220,39 @@ internal fun AppRouteHost(
     val latestRealtimeEnabled by rememberUpdatedState(
         appSessionState.isAuthenticated && sessionCredentialsStore.current.hasAccessToken
     )
+    val sessionBoundaryRuntime = AppSessionBoundaryRuntime(
+        appShellCoordinator = appShellCoordinator,
+        refreshSessionOnce = { session, setSession ->
+            sessionRefreshRuntime.refreshOnce(
+                session = session,
+                setSession = setSession,
+            )
+        },
+        startSessionRefreshLoop = { onUnauthorized ->
+            sessionRefreshRuntime.startLoopIfNeeded(
+                getSession = { latestAppSessionState },
+                getConnectionState = { latestRealtimeConnectionState },
+                setSession = onSessionRefreshed,
+                onUnauthorized = onUnauthorized,
+            )
+        },
+        cancelSessionRefreshLoop = sessionRefreshRuntime::cancel,
+        invalidateWalletRequests = walletRequestRuntime::invalidate,
+        cancelCallSession = callSessionRuntime::cancel,
+    )
+    val sessionBoundaryCallbacks = AppSessionBoundaryCallbacks(
+        onHydratedConversationAccountChanged = onHydratedConversationAccountChanged,
+        onCallSessionStateChanged = onCallSessionStateChanged,
+        onWalletStateChanged = onWalletStateChanged,
+        onConversationThreadsChanged = onConversationThreadsChanged,
+        onAuthenticatedSessionApplied = onAuthenticatedSessionApplied,
+        onAuthFormStateChanged = onAuthFormStateChanged,
+        onSessionCleared = onSessionCleared,
+        onRegisterFormStateChanged = onRegisterFormStateChanged,
+        onContactsStateChanged = onContactsStateChanged,
+        onFriendsChanged = onFriendsChanged,
+        onFriendRequestStatusReset = onFriendRequestStatusReset,
+    )
     val chatState = remember(selectedConversation, sessionDisplayName) {
         selectedConversation?.let { conversation ->
             ChatState(
@@ -354,30 +387,11 @@ internal fun AppRouteHost(
         authResult: AuthRepositoryResult.Success,
         keepSubmitMessageOnAuthForm: Boolean,
     ) {
-        val authenticatedSession = createSessionFromAuthSession(authResult.session)
-        val authenticatedCredentials = createSessionCredentialsFromAuthSession(authResult.session)
-        walletRequestRuntime.invalidate()
-        onHydratedConversationAccountChanged(null)
-        callSessionRuntime.cancel()
-        val signedInState = appShellCoordinator.handleSignedIn(authenticatedSession)
-        val postAuthUiState = createPostAuthUiState(
-            signedInState = signedInState,
-            accountId = authResult.session.accountId,
+        sessionBoundaryRuntime.applySuccessfulAuthResult(
+            authResult = authResult,
+            keepSubmitMessageOnAuthForm = keepSubmitMessageOnAuthForm,
+            callbacks = sessionBoundaryCallbacks,
         )
-        onCallSessionStateChanged(postAuthUiState.callSessionState)
-        onWalletStateChanged(WalletState())
-        onConversationThreadsChanged(postAuthUiState.conversationThreadsState)
-        onAuthenticatedSessionApplied(
-            authenticatedSession,
-            authenticatedCredentials,
-            postAuthUiState.hydratedConversationAccountId,
-            postAuthUiState.realtimeReconnectIncrement,
-        )
-        onAuthFormStateChanged(if (keepSubmitMessageOnAuthForm) {
-            postAuthUiState.nextAuthFormState.copy(submitResult = authResult.session.message)
-        } else {
-            postAuthUiState.nextAuthFormState
-        })
     }
 
     fun applyFriendRequestStatus(statusState: FriendRequestStatusState) {
@@ -385,50 +399,32 @@ internal fun AppRouteHost(
     }
 
     fun signOutToEntry(message: String? = null) {
-        val signedOutAccountId = appSessionState.accountId
-        val signedOutState = appShellCoordinator.createSignedOutState(
+        sessionBoundaryRuntime.signOutToEntry(
+            currentSession = appSessionState,
             previewThreadsState = previewThreadsState,
-            signedOutAccountId = signedOutAccountId,
+            message = message,
+            callbacks = sessionBoundaryCallbacks,
         )
-        sessionRefreshRuntime.cancel()
-        walletRequestRuntime.invalidate()
-        onSessionCleared()
-        onAuthFormStateChanged(signedOutState.authFormState.copy(submitResult = message))
-        onRegisterFormStateChanged(signedOutState.registerFormState)
-        onContactsStateChanged(signedOutState.contactsState)
-        callSessionRuntime.cancel()
-        onCallSessionStateChanged(signedOutState.callSessionState)
-        onWalletStateChanged(WalletState())
-        onConversationThreadsChanged(signedOutState.conversationThreadsState)
-        onFriendsChanged(emptyList())
-        onFriendRequestStatusReset()
     }
 
     suspend fun refreshSessionTokens(): AuthRepositoryResult {
-        return sessionRefreshRuntime.refreshOnce(
+        return sessionBoundaryRuntime.refreshSessionTokens(
             session = appSessionState,
             setSession = onSessionRefreshed,
         )
     }
 
     fun scheduleSessionRefreshLoop() {
-        sessionRefreshRuntime.startLoopIfNeeded(
-            getSession = { latestAppSessionState },
-            getConnectionState = { latestRealtimeConnectionState },
-            setSession = onSessionRefreshed,
+        sessionBoundaryRuntime.scheduleSessionRefreshLoop(
             onUnauthorized = { signOutToEntry("Session expired or was revoked. Please sign in again.") },
         )
     }
 
     LaunchedEffect(appSessionState.isAuthenticated, appSessionState.accountId, appSessionState.displayName) {
-        if (appSessionState.isAuthenticated) {
-            onHydratedConversationAccountChanged(null)
-            val signedInState = appShellCoordinator.handleSignedIn(appSessionState)
-            onConversationThreadsChanged(signedInState.conversationThreadsState)
-            onHydratedConversationAccountChanged(signedInState.hydratedConversationAccountId)
-        } else {
-            onHydratedConversationAccountChanged(null)
-        }
+        sessionBoundaryRuntime.applySessionBoundary(
+            session = appSessionState,
+            callbacks = sessionBoundaryCallbacks,
+        )
     }
 
     LaunchedEffect(appSessionState.isAuthenticated, appSessionState.accountId, realtimeReconnectGeneration) {
