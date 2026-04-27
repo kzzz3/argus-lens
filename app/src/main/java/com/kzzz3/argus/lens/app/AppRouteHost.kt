@@ -397,14 +397,6 @@ internal fun AppRouteHost(
         onChatStatusCleared()
     }
 
-    fun scheduleRealtimeReconnect() {
-        realtimeReconnectRuntime.schedule(
-            isEnabled = { latestRealtimeEnabled },
-            markRecovering = { onRealtimeConnectionStateChanged(ConversationRealtimeConnectionState.RECOVERING) },
-            incrementGeneration = onRealtimeReconnectIncremented,
-        )
-    }
-
     fun openTopLevelRoute(route: AppRoute) {
         appRouteNavigationRuntime.openTopLevelRoute(
             route = route,
