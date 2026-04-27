@@ -1,0 +1,74 @@
+package com.kzzz3.argus.lens.app
+
+import java.io.File
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+class RoleNamingBoundaryTest {
+    @Test
+    fun roleNamingTaxonomyDocumentsEveryRuntimeLikeRole() {
+        val architectureTarget = File("../docs/android-architecture-target.md").readText()
+
+        listOf(
+            "## Role Naming Boundary",
+            "Runtime",
+            "Coordinator",
+            "Handler",
+            "Runner",
+            "Store",
+            "StateHolder",
+            "Controller",
+        ).forEach { expectedTerm ->
+            assertTrue(
+                "Architecture target must document the role naming term $expectedTerm",
+                architectureTarget.contains(expectedTerm),
+            )
+        }
+
+        listOf(
+            "AppRouteNavigationRuntime",
+            "AppPersistenceRuntime",
+            "AppRouteRuntimes",
+            "CallSessionRuntime",
+            "SessionCredentialsStore",
+            "LocalSessionStore",
+        ).forEach { transitionalName ->
+            assertTrue(
+                "Architecture target must classify transitional role name $transitionalName",
+                architectureTarget.contains(transitionalName),
+            )
+        }
+    }
+
+    @Test
+    fun appRouteRuntimesDoNotConstructFeatureOwnedStateOrHandlers() {
+        val routeRuntimesSource = File("src/main/java/com/kzzz3/argus/lens/app/AppRouteRuntimes.kt").readText()
+
+        listOf("StateHolder(", "ActionHandler(", "EffectHandler(", "FeatureController(").forEach { forbiddenSource ->
+            assertFalse(
+                "AppRouteRuntimes.kt must not construct feature-owned role $forbiddenSource",
+                routeRuntimesSource.contains(forbiddenSource),
+            )
+        }
+    }
+
+    @Test
+    fun featureStateHoldersDoNotOwnNavigationControllers() {
+        listOf(
+            "../feature/src/main/java/com/kzzz3/argus/lens/feature/auth/AuthStateHolder.kt",
+            "../feature/src/main/java/com/kzzz3/argus/lens/feature/inbox/ChatStateHolder.kt",
+            "../feature/src/main/java/com/kzzz3/argus/lens/feature/inbox/InboxStateHolder.kt",
+            "../feature/src/main/java/com/kzzz3/argus/lens/feature/wallet/WalletStateHolder.kt",
+        ).forEach { relativePath ->
+            val source = File(relativePath).readText()
+
+            listOf("NavController", "rememberNavController", "androidx.navigation").forEach { forbiddenSource ->
+                assertFalse(
+                    "$relativePath must not own navigation API $forbiddenSource",
+                    source.contains(forbiddenSource),
+                )
+            }
+        }
+    }
+}

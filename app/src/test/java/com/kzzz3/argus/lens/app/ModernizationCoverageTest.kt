@@ -17,6 +17,7 @@ class ModernizationCoverageTest {
             "src/test/java/com/kzzz3/argus/lens/worker/BackgroundSyncWorkerTest.kt",
             "src/test/java/com/kzzz3/argus/lens/app/ReleaseAndModuleBoundaryTest.kt",
             "src/test/java/com/kzzz3/argus/lens/app/EventModelBoundaryTest.kt",
+            "src/test/java/com/kzzz3/argus/lens/app/RoleNamingBoundaryTest.kt",
         ).forEach { relativePath ->
             assertTrue("Missing modernization regression gate: $relativePath", File(relativePath).isFile)
         }

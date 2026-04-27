@@ -181,6 +181,27 @@ State and events:
 - Compose screens do not receive `NavController`. They expose callbacks such as `onConversationClick(id)`.
 - Token material never enters Parcelable, saveable Compose state, logs, previews, or screenshots.
 
+## Role Naming Boundary
+
+Use these role names consistently before broad renames or module moves:
+
+- `Runtime`: owns lifecycle-bound work such as jobs, subscriptions, timers, route synchronization, or explicit dispose/cancel semantics. App-owned runtimes may bridge app state, navigation, and feature callbacks; feature runtimes should be limited to feature-local lifecycle work.
+- `Coordinator`: orchestrates repositories or domain operations and returns explicit results. Coordinators should not own Compose state, navigation controllers, or long-lived coroutine jobs.
+- `Handler`: dispatches synchronous feature actions or effects to reducers/callbacks. Handlers should not become app route adapters.
+- `Runner`: launches asynchronous requests and owns request freshness, cancellation, invalidation, or generation checks.
+- `Store`: owns storage. Persistent stores live in data/local/session packages; in-memory stores must say so explicitly.
+- `StateHolder`: owns feature `StateFlow` state and is a ViewModel precursor. State holders receive app inputs/callbacks but do not own navigation controllers.
+- `Controller`: a feature facade that composes multiple feature-owned roles only when that keeps a route/screen boundary smaller.
+
+Current transitional names are classified rather than renamed in this slice:
+
+- `AppRouteNavigationRuntime` is app-owned route navigation policy; it is not a coroutine lifecycle owner.
+- `AppPersistenceRuntime` is an app-owned persistence delegate around shell/session persistence.
+- `AppRouteRuntimes` is an app-owned wiring holder for route runtimes; it should not construct feature `StateHolder`, `Handler`, or `Controller` roles.
+- `CallSessionRuntime` is a feature-owned lifecycle runtime because it owns timer/cancel semantics for call sessions.
+- `SessionCredentialsStore` is an app-owned in-memory credential holder, distinct from persistent data/session stores.
+- `LocalSessionStore` is the persistent `SessionRepository` facade over safe identity and encrypted credential stores.
+
 ## Navigation Target
 
 Current state: `ArgusNavHost` centralizes the root graph, with `AuthGraphRoute` for login/register and `MainGraphRoute` for authenticated destinations. `AppRoute` remains the compatibility route contract while feature-owned navigation files register leaf destinations.

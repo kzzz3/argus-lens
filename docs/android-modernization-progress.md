@@ -82,6 +82,18 @@ Status: complete for the current app graph baseline.
 
 Typed route arguments remain a future refinement; the current `AppRoute` compatibility graph is split into auth/main nested graphs and covered for the app's declared route set. The target route-contract migration sequence is documented in `docs/android-architecture-target.md`.
 
+## P2 Role Naming Boundary
+
+Status: complete for the first role taxonomy and source-boundary guard.
+
+- `docs/android-architecture-target.md` defines the role names `Runtime`, `Coordinator`, `Handler`, `Runner`, `Store`, `StateHolder`, and `Controller` before broad renames or ownership moves.
+- Transitional names such as `AppRouteNavigationRuntime`, `AppPersistenceRuntime`, `AppRouteRuntimes`, `CallSessionRuntime`, `SessionCredentialsStore`, and `LocalSessionStore` are classified rather than renamed in the first slice.
+- `RoleNamingBoundaryTest` guards the taxonomy, keeps `AppRouteRuntimes.kt` from constructing feature-owned state/handler/controller roles, and prevents feature state holders from taking navigation controller dependencies.
+
+Verification gate:
+
+- `:app:testDebugUnitTest --tests "com.kzzz3.argus.lens.app.RoleNamingBoundaryTest"` must pass after role naming or role taxonomy changes.
+
 ## P2 Hilt Dependency Injection
 
 Status: complete for the current module baseline.
@@ -160,6 +172,7 @@ Status: complete for the modernization regression baseline.
 - P2 Room migration/schema work is guarded by `ArgusLensDatabaseMigrationTest`.
 - P2 WorkManager behavior is guarded by `BackgroundSyncWorkTest`, `BackgroundSyncTaskTest`, and `BackgroundSyncWorkerTest`.
 - P3 release/module/event boundaries are guarded by `ReleaseAndModuleBoundaryTest` and `EventModelBoundaryTest`.
+- P2 role taxonomy and runtime-like naming boundaries are guarded by `RoleNamingBoundaryTest`.
 - Media contract and download filename boundaries are guarded by `MediaApiModelsTest` and `MediaFileNameTest`.
 - The instrumentation baseline now uses `ArgusLensLaunchInstrumentedTest` instead of Android template tests.
 - `ModernizationCoverageTest` guards the presence of these regression gates and this progress document.
