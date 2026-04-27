@@ -31,6 +31,7 @@ Status: complete for the first God Composable split milestone and the host API b
 - `AppRouteActionBindings.kt` owns route request/callback/action adapters so `AppRouteHost.kt` no longer declares feature action factories inline.
 - `feature/wallet/WalletActionHandler.kt` owns wallet action reduction/effect dispatch, replacing the app-owned wallet action runtime bridge.
 - `feature/wallet/WalletRequestRunner.kt` and `WalletRequestGuard.kt` own wallet async request freshness and invalidation rules, replacing the app-owned wallet request runtime.
+- `feature/wallet/WalletEffectHandler.kt` owns wallet effect dispatch and request launch rules; `app/WalletRouteRuntime.kt` remains only the app navigation adapter for wallet route changes.
 - This boundary is the baseline for the future typed-navigation and feature ViewModel extraction roadmap in `docs/android-architecture-target.md`.
 
 Verification gate:
@@ -38,7 +39,7 @@ Verification gate:
 - `:app:compileDebugKotlin` must pass after route host decomposition changes.
 - `:app:testDebugUnitTest --tests "com.kzzz3.argus.lens.app.AppRouteNavigationRuntimeTest"` must pass after shell routing policy changes.
 - `:app:testDebugUnitTest --tests "com.kzzz3.argus.lens.app.ArgusLensAppViewModelTest"` must pass after app-shell state boundary changes.
-- Route action binding changes must also keep `EntryRouteRuntimeTest`, `ContactsRouteRuntimeTest`, `WalletRouteRuntimeTest`, `WalletActionHandlerTest`, `WalletRequestRunnerTest`, `WalletRequestGuardTest`, and `RealtimeConnectionRuntimeTest` green.
+- Route action binding changes must also keep `EntryRouteRuntimeTest`, `ContactsRouteRuntimeTest`, `WalletRouteRuntimeTest`, `WalletActionHandlerTest`, `WalletRequestRunnerTest`, `WalletRequestGuardTest`, `WalletEffectHandlerTest`, and `RealtimeConnectionRuntimeTest` green.
 
 Remaining lifecycle ownership work belongs to P1: long-running realtime/session refresh/call timer orchestration should continue moving out of the Composable layer.
 
@@ -126,7 +127,7 @@ Status: complete for current product scale.
 
 Status: complete for the current reducer/effect architecture.
 
-- Feature one-off work is represented by sealed `*Effect` models and handled by app route runtimes.
+- Feature one-off work is represented by sealed `*Effect` models; feature handlers own feature-specific dispatch/request policy, while app route runtimes only adapt app-owned navigation where needed.
 - Source-level regression tests ensure effect files stay sealed instead of becoming ad hoc strings or nullable status blobs.
 - User-visible durable state remains in feature state objects; one-off effects remain explicit reducer outputs.
 

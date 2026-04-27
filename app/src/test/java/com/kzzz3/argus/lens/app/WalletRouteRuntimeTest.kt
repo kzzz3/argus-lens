@@ -2,6 +2,7 @@ package com.kzzz3.argus.lens.app
 
 import com.kzzz3.argus.lens.app.navigation.AppRoute
 import com.kzzz3.argus.lens.feature.wallet.WalletEffect
+import com.kzzz3.argus.lens.feature.wallet.WalletEffectHandler
 import com.kzzz3.argus.lens.feature.wallet.WalletRequestRunner
 import com.kzzz3.argus.lens.feature.wallet.WalletState
 import com.kzzz3.argus.lens.model.session.AppSessionState
@@ -16,12 +17,9 @@ class WalletRouteRuntimeTest {
     @Test
     fun handleEffect_navigateBackToInboxRoutesToInbox() {
         val runtime = WalletRouteRuntime(
-            requestRunner = WalletRequestRunner(CoroutineScope(Dispatchers.Unconfined)),
-            loadWalletSummary = { state -> state },
-            resolvePayload = { state, _ -> state },
-            confirmPayment = { state, _, _, _ -> state },
-            loadPaymentHistory = { state -> state },
-            loadPaymentReceipt = { state, _ -> state },
+            effectHandler = walletEffectHandler(
+                requestRunner = WalletRequestRunner(CoroutineScope(Dispatchers.Unconfined)),
+            ),
         )
         var routedTo: AppRoute? = null
 
@@ -43,12 +41,10 @@ class WalletRouteRuntimeTest {
     fun handleEffect_loadWalletSummaryLaunchesRequest() = runBlocking {
         val scope = CoroutineScope(Dispatchers.Unconfined)
         val runtime = WalletRouteRuntime(
-            requestRunner = WalletRequestRunner(scope),
-            loadWalletSummary = { state -> state.copy(statusMessage = "summary loaded") },
-            resolvePayload = { state, _ -> state },
-            confirmPayment = { state, _, _, _ -> state },
-            loadPaymentHistory = { state -> state },
-            loadPaymentReceipt = { state, _ -> state },
+            effectHandler = walletEffectHandler(
+                requestRunner = WalletRequestRunner(scope),
+                loadWalletSummary = { state -> state.copy(statusMessage = "summary loaded") },
+            ),
         )
         val session = authenticatedSession("tester")
         var walletState = WalletState(currentAccountId = "tester")
@@ -75,15 +71,13 @@ class WalletRouteRuntimeTest {
         val scope = CoroutineScope(Dispatchers.Unconfined)
         var requestInputStatus: String? = null
         val runtime = WalletRouteRuntime(
-            requestRunner = WalletRequestRunner(scope),
-            loadWalletSummary = { state ->
-                requestInputStatus = state.statusMessage
-                state.copy(statusMessage = "summary loaded")
-            },
-            resolvePayload = { state, _ -> state },
-            confirmPayment = { state, _, _, _ -> state },
-            loadPaymentHistory = { state -> state },
-            loadPaymentReceipt = { state, _ -> state },
+            effectHandler = walletEffectHandler(
+                requestRunner = WalletRequestRunner(scope),
+                loadWalletSummary = { state ->
+                    requestInputStatus = state.statusMessage
+                    state.copy(statusMessage = "summary loaded")
+                },
+            ),
         )
         val session = authenticatedSession("tester")
         var walletState = WalletState(currentAccountId = "tester", statusMessage = "old")
@@ -117,6 +111,24 @@ class WalletRouteRuntimeTest {
             getCurrentState = getCurrentState,
             onRouteChanged = onRouteChanged,
             onStateChanged = onStateChanged,
+        )
+    }
+
+    private fun walletEffectHandler(
+        requestRunner: WalletRequestRunner,
+        loadWalletSummary: suspend (WalletState) -> WalletState = { state -> state },
+        resolvePayload: suspend (WalletState, String) -> WalletState = { state, _ -> state },
+        confirmPayment: suspend (WalletState, String, String?, String) -> WalletState = { state, _, _, _ -> state },
+        loadPaymentHistory: suspend (WalletState) -> WalletState = { state -> state },
+        loadPaymentReceipt: suspend (WalletState, String) -> WalletState = { state, _ -> state },
+    ): WalletEffectHandler {
+        return WalletEffectHandler(
+            requestRunner = requestRunner,
+            loadWalletSummary = loadWalletSummary,
+            resolvePayload = resolvePayload,
+            confirmPayment = confirmPayment,
+            loadPaymentHistory = loadPaymentHistory,
+            loadPaymentReceipt = loadPaymentReceipt,
         )
     }
 

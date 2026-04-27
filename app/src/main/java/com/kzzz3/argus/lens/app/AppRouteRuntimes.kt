@@ -6,6 +6,7 @@ import com.kzzz3.argus.lens.feature.auth.reduceAuthFormState
 import com.kzzz3.argus.lens.feature.call.CallSessionRuntime
 import com.kzzz3.argus.lens.feature.call.reduceCallSessionState
 import com.kzzz3.argus.lens.feature.register.reduceRegisterFormState
+import com.kzzz3.argus.lens.feature.wallet.WalletEffectHandler
 import com.kzzz3.argus.lens.feature.wallet.WalletRequestRunner
 import kotlinx.coroutines.CoroutineScope
 
@@ -108,8 +109,8 @@ internal fun rememberAppRouteRuntimes(
             register = authCoordinator::register,
         )
     }
-    val walletRouteRuntime = remember(walletRequestRunner, walletRequestCoordinator) {
-        WalletRouteRuntime(
+    val walletEffectHandler = remember(walletRequestRunner, walletRequestCoordinator) {
+        WalletEffectHandler(
             requestRunner = walletRequestRunner,
             loadWalletSummary = walletRequestCoordinator::loadWalletSummary,
             resolvePayload = walletRequestCoordinator::resolvePayload,
@@ -117,6 +118,9 @@ internal fun rememberAppRouteRuntimes(
             loadPaymentHistory = walletRequestCoordinator::loadPaymentHistory,
             loadPaymentReceipt = walletRequestCoordinator::loadPaymentReceipt,
         )
+    }
+    val walletRouteRuntime = remember(walletEffectHandler) {
+        WalletRouteRuntime(effectHandler = walletEffectHandler)
     }
     val realtimeConnectionRuntime = remember(coroutineScope, realtimeClient, realtimeCoordinator, realtimeReconnectRuntime) {
         RealtimeConnectionRuntime(
