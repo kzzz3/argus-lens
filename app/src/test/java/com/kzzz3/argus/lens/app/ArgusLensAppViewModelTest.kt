@@ -54,8 +54,9 @@ class ArgusLensAppViewModelTest {
             "fun openTopLevelRoute",
             "fun openShellDestination",
             "fun openInboxConversation",
-            "fun entryRouteRequest",
-            "fun entryRouteCallbacks",
+            "fun authStateHolderCallbacks",
+            "AppRoute.RegisterEntry",
+            "AppRoute.AuthEntry",
             "fun contactsRouteRequest",
             "fun contactsRouteCallbacks",
             "fun inboxActionRouteCallbacks",
@@ -67,8 +68,7 @@ class ArgusLensAppViewModelTest {
             "fun openTopLevelRoute(",
             "fun openShellDestination(",
             "fun openInboxConversation(",
-            "fun entryRouteRequest(",
-            "fun entryRouteCallbacks(",
+            "fun authStateHolderCallbacks(",
             "fun contactsRouteRequest(",
             "fun contactsRouteCallbacks(",
             "fun inboxActionRouteCallbacks(",
@@ -108,6 +108,37 @@ class ArgusLensAppViewModelTest {
         assertTrue(appSource.contains("walletStateHolder = viewModel.walletStateHolder"))
         assertFalse(routeRuntimesSource.contains("WalletStateHolder("))
         assertFalse(routeRuntimesSource.contains("WalletRequestRunner("))
+    }
+
+    @Test
+    fun appViewModelOwnsAuthStateHolderLifetime() {
+        val viewModelSource = File("src/main/java/com/kzzz3/argus/lens/app/ArgusLensAppViewModel.kt").readText()
+        val routeRuntimesSource = File("src/main/java/com/kzzz3/argus/lens/app/AppRouteRuntimes.kt").readText()
+        val appSource = File("src/main/java/com/kzzz3/argus/lens/app/ArgusLensApp.kt").readText()
+
+        assertTrue(viewModelSource.contains("val authStateHolder: AuthStateHolder"))
+        assertTrue(viewModelSource.contains("createAuthStateHolder(dependencies, runtimeScope)"))
+        assertTrue(appSource.contains("authStateHolder = viewModel.authStateHolder"))
+        assertFalse(routeRuntimesSource.contains("EntryRouteRuntime("))
+        assertFalse(routeRuntimesSource.contains("reduceAuthFormState"))
+        assertFalse(routeRuntimesSource.contains("reduceRegisterFormState"))
+    }
+
+    @Test
+    fun appUiStateDoesNotOwnAuthOrRegisterFormState() {
+        val stateSource = File("src/main/java/com/kzzz3/argus/lens/app/ArgusLensAppState.kt").readText()
+        val viewModelSource = File("src/main/java/com/kzzz3/argus/lens/app/ArgusLensAppViewModel.kt").readText()
+        val appSource = File("src/main/java/com/kzzz3/argus/lens/app/ArgusLensApp.kt").readText()
+        val routeHostStateSource = File("src/main/java/com/kzzz3/argus/lens/app/AppRouteHostState.kt").readText()
+
+        assertFalse(stateSource.contains("authFormState: AuthFormState"))
+        assertFalse(stateSource.contains("registerFormState: RegisterFormState"))
+        assertFalse(viewModelSource.contains("fun updateAuthFormState"))
+        assertFalse(viewModelSource.contains("fun updateRegisterFormState"))
+        assertFalse(appSource.contains("uiState.authFormState"))
+        assertFalse(appSource.contains("uiState.registerFormState"))
+        assertFalse(routeHostStateSource.contains("authFormState: AuthFormState"))
+        assertFalse(routeHostStateSource.contains("registerFormState: RegisterFormState"))
     }
 
     @Test

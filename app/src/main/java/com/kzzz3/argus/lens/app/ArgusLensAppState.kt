@@ -5,19 +5,15 @@ import com.kzzz3.argus.lens.data.friend.FriendEntry
 import com.kzzz3.argus.lens.data.friend.FriendRequestsSnapshot
 import com.kzzz3.argus.lens.data.realtime.ConversationRealtimeConnectionState
 import com.kzzz3.argus.lens.data.session.SessionCredentials
-import com.kzzz3.argus.lens.feature.auth.AuthFormState
 import com.kzzz3.argus.lens.feature.call.CallSessionState
 import com.kzzz3.argus.lens.feature.contacts.ContactsState
 import com.kzzz3.argus.lens.feature.inbox.ConversationThreadsState
-import com.kzzz3.argus.lens.feature.register.RegisterFormState
 import com.kzzz3.argus.lens.model.session.AppSessionState
 
 data class ArgusLensAppUiState(
     val appSessionState: AppSessionState,
     val conversationThreadsState: ConversationThreadsState = ConversationThreadsState(),
     val currentRoute: AppRoute,
-    val authFormState: AuthFormState = AuthFormState(),
-    val registerFormState: RegisterFormState = RegisterFormState(),
     val callSessionState: CallSessionState = CallSessionState(),
     val contactsState: ContactsState = ContactsState(),
     val friends: List<FriendEntry> = emptyList(),

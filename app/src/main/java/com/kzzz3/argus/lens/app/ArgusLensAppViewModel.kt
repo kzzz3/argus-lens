@@ -7,12 +7,13 @@ import com.kzzz3.argus.lens.data.friend.FriendEntry
 import com.kzzz3.argus.lens.data.friend.FriendRequestsSnapshot
 import com.kzzz3.argus.lens.data.realtime.ConversationRealtimeConnectionState
 import com.kzzz3.argus.lens.data.session.SessionCredentials
-import com.kzzz3.argus.lens.feature.auth.AuthFormState
+import com.kzzz3.argus.lens.feature.auth.AuthStateHolder
+import com.kzzz3.argus.lens.feature.auth.reduceAuthFormState
 import com.kzzz3.argus.lens.feature.call.CallSessionState
 import com.kzzz3.argus.lens.feature.contacts.ContactsState
 import com.kzzz3.argus.lens.feature.contacts.FriendRequestStatusState
 import com.kzzz3.argus.lens.feature.inbox.ConversationThreadsState
-import com.kzzz3.argus.lens.feature.register.RegisterFormState
+import com.kzzz3.argus.lens.feature.register.reduceRegisterFormState
 import com.kzzz3.argus.lens.feature.wallet.WalletEffectHandler
 import com.kzzz3.argus.lens.feature.wallet.WalletFeatureController
 import com.kzzz3.argus.lens.feature.wallet.WalletRequestRunner
@@ -32,6 +33,7 @@ class ArgusLensAppViewModel @Inject constructor(
     val dependencies: AppDependencies,
 ) : ViewModel() {
     val runtimeScope: CoroutineScope = viewModelScope
+    val authStateHolder: AuthStateHolder = createAuthStateHolder(dependencies, runtimeScope)
     val walletStateHolder: WalletStateHolder = createWalletStateHolder(dependencies, runtimeScope)
 
     private val _uiState = MutableStateFlow(
@@ -117,14 +119,6 @@ class ArgusLensAppViewModel @Inject constructor(
         _uiState.update { state -> state.copy(conversationThreadsState = conversationThreadsState) }
     }
 
-    fun updateAuthFormState(formState: AuthFormState) {
-        _uiState.update { state -> state.copy(authFormState = formState) }
-    }
-
-    fun updateRegisterFormState(formState: RegisterFormState) {
-        _uiState.update { state -> state.copy(registerFormState = formState) }
-    }
-
     fun applyHydratedSession(
         session: AppSessionState,
         hydratedConversationAccountId: String?,
@@ -182,6 +176,20 @@ class ArgusLensAppViewModel @Inject constructor(
             state.copy(realtimeReconnectGeneration = state.realtimeReconnectGeneration + 1)
         }
     }
+}
+
+private fun createAuthStateHolder(
+    dependencies: AppDependencies,
+    runtimeScope: CoroutineScope,
+): AuthStateHolder {
+    val authCoordinator = dependencies.authCoordinator
+    return AuthStateHolder(
+        scope = runtimeScope,
+        reduceAuthAction = ::reduceAuthFormState,
+        reduceRegisterAction = ::reduceRegisterFormState,
+        login = authCoordinator::login,
+        register = authCoordinator::register,
+    )
 }
 
 private fun createWalletStateHolder(

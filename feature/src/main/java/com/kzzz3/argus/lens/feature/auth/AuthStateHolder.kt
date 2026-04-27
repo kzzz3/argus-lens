@@ -1,65 +1,66 @@
-package com.kzzz3.argus.lens.app
+package com.kzzz3.argus.lens.feature.auth
 
-import com.kzzz3.argus.lens.app.navigation.AppRoute
 import com.kzzz3.argus.lens.data.auth.AuthRepositoryResult
-import com.kzzz3.argus.lens.feature.auth.AuthEntryAction
-import com.kzzz3.argus.lens.feature.auth.AuthEntryEffect
-import com.kzzz3.argus.lens.feature.auth.AuthFormState
-import com.kzzz3.argus.lens.feature.auth.AuthReducerResult
-import com.kzzz3.argus.lens.feature.auth.AuthSubmissionResult
 import com.kzzz3.argus.lens.feature.register.RegisterAction
 import com.kzzz3.argus.lens.feature.register.RegisterEffect
 import com.kzzz3.argus.lens.feature.register.RegisterFormState
 import com.kzzz3.argus.lens.feature.register.RegisterReducerResult
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-internal data class EntryRouteRequest(
-    val authFormState: AuthFormState,
-    val registerFormState: RegisterFormState,
+data class AuthState(
+    val authFormState: AuthFormState = AuthFormState(),
+    val registerFormState: RegisterFormState = RegisterFormState(),
 )
 
-internal data class EntryRouteCallbacks(
-    val onRouteChanged: (AppRoute) -> Unit,
-    val onAuthFormStateChanged: (AuthFormState) -> Unit,
-    val onRegisterFormStateChanged: (RegisterFormState) -> Unit,
+data class AuthStateHolderCallbacks(
+    val onNavigateToRegister: () -> Unit,
+    val onNavigateBackToLogin: () -> Unit,
     val applySuccessfulAuthResult: suspend (AuthRepositoryResult.Success, Boolean) -> Unit,
 )
 
-internal class EntryRouteRuntime(
+class AuthStateHolder(
+    initialState: AuthState = AuthState(),
     private val scope: CoroutineScope,
     private val reduceAuthAction: (AuthFormState, AuthEntryAction) -> AuthReducerResult,
     private val reduceRegisterAction: (RegisterFormState, RegisterAction) -> RegisterReducerResult,
     private val login: suspend (AuthFormState, String, String) -> AuthSubmissionResult<AuthFormState>,
     private val register: suspend (RegisterFormState, String, String, String) -> AuthSubmissionResult<RegisterFormState>,
 ) {
+    private val mutableState = MutableStateFlow(initialState)
+    val state: StateFlow<AuthState> = mutableState.asStateFlow()
+
     fun handleAuthAction(
         action: AuthEntryAction,
-        request: EntryRouteRequest,
-        callbacks: EntryRouteCallbacks,
+        callbacks: AuthStateHolderCallbacks,
     ) {
-        val result = reduceAuthAction(request.authFormState, action)
-        callbacks.onAuthFormStateChanged(result.formState)
+        val requestState = mutableState.value.authFormState
+        val result = reduceAuthAction(requestState, action)
+        replaceAuthFormState(result.formState)
 
         when (val effect = result.effect) {
             AuthEntryEffect.NavigateBack -> Unit
-            AuthEntryEffect.NavigateToRegister -> callbacks.onRouteChanged(AppRoute.RegisterEntry)
+            AuthEntryEffect.NavigateToRegister -> callbacks.onNavigateToRegister()
             is AuthEntryEffect.SubmitPasswordLogin -> {
                 scope.launch {
                     when (val authResult = login(
-                        request.authFormState,
+                        requestState,
                         effect.account,
                         effect.password,
                     )) {
                         is AuthSubmissionResult.Success -> {
-                            callbacks.onAuthFormStateChanged(authResult.formState)
+                            replaceAuthFormState(authResult.formState)
                             callbacks.applySuccessfulAuthResult(
                                 authResult.authResult,
                                 true,
                             )
                         }
                         is AuthSubmissionResult.Failure -> {
-                            callbacks.onAuthFormStateChanged(authResult.formState)
+                            replaceAuthFormState(authResult.formState)
                         }
                     }
                 }
@@ -70,36 +71,48 @@ internal class EntryRouteRuntime(
 
     fun handleRegisterAction(
         action: RegisterAction,
-        request: EntryRouteRequest,
-        callbacks: EntryRouteCallbacks,
+        callbacks: AuthStateHolderCallbacks,
     ) {
-        val result = reduceRegisterAction(request.registerFormState, action)
-        callbacks.onRegisterFormStateChanged(result.formState)
+        val requestState = mutableState.value.registerFormState
+        val result = reduceRegisterAction(requestState, action)
+        replaceRegisterFormState(result.formState)
 
         when (val effect = result.effect) {
-            RegisterEffect.NavigateBackToLogin -> callbacks.onRouteChanged(AppRoute.AuthEntry)
+            RegisterEffect.NavigateBackToLogin -> callbacks.onNavigateBackToLogin()
             is RegisterEffect.SubmitRegistration -> {
                 scope.launch {
                     when (val authResult = register(
-                        request.registerFormState,
+                        requestState,
                         effect.displayName,
                         effect.account,
                         effect.password,
                     )) {
                         is AuthSubmissionResult.Success -> {
-                            callbacks.onRegisterFormStateChanged(authResult.formState)
+                            replaceRegisterFormState(authResult.formState)
                             callbacks.applySuccessfulAuthResult(
                                 authResult.authResult,
                                 false,
                             )
                         }
                         is AuthSubmissionResult.Failure -> {
-                            callbacks.onRegisterFormStateChanged(authResult.formState)
+                            replaceRegisterFormState(authResult.formState)
                         }
                     }
                 }
             }
             null -> Unit
         }
+    }
+
+    fun replaceAuthFormState(formState: AuthFormState) {
+        mutableState.update { state -> state.copy(authFormState = formState) }
+    }
+
+    fun replaceRegisterFormState(formState: RegisterFormState) {
+        mutableState.update { state -> state.copy(registerFormState = formState) }
+    }
+
+    fun replaceState(state: AuthState) {
+        mutableState.value = state
     }
 }

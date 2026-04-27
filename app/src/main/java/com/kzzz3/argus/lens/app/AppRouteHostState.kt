@@ -5,20 +5,16 @@ import com.kzzz3.argus.lens.data.friend.FriendEntry
 import com.kzzz3.argus.lens.data.friend.FriendRequestsSnapshot
 import com.kzzz3.argus.lens.data.realtime.ConversationRealtimeConnectionState
 import com.kzzz3.argus.lens.data.session.SessionCredentials
-import com.kzzz3.argus.lens.feature.auth.AuthFormState
 import com.kzzz3.argus.lens.feature.call.CallSessionState
 import com.kzzz3.argus.lens.feature.contacts.ContactsState
 import com.kzzz3.argus.lens.feature.contacts.FriendRequestStatusState
 import com.kzzz3.argus.lens.feature.inbox.ConversationThreadsState
-import com.kzzz3.argus.lens.feature.register.RegisterFormState
 import com.kzzz3.argus.lens.model.session.AppSessionState
 
 internal data class AppRouteHostState(
     val appSessionState: AppSessionState,
     val conversationThreadsState: ConversationThreadsState,
     val currentRoute: AppRoute,
-    val authFormState: AuthFormState,
-    val registerFormState: RegisterFormState,
     val callSessionState: CallSessionState,
     val contactsState: ContactsState,
     val friends: List<FriendEntry>,
@@ -36,8 +32,6 @@ internal data class AppRouteHostState(
 
 internal data class AppRouteHostCallbacks(
     val onRouteChanged: (AppRoute) -> Unit,
-    val onAuthFormStateChanged: (AuthFormState) -> Unit,
-    val onRegisterFormStateChanged: (RegisterFormState) -> Unit,
     val onCallSessionStateChanged: (CallSessionState) -> Unit,
     val onContactsStateChanged: (ContactsState) -> Unit,
     val onFriendsChanged: (List<FriendEntry>) -> Unit,

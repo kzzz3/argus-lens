@@ -20,6 +20,7 @@ Argus Lens provides the Android runtime for Argus by delivering a reliable local
 - [x] P0 wallet effect-boundary slice: move wallet effect dispatch/request launch rules into feature-owned `WalletEffectHandler` and remove the obsolete app wallet route runtime.
 - [x] P0 wallet controller shell slice: introduce feature-owned `WalletFeatureController` so wallet action/effect composition is ready for ViewModel extraction while app keeps root state/session/navigation callbacks.
 - [x] P0 wallet state-holder slice: move wallet screen state out of `ArgusLensAppUiState` into a ViewModel-owned feature `WalletStateHolder`, with app code retaining only route/session/navigation adaptation.
+- [x] P0 auth state-holder slice: move login/register form state and reducer/submission orchestration out of `ArgusLensAppUiState` and the app-owned entry runtime into a ViewModel-owned feature `AuthStateHolder`, while app code retains route/session-success callbacks.
 - [x] P3 first core-module sync slice: move shared model/UI modules into `:core:model` and `:core:ui` while preserving package names and aggregate `:data` / `:feature` ownership.
 - [x] P1 navigation graph split slice: normalize root navigation into `ArgusNavHost`, separate auth/main child graphs, and move feature leaf registrations into feature-owned navigation files while preserving `AppRoute` compatibility.
 - [x] Long-term Android architecture target documented with `:app`, `:core:*`, `:feature:*`, typed navigation, session, data, test, and cleanup roadmaps.
@@ -72,6 +73,7 @@ Long-term target topology is documented in `docs/android-architecture-target.md`
 - [x] Extract `AppRouteActionBindings` so `AppRouteHost` no longer declares route action/request/callback factories inline.
 - [x] Extract `AppRouteHostEffects` so `AppRouteHost` no longer declares lifecycle effect blocks inline.
 - [x] Split navigation into a normalized root host with auth and main child graphs while keeping login/register and main shell behavior stable.
+- [x] Move auth/register form state and submit orchestration into a feature-owned state holder while keeping session application and route transitions app-owned.
 - [ ] RTC signaling integration.
 - [ ] Stronger process-death restoration rules.
 - [ ] Background reconciliation strategy for sync.
@@ -83,7 +85,7 @@ Long-term target topology is documented in `docs/android-architecture-target.md`
 
 ### Architecture Roadmap — Target Android Organization
 - [x] Document the durable target architecture and P0-P4 migration roadmap in `docs/android-architecture-target.md`.
-- [ ] P0: continue app-shell slimming and feature ViewModel extraction without changing route semantics; wallet now has a feature-owned state holder, and the next wallet slice is an AndroidX/Hilt `WalletViewModel` wrapper once lifecycle dependencies are explicit.
+- [ ] P0: continue app-shell slimming and feature ViewModel extraction without changing route semantics; wallet and auth now have feature-owned state holders, and future AndroidX/Hilt feature ViewModel wrappers can land once lifecycle/module dependencies are explicit.
 - [ ] P1: build on the verified auth/main nested graph baseline with typed route contracts and process-death restoration rules one feature at a time.
 - [ ] P2: split session/token/crypto responsibilities and make repository/data-source/use-case boundaries explicit before Gradle extraction.
 - [ ] P3: continue `:core:*` and `:feature:*` extraction after the verified `:core:model` / `:core:ui` baseline, keeping ownership and package boundaries stable.
@@ -142,3 +144,4 @@ Run Gradle tasks serially.
 | 2026-04-27 | P0 app host effect-boundary TDD | Red/green `ArgusLensAppViewModelTest.appRouteHost_delegatesLifecycleEffects`; moved host `LaunchedEffect` / `DisposableEffect` blocks into `AppRouteHostEffects`; `:app:testDebugUnitTest`; `testDebugUnitTest`; `lint`; `assembleDebug`; Kotlin LSP unavailable because `kotlin-lsp` is not installed | PASS |
 | 2026-04-27 | P3 core model/ui module sync | Red/green `ReleaseAndModuleBoundaryTest` and `SessionBoundaryTest` for `:core:model` / `:core:ui`; moved shared source/config from `model/` and `ui/` into `core/model/` and `core/ui/` without package renames; `:app:testDebugUnitTest`; `testDebugUnitTest`; `lint`; `assembleDebug`; Kotlin LSP unavailable because `kotlin-lsp` is not installed; Markdown LSP unavailable | PASS |
 | 2026-04-27 | P1 auth/main navigation split TDD | Red/green `NavigationGraphBoundaryTest`; updated `AppRouteNavigationRuntimeTest.argusNavHostGraphs_registerEveryDeclaredAppRoute`; introduced root `ArgusNavHost`, `AuthGraphRoute`, `MainGraphRoute`, `TopLevelDestination`, and feature-owned child navigation registrations; `:app:testDebugUnitTest`; `testDebugUnitTest`; `lint`; `assembleDebug`; Kotlin LSP unavailable because `kotlin-lsp` is not installed; Markdown LSP unavailable | PASS |
+| 2026-04-28 | P0 auth state-holder TDD | Red/green `AuthStateHolderTest`; red/green `ArgusLensAppViewModelTest.appViewModelOwnsAuthStateHolderLifetime` and `appUiStateDoesNotOwnAuthOrRegisterFormState`; removed obsolete app `EntryRouteRuntime`; `:app:testDebugUnitTest`; `testDebugUnitTest`; `lint`; `assembleDebug`; Kotlin LSP unavailable because `kotlin-lsp` is not installed; Markdown LSP unavailable | PASS |

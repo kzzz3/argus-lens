@@ -2,10 +2,8 @@ package com.kzzz3.argus.lens.app
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import com.kzzz3.argus.lens.feature.auth.reduceAuthFormState
 import com.kzzz3.argus.lens.feature.call.CallSessionRuntime
 import com.kzzz3.argus.lens.feature.call.reduceCallSessionState
-import com.kzzz3.argus.lens.feature.register.reduceRegisterFormState
 import kotlinx.coroutines.CoroutineScope
 
 internal data class AppRouteRuntimes(
@@ -17,7 +15,6 @@ internal data class AppRouteRuntimes(
     val chatRouteRuntime: ChatRouteRuntime,
     val inboxRouteRuntime: InboxRouteRuntime,
     val inboxActionRouteRuntime: InboxActionRouteRuntime,
-    val entryRouteRuntime: EntryRouteRuntime,
     val realtimeConnectionRuntime: RealtimeConnectionRuntime,
     val appPersistenceRuntime: AppPersistenceRuntime,
     val appInitialHydrationRuntime: AppInitialHydrationRuntime,
@@ -32,7 +29,6 @@ internal fun rememberAppRouteRuntimes(
 ): AppRouteRuntimes {
     val appShellCoordinator = dependencies.appShellCoordinator
     val appSessionCoordinator = dependencies.appSessionCoordinator
-    val authCoordinator = dependencies.authCoordinator
     val newFriendsCoordinator = dependencies.newFriendsCoordinator
     val contactsCoordinator = dependencies.contactsCoordinator
     val chatCoordinator = dependencies.chatCoordinator
@@ -94,15 +90,6 @@ internal fun rememberAppRouteRuntimes(
         )
     }
     val inboxActionRouteRuntime = remember { InboxActionRouteRuntime() }
-    val entryRouteRuntime = remember(coroutineScope, authCoordinator) {
-        EntryRouteRuntime(
-            scope = coroutineScope,
-            reduceAuthAction = ::reduceAuthFormState,
-            reduceRegisterAction = ::reduceRegisterFormState,
-            login = authCoordinator::login,
-            register = authCoordinator::register,
-        )
-    }
     val realtimeConnectionRuntime = remember(coroutineScope, realtimeClient, realtimeCoordinator, realtimeReconnectRuntime) {
         RealtimeConnectionRuntime(
             scope = coroutineScope,
@@ -137,7 +124,6 @@ internal fun rememberAppRouteRuntimes(
         chatRouteRuntime = chatRouteRuntime,
         inboxRouteRuntime = inboxRouteRuntime,
         inboxActionRouteRuntime = inboxActionRouteRuntime,
-        entryRouteRuntime = entryRouteRuntime,
         realtimeConnectionRuntime = realtimeConnectionRuntime,
         appPersistenceRuntime = appPersistenceRuntime,
         appInitialHydrationRuntime = appInitialHydrationRuntime,

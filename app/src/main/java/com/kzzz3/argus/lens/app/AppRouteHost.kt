@@ -6,6 +6,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.rememberNavController
+import com.kzzz3.argus.lens.feature.auth.AuthStateHolder
 import com.kzzz3.argus.lens.feature.wallet.WalletStateHolder
 import com.kzzz3.argus.lens.navigation.ArgusNavHost
 import com.kzzz3.argus.lens.navigation.graphRouteForAppRoute
@@ -15,6 +16,7 @@ import kotlinx.coroutines.CoroutineScope
 internal fun AppRouteHost(
     dependencies: AppDependencies,
     runtimeScope: CoroutineScope,
+    authStateHolder: AuthStateHolder,
     walletStateHolder: WalletStateHolder,
     state: AppRouteHostState,
     callbacks: AppRouteHostCallbacks,
@@ -22,8 +24,6 @@ internal fun AppRouteHost(
     val appSessionState = state.appSessionState
     val conversationThreadsState = state.conversationThreadsState
     val currentRoute = state.currentRoute
-    val authFormState = state.authFormState
-    val registerFormState = state.registerFormState
     val callSessionState = state.callSessionState
     val contactsState = state.contactsState
     val friends = state.friends
@@ -34,8 +34,6 @@ internal fun AppRouteHost(
     val friendRequestsStatusMessage = state.friendRequestsStatusMessage
     val friendRequestsStatusError = state.friendRequestsStatusError
     val realtimeConnectionState = state.realtimeConnectionState
-    val onAuthFormStateChanged = callbacks.onAuthFormStateChanged
-    val onRegisterFormStateChanged = callbacks.onRegisterFormStateChanged
     val onCallSessionStateChanged = callbacks.onCallSessionStateChanged
     val onContactsStateChanged = callbacks.onContactsStateChanged
     val onFriendsChanged = callbacks.onFriendsChanged
@@ -52,6 +50,7 @@ internal fun AppRouteHost(
     val sessionCredentialsStore = dependencies.sessionCredentialsStore
     val callSessionRuntime = routeRuntimes.callSessionRuntime
     val sessionRefreshRuntime = routeRuntimes.sessionRefreshRuntime
+    val authStateModel by authStateHolder.state.collectAsStateWithLifecycle()
     val walletStateModel by walletStateHolder.state.collectAsStateWithLifecycle()
     val appRouteNavigationRuntime = routeRuntimes.appRouteNavigationRuntime
     val previewThreadsState = remember {
@@ -64,8 +63,8 @@ internal fun AppRouteHost(
         appSessionState = appSessionState,
         conversationThreadsState = conversationThreadsState,
         realtimeConnectionState = realtimeConnectionState,
-        authFormState = authFormState,
-        registerFormState = registerFormState,
+        authFormState = authStateModel.authFormState,
+        registerFormState = authStateModel.registerFormState,
         callSessionState = callSessionState,
         contactsState = contactsState,
         walletStateModel = walletStateModel,
@@ -111,15 +110,16 @@ internal fun AppRouteHost(
         onWalletStateChanged = walletStateHolder::replaceState,
         onConversationThreadsChanged = onConversationThreadsChanged,
         onAuthenticatedSessionApplied = onAuthenticatedSessionApplied,
-        onAuthFormStateChanged = onAuthFormStateChanged,
+        onAuthFormStateChanged = authStateHolder::replaceAuthFormState,
         onSessionCleared = onSessionCleared,
-        onRegisterFormStateChanged = onRegisterFormStateChanged,
+        onRegisterFormStateChanged = authStateHolder::replaceRegisterFormState,
         onContactsStateChanged = onContactsStateChanged,
         onFriendsChanged = onFriendsChanged,
         onFriendRequestStatusReset = onFriendRequestStatusReset,
     )
     val routeActionBindings = AppRouteActionBindings(
         state = state,
+        authStateHolder = authStateHolder,
         walletStateHolder = walletStateHolder,
         callbacks = callbacks,
         routeUiState = routeUiState,

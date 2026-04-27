@@ -1,13 +1,7 @@
-package com.kzzz3.argus.lens.app
+package com.kzzz3.argus.lens.feature.auth
 
-import com.kzzz3.argus.lens.app.navigation.AppRoute
 import com.kzzz3.argus.lens.data.auth.AuthRepositoryResult
 import com.kzzz3.argus.lens.data.auth.AuthSession
-import com.kzzz3.argus.lens.feature.auth.AuthEntryAction
-import com.kzzz3.argus.lens.feature.auth.AuthEntryEffect
-import com.kzzz3.argus.lens.feature.auth.AuthFormState
-import com.kzzz3.argus.lens.feature.auth.AuthReducerResult
-import com.kzzz3.argus.lens.feature.auth.AuthSubmissionResult
 import com.kzzz3.argus.lens.feature.register.RegisterAction
 import com.kzzz3.argus.lens.feature.register.RegisterEffect
 import com.kzzz3.argus.lens.feature.register.RegisterFormState
@@ -20,58 +14,58 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 
-class EntryRouteRuntimeTest {
+class AuthStateHolderTest {
     @Test
-    fun handleAuthAction_navigateToRegisterPublishesStateThenRoutes() {
+    fun handleAuthAction_updatesStateBeforeDispatchingNavigationEffect() {
         val reducedState = AuthFormState(account = "next")
-        val runtime = entryRouteRuntime(
-            reduceAuthAction = { _, _ ->
+        val holder = authStateHolder(
+            reduceAuthAction = { _, action ->
+                assertEquals(AuthEntryAction.NavigateToRegister, action)
                 AuthReducerResult(
                     formState = reducedState,
                     effect = AuthEntryEffect.NavigateToRegister,
                 )
             },
         )
-        var authState: AuthFormState? = null
-        var routedTo: AppRoute? = null
+        val events = mutableListOf<String>()
 
-        runtime.handleAuthAction(
+        holder.handleAuthAction(
             action = AuthEntryAction.NavigateToRegister,
-            request = entryRouteRequest(authFormState = AuthFormState(account = "old")),
-            callbacks = entryRouteCallbacks(
-                onRouteChanged = { routedTo = it },
-                onAuthFormStateChanged = { authState = it },
+            callbacks = authCallbacks(
+                onNavigateToRegister = { events += "register:${holder.state.value.authFormState.account}" },
             ),
         )
 
-        assertEquals(reducedState, authState)
-        assertEquals(AppRoute.RegisterEntry, routedTo)
+        assertEquals(reducedState, holder.state.value.authFormState)
+        assertEquals(listOf("register:next"), events)
     }
 
     @Test
     fun handleAuthAction_successUsesRequestSnapshotThenAppliesAuthResult() = runBlocking {
         val scope = CoroutineScope(Dispatchers.Unconfined)
-        val requestState = AuthFormState(account = "alice", password = "secret")
+        val requestState = AuthFormState(account = "alice", password = "secret123")
         val reducedState = requestState.copy(isSubmitting = true)
         val successState = requestState.copy(isSubmitting = false, submitResult = "welcome")
         val successResult = authSuccess("alice")
         var loginFormState: AuthFormState? = null
         var appliedResult: AuthRepositoryResult.Success? = null
         var keepSubmitMessage: Boolean? = null
-        val stateEvents = mutableListOf<AuthFormState>()
-        val runtime = entryRouteRuntime(
+        lateinit var holder: AuthStateHolder
+        holder = authStateHolder(
             scope = scope,
+            initialState = AuthState(authFormState = requestState),
             reduceAuthAction = { _, _ ->
                 AuthReducerResult(
                     formState = reducedState,
                     effect = AuthEntryEffect.SubmitPasswordLogin(
                         account = "alice",
-                        password = "secret",
+                        password = "secret123",
                     ),
                 )
             },
             login = { formState, _, _ ->
                 loginFormState = formState
+                assertEquals(reducedState, holder.state.value.authFormState)
                 AuthSubmissionResult.Success(
                     authResult = successResult,
                     formState = successState,
@@ -79,11 +73,9 @@ class EntryRouteRuntimeTest {
             },
         )
 
-        runtime.handleAuthAction(
+        holder.handleAuthAction(
             action = AuthEntryAction.SubmitPasswordLogin,
-            request = entryRouteRequest(authFormState = requestState),
-            callbacks = entryRouteCallbacks(
-                onAuthFormStateChanged = stateEvents::add,
+            callbacks = authCallbacks(
                 applySuccessfulAuthResult = { result, keep ->
                     appliedResult = result
                     keepSubmitMessage = keep
@@ -92,7 +84,7 @@ class EntryRouteRuntimeTest {
         )
 
         assertEquals(requestState, loginFormState)
-        assertEquals(listOf(reducedState, successState), stateEvents)
+        assertEquals(successState, holder.state.value.authFormState)
         assertEquals(successResult, appliedResult)
         assertEquals(true, keepSubmitMessage)
         scope.cancel()
@@ -101,64 +93,60 @@ class EntryRouteRuntimeTest {
     @Test
     fun handleAuthAction_failurePublishesFailureWithoutApplyingAuthResult() = runBlocking {
         val scope = CoroutineScope(Dispatchers.Unconfined)
-        val requestState = AuthFormState(account = "alice", password = "bad")
+        val requestState = AuthFormState(account = "alice", password = "bad-secret")
         val reducedState = requestState.copy(isSubmitting = true)
         val failureState = requestState.copy(isSubmitting = false, submitResult = "denied")
         var appliedResult: AuthRepositoryResult.Success? = null
-        val stateEvents = mutableListOf<AuthFormState>()
-        val runtime = entryRouteRuntime(
+        val holder = authStateHolder(
             scope = scope,
+            initialState = AuthState(authFormState = requestState),
             reduceAuthAction = { _, _ ->
                 AuthReducerResult(
                     formState = reducedState,
                     effect = AuthEntryEffect.SubmitPasswordLogin(
                         account = "alice",
-                        password = "bad",
+                        password = "bad-secret",
                     ),
                 )
             },
             login = { _, _, _ -> AuthSubmissionResult.Failure(failureState) },
         )
 
-        runtime.handleAuthAction(
+        holder.handleAuthAction(
             action = AuthEntryAction.SubmitPasswordLogin,
-            request = entryRouteRequest(authFormState = requestState),
-            callbacks = entryRouteCallbacks(
-                onAuthFormStateChanged = stateEvents::add,
+            callbacks = authCallbacks(
                 applySuccessfulAuthResult = { result, _ -> appliedResult = result },
             ),
         )
 
-        assertEquals(listOf(reducedState, failureState), stateEvents)
+        assertEquals(failureState, holder.state.value.authFormState)
         assertNull(appliedResult)
         scope.cancel()
     }
 
     @Test
-    fun handleRegisterAction_navigateBackRoutesToAuthEntry() {
+    fun handleRegisterAction_updatesStateBeforeDispatchingNavigationEffect() {
         val reducedState = RegisterFormState(account = "next")
-        val runtime = entryRouteRuntime(
-            reduceRegisterAction = { _, _ ->
+        val holder = authStateHolder(
+            reduceRegisterAction = { _, action ->
+                assertEquals(RegisterAction.NavigateBackToLogin, action)
                 RegisterReducerResult(
                     formState = reducedState,
                     effect = RegisterEffect.NavigateBackToLogin,
                 )
             },
         )
-        var registerState: RegisterFormState? = null
-        var routedTo: AppRoute? = null
+        val events = mutableListOf<String>()
 
-        runtime.handleRegisterAction(
+        holder.handleRegisterAction(
             action = RegisterAction.NavigateBackToLogin,
-            request = entryRouteRequest(registerFormState = RegisterFormState(account = "old")),
-            callbacks = entryRouteCallbacks(
-                onRouteChanged = { routedTo = it },
-                onRegisterFormStateChanged = { registerState = it },
+            callbacks = authCallbacks(
+                onNavigateBackToLogin = { events += "login:${holder.state.value.registerFormState.account}" },
             ),
         )
 
-        assertEquals(reducedState, registerState)
-        assertEquals(AppRoute.AuthEntry, routedTo)
+        assertEquals(reducedState, holder.state.value.registerFormState)
+        assertEquals(listOf("login:next"), events)
     }
 
     @Test
@@ -167,8 +155,8 @@ class EntryRouteRuntimeTest {
         val requestState = RegisterFormState(
             displayName = "Alice",
             account = "alice",
-            password = "secret",
-            confirmPassword = "secret",
+            password = "secret123",
+            confirmPassword = "secret123",
         )
         val reducedState = requestState.copy(isSubmitting = true)
         val successState = requestState.copy(isSubmitting = false, submitResult = "created")
@@ -176,21 +164,23 @@ class EntryRouteRuntimeTest {
         var registerFormState: RegisterFormState? = null
         var appliedResult: AuthRepositoryResult.Success? = null
         var keepSubmitMessage: Boolean? = null
-        val stateEvents = mutableListOf<RegisterFormState>()
-        val runtime = entryRouteRuntime(
+        lateinit var holder: AuthStateHolder
+        holder = authStateHolder(
             scope = scope,
+            initialState = AuthState(registerFormState = requestState),
             reduceRegisterAction = { _, _ ->
                 RegisterReducerResult(
                     formState = reducedState,
                     effect = RegisterEffect.SubmitRegistration(
                         displayName = "Alice",
                         account = "alice",
-                        password = "secret",
+                        password = "secret123",
                     ),
                 )
             },
             register = { formState, _, _, _ ->
                 registerFormState = formState
+                assertEquals(reducedState, holder.state.value.registerFormState)
                 AuthSubmissionResult.Success(
                     authResult = successResult,
                     formState = successState,
@@ -198,11 +188,9 @@ class EntryRouteRuntimeTest {
             },
         )
 
-        runtime.handleRegisterAction(
+        holder.handleRegisterAction(
             action = RegisterAction.SubmitRegistration,
-            request = entryRouteRequest(registerFormState = requestState),
-            callbacks = entryRouteCallbacks(
-                onRegisterFormStateChanged = stateEvents::add,
+            callbacks = authCallbacks(
                 applySuccessfulAuthResult = { result, keep ->
                     appliedResult = result
                     keepSubmitMessage = keep
@@ -211,56 +199,15 @@ class EntryRouteRuntimeTest {
         )
 
         assertEquals(requestState, registerFormState)
-        assertEquals(listOf(reducedState, successState), stateEvents)
+        assertEquals(successState, holder.state.value.registerFormState)
         assertEquals(successResult, appliedResult)
         assertEquals(false, keepSubmitMessage)
         scope.cancel()
     }
 
-    @Test
-    fun handleRegisterAction_failurePublishesFailureWithoutApplyingAuthResult() = runBlocking {
-        val scope = CoroutineScope(Dispatchers.Unconfined)
-        val requestState = RegisterFormState(
-            displayName = "Alice",
-            account = "alice",
-            password = "bad",
-            confirmPassword = "bad",
-        )
-        val reducedState = requestState.copy(isSubmitting = true)
-        val failureState = requestState.copy(isSubmitting = false, submitResult = "denied")
-        var appliedResult: AuthRepositoryResult.Success? = null
-        val stateEvents = mutableListOf<RegisterFormState>()
-        val runtime = entryRouteRuntime(
-            scope = scope,
-            reduceRegisterAction = { _, _ ->
-                RegisterReducerResult(
-                    formState = reducedState,
-                    effect = RegisterEffect.SubmitRegistration(
-                        displayName = "Alice",
-                        account = "alice",
-                        password = "bad",
-                    ),
-                )
-            },
-            register = { _, _, _, _ -> AuthSubmissionResult.Failure(failureState) },
-        )
-
-        runtime.handleRegisterAction(
-            action = RegisterAction.SubmitRegistration,
-            request = entryRouteRequest(registerFormState = requestState),
-            callbacks = entryRouteCallbacks(
-                onRegisterFormStateChanged = stateEvents::add,
-                applySuccessfulAuthResult = { result, _ -> appliedResult = result },
-            ),
-        )
-
-        assertEquals(listOf(reducedState, failureState), stateEvents)
-        assertNull(appliedResult)
-        scope.cancel()
-    }
-
-    private fun entryRouteRuntime(
+    private fun authStateHolder(
         scope: CoroutineScope = CoroutineScope(Dispatchers.Unconfined),
+        initialState: AuthState = AuthState(),
         reduceAuthAction: (AuthFormState, AuthEntryAction) -> AuthReducerResult = { state, _ ->
             AuthReducerResult(state)
         },
@@ -273,8 +220,9 @@ class EntryRouteRuntimeTest {
         register: suspend (RegisterFormState, String, String, String) -> AuthSubmissionResult<RegisterFormState> = { state, _, _, _ ->
             AuthSubmissionResult.Failure(state)
         },
-    ): EntryRouteRuntime {
-        return EntryRouteRuntime(
+    ): AuthStateHolder {
+        return AuthStateHolder(
+            initialState = initialState,
             scope = scope,
             reduceAuthAction = reduceAuthAction,
             reduceRegisterAction = reduceRegisterAction,
@@ -283,26 +231,14 @@ class EntryRouteRuntimeTest {
         )
     }
 
-    private fun entryRouteRequest(
-        authFormState: AuthFormState = AuthFormState(),
-        registerFormState: RegisterFormState = RegisterFormState(),
-    ): EntryRouteRequest {
-        return EntryRouteRequest(
-            authFormState = authFormState,
-            registerFormState = registerFormState,
-        )
-    }
-
-    private fun entryRouteCallbacks(
-        onRouteChanged: (AppRoute) -> Unit = {},
-        onAuthFormStateChanged: (AuthFormState) -> Unit = {},
-        onRegisterFormStateChanged: (RegisterFormState) -> Unit = {},
+    private fun authCallbacks(
+        onNavigateToRegister: () -> Unit = {},
+        onNavigateBackToLogin: () -> Unit = {},
         applySuccessfulAuthResult: suspend (AuthRepositoryResult.Success, Boolean) -> Unit = { _, _ -> },
-    ): EntryRouteCallbacks {
-        return EntryRouteCallbacks(
-            onRouteChanged = onRouteChanged,
-            onAuthFormStateChanged = onAuthFormStateChanged,
-            onRegisterFormStateChanged = onRegisterFormStateChanged,
+    ): AuthStateHolderCallbacks {
+        return AuthStateHolderCallbacks(
+            onNavigateToRegister = onNavigateToRegister,
+            onNavigateBackToLogin = onNavigateBackToLogin,
             applySuccessfulAuthResult = applySuccessfulAuthResult,
         )
     }

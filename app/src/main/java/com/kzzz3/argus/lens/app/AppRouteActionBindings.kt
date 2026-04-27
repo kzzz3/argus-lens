@@ -2,6 +2,8 @@ package com.kzzz3.argus.lens.app
 
 import com.kzzz3.argus.lens.app.navigation.AppRoute
 import com.kzzz3.argus.lens.data.auth.AuthRepositoryResult
+import com.kzzz3.argus.lens.feature.auth.AuthStateHolder
+import com.kzzz3.argus.lens.feature.auth.AuthStateHolderCallbacks
 import com.kzzz3.argus.lens.feature.contacts.ContactsState
 import com.kzzz3.argus.lens.feature.contacts.FriendRequestStatusState
 import com.kzzz3.argus.lens.feature.contacts.reduceContactsState
@@ -11,6 +13,7 @@ import com.kzzz3.argus.lens.ui.shell.ShellDestination
 
 internal class AppRouteActionBindings(
     private val state: AppRouteHostState,
+    private val authStateHolder: AuthStateHolder,
     private val walletStateHolder: WalletStateHolder,
     private val callbacks: AppRouteHostCallbacks,
     private val routeUiState: AppRouteUiState,
@@ -83,18 +86,10 @@ internal class AppRouteActionBindings(
         callbacks.onFriendRequestStatusChanged(statusState)
     }
 
-    fun entryRouteRequest(): EntryRouteRequest {
-        return EntryRouteRequest(
-            authFormState = state.authFormState,
-            registerFormState = state.registerFormState,
-        )
-    }
-
-    fun entryRouteCallbacks(): EntryRouteCallbacks {
-        return EntryRouteCallbacks(
-            onRouteChanged = callbacks.onRouteChanged,
-            onAuthFormStateChanged = callbacks.onAuthFormStateChanged,
-            onRegisterFormStateChanged = callbacks.onRegisterFormStateChanged,
+    fun authStateHolderCallbacks(): AuthStateHolderCallbacks {
+        return AuthStateHolderCallbacks(
+            onNavigateToRegister = { callbacks.onRouteChanged(AppRoute.RegisterEntry) },
+            onNavigateBackToLogin = { callbacks.onRouteChanged(AppRoute.AuthEntry) },
             applySuccessfulAuthResult = ::applySuccessfulAuthResult,
         )
     }
@@ -166,18 +161,16 @@ internal class AppRouteActionBindings(
     }
 
     fun handleAuthAction(action: com.kzzz3.argus.lens.feature.auth.AuthEntryAction) {
-        routeRuntimes.entryRouteRuntime.handleAuthAction(
+        authStateHolder.handleAuthAction(
             action = action,
-            request = entryRouteRequest(),
-            callbacks = entryRouteCallbacks(),
+            callbacks = authStateHolderCallbacks(),
         )
     }
 
     fun handleRegisterAction(action: com.kzzz3.argus.lens.feature.register.RegisterAction) {
-        routeRuntimes.entryRouteRuntime.handleRegisterAction(
+        authStateHolder.handleRegisterAction(
             action = action,
-            request = entryRouteRequest(),
-            callbacks = entryRouteCallbacks(),
+            callbacks = authStateHolderCallbacks(),
         )
     }
 
