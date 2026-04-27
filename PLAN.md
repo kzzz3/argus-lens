@@ -12,6 +12,7 @@ Argus Lens provides the Android runtime for Argus by delivering a reliable local
 - [x] Room-backed conversation/message/draft persistence.
 - [x] Remote auth, session restore, conversation/message sync, text send, recall, read receipts, SSE resume, and generic file upload/download.
 - [x] Instrumentation smoke coverage and modernization regression gates.
+- [x] P0 app shell state-boundary slice: introduce `AppRouteHostState` and `AppRouteHostCallbacks` to slim `AppRouteHost` / `ArgusLensApp` without changing navigation semantics.
 - [ ] Process-death restoration decision for selected conversation/session entry context.
 - [ ] Richer first-class remote media send paths beyond the generic-file baseline.
 - [ ] Real RTC signaling integration and call lifecycle events.
@@ -54,6 +55,7 @@ argus-lens/
 - [ ] Rich media-specific send paths.
 
 ### Phase 3 — Stage 1 Runtime Maturity
+- [x] Slim `AppRouteHost` by replacing scattered state/callback parameters with explicit host boundary objects.
 - [ ] RTC signaling integration.
 - [ ] Stronger process-death restoration rules.
 - [ ] Background reconciliation strategy for sync.
@@ -86,6 +88,7 @@ Run Gradle tasks serially.
 
 - Reintroducing token material into saveable UI state.
 - Growing `ArgusLensApp.kt` or route host orchestration beyond readable lifecycle boundaries.
+- Moving route or session behavior while extracting shell boundary objects; this pass must preserve enum-backed navigation and existing `rememberUpdatedState` patterns.
 - Contract drift with Cortex media/message DTOs.
 - Background sync becoming implicit foreground refresh instead of explicit durable reconciliation.
 - Premature JNI coupling before Retina contracts stabilize.
@@ -102,3 +105,5 @@ Run Gradle tasks serially.
 | Date | Scope | Command / method | Result |
 |---|---|---|---|
 | 2026-04-27 | Documentation workflow refresh | Read `AGENTS.md`, `docs/project-plan.md`, `docs/android-modernization-progress.md`, and verified referenced paths exist | PASS for this documentation pass |
+| 2026-04-27 | P0 app shell state-boundary planning | Explored `AppRouteHost`, `ArgusLensAppViewModel`, session store, official Android guidance, and Oracle sequencing advice | Planned first slice: state/callback boundary only; typed navigation, feature module split, LocalSessionStore split, and UseCase layer deferred |
+| 2026-04-27 | P0 app shell state-boundary TDD | Red/green source-boundary tests for `AppRouteHostState` / `AppRouteHostCallbacks` and dedicated `ArgusLensAppState.kt` | Targeted tests passed; broader verification follows |
