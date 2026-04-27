@@ -298,8 +298,8 @@ Lens becomes the Android simulator of smart glasses:
 
 ## 14. Immediate Next Design Tasks
 
-1. define sync cursor / recent-window evolution so remote history acts as a bounded sync source instead of a full-history truth source
-2. extend delivery/read receipt reconciliation from the active-chat path into stronger background and restore-time convergence rules
-3. refine generic file-message contracts so metadata, retention, and download UX remain predictable under retries
-4. define WebRTC signaling schema and session lifecycle events
-5. define the Stage 2 JNI-facing service boundary for Retina integration without regressing the Stage 1 local-first IM model
+1. decide whether selected conversation/session-entry context should survive full process recreation.
+2. connect remote send paths for richer first-class media types beyond the current generic-file baseline.
+3. define WebRTC signaling schema and session lifecycle events.
+4. decide whether conversation/message reconciliation should move from foreground refresh into WorkManager-backed background sync.
+5. define the Stage 2 JNI-facing service boundary for Retina integration without regressing the Stage 1 local-first IM model.

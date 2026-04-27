@@ -133,6 +133,8 @@ Status: complete for the modernization regression baseline.
 - P2 Room migration/schema work is guarded by `ArgusLensDatabaseMigrationTest`.
 - P2 WorkManager behavior is guarded by `BackgroundSyncWorkTest`, `BackgroundSyncTaskTest`, and `BackgroundSyncWorkerTest`.
 - P3 release/module/event boundaries are guarded by `ReleaseAndModuleBoundaryTest` and `EventModelBoundaryTest`.
+- Media contract and download filename boundaries are guarded by `MediaApiModelsTest` and `MediaFileNameTest`.
+- The instrumentation baseline now uses `ArgusLensLaunchInstrumentedTest` instead of Android template tests.
 - `ModernizationCoverageTest` guards the presence of these regression gates and this progress document.
 
 Final verification gate for this modernization pass:
@@ -142,3 +144,4 @@ Final verification gate for this modernization pass:
 - `testDebugUnitTest`
 - `lint`
 - `assembleDebug`
+- `:app:assembleDebugAndroidTest`
