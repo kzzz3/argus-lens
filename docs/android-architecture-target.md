@@ -197,6 +197,8 @@ State and events:
 
 - Durable screen state belongs in immutable `UiState` data classes.
 - One-off effects remain explicit sealed models until multiple independent app-wide producers require a shared visual queue.
+- Screen-scoped messages stay feature-owned and may use `UiStatusMessage` when a shared success/error message primitive is useful.
+- `SnackbarHostState`, `SharedFlow`, `Channel`, and `Toast` are not default event mechanisms; add root message rendering only when app-wide producer pressure, lifecycle ownership, sign-out clearing, and duplicate-delivery behavior are explicit and tested.
 - Compose screens do not receive `NavController`. They expose callbacks such as `onConversationClick(id)`.
 - Token material never enters Parcelable, saveable Compose state, logs, previews, or screenshots.
 - Use cases are not a mandatory layer. Add them when they remove real workflow orchestration from a coordinator, and keep single-repository mapping in coordinators/repositories until reuse or complexity justifies extraction.

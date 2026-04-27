@@ -195,11 +195,13 @@ Status: complete for the first physical core-module sync slice.
 
 Status: complete for the current reducer/effect architecture.
 
-- Feature one-off work is represented by sealed `*Effect` models; feature handlers own feature-specific dispatch/request policy, while app route runtimes only adapt app-owned navigation where needed.
+- One-off commands remain sealed feature `*Effect` models; feature handlers own feature-specific dispatch/request policy, while app route runtimes only adapt app-owned navigation where needed.
 - Source-level regression tests ensure effect files stay sealed instead of becoming ad hoc strings or nullable status blobs.
+- Screen-scoped user-visible messages stay feature-owned in immutable UI state, using `UiStatusMessage` when a shared message primitive is useful and existing `statusMessage` / `isStatusError` pairs while transitional screens migrate.
 - User-visible durable state remains in feature state objects; one-off effects remain explicit reducer outputs.
+- Root snackbar rendering remains deferred until multiple independent app-wide producers need one visual queue; do not add `SnackbarHostState`, `SharedFlow`, `Channel`, or `Toast` as default event/message infrastructure before that threshold is met.
 
-Future refinement: introduce a root snackbar `SharedFlow` only when multiple independent app-wide event producers need a single visual queue.
+Future refinement: introduce root snackbar rendering only after the producing features, lifecycle ownership, sign-out clearing behavior, and duplicate-delivery policy are explicit and covered by tests.
 
 ## P4 Test Structure
 
