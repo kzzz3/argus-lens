@@ -94,6 +94,18 @@ Verification gate:
 
 - `:app:testDebugUnitTest --tests "com.kzzz3.argus.lens.app.RoleNamingBoundaryTest"` must pass after role naming or role taxonomy changes.
 
+## P2 Focused UseCase Layer
+
+Status: complete for the first non-pass-through use-case slice.
+
+- `SendOutgoingChatMessageUseCase` owns outgoing chat send orchestration that composes draft media upload session creation, content upload, upload finalization, and conversation message send.
+- `ChatCoordinator` delegates outgoing send workflow to the use case while keeping chat state reduction, synchronization, recall, and attachment download roles unchanged.
+- The first slice deliberately avoids a broad domain module and avoids pass-through use cases for single repository calls such as wallet summary/history/receipt reads.
+
+Verification gate:
+
+- `:feature:testDebugUnitTest --tests "com.kzzz3.argus.lens.feature.inbox.SendOutgoingChatMessageUseCaseTest"` must pass after outgoing chat send/media workflow changes.
+
 ## P2 Hilt Dependency Injection
 
 Status: complete for the current module baseline.

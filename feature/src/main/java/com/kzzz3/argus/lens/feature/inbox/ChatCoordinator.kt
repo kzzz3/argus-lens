@@ -7,6 +7,10 @@ class ChatCoordinator(
     private val conversationRepository: ConversationRepository,
     private val mediaRepository: MediaRepository,
     private val attachmentDownloader: ChatAttachmentDownloader = ChatAttachmentDownloader(mediaRepository),
+    private val sendOutgoingChatMessage: SendOutgoingChatMessageUseCase = SendOutgoingChatMessageUseCase(
+        conversationRepository = conversationRepository,
+        mediaRepository = mediaRepository,
+    ),
 ) {
     fun openConversation(
         state: ConversationThreadsState,
@@ -59,12 +63,10 @@ class ChatCoordinator(
         var nextState = state
         val dispatchResults = mutableListOf<OutgoingDispatchResult>()
         messages.forEach { message ->
-            val sendResult = dispatchOutgoingChatMessage(
+            val sendResult = sendOutgoingChatMessage(
                 state = nextState,
                 conversationId = conversationId,
                 message = message,
-                conversationRepository = conversationRepository,
-                mediaRepository = mediaRepository,
             )
             dispatchResults += OutgoingDispatchResult(
                 state = sendResult.state,

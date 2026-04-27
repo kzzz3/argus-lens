@@ -163,6 +163,7 @@ UseCase
   - optional, added when logic is reused or composes multiple repositories
   - small class with one public operation, usually operator fun invoke(...)
   - no pass-through use cases that only call one repository method unchanged
+  - current first verified example: feature-local SendOutgoingChatMessageUseCase coordinates media upload/finalization with message send
 
 Repository
   - public data-layer API
@@ -180,6 +181,7 @@ State and events:
 - One-off effects remain explicit sealed models until multiple independent app-wide producers require a shared visual queue.
 - Compose screens do not receive `NavController`. They expose callbacks such as `onConversationClick(id)`.
 - Token material never enters Parcelable, saveable Compose state, logs, previews, or screenshots.
+- Use cases are not a mandatory layer. Add them when they remove real workflow orchestration from a coordinator, and keep single-repository mapping in coordinators/repositories until reuse or complexity justifies extraction.
 
 ## Role Naming Boundary
 
