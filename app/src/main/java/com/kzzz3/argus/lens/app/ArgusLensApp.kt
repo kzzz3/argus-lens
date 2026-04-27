@@ -10,7 +10,7 @@ fun ArgusLensApp(
     viewModel: ArgusLensAppViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    ArgusLensNavHost(
+    AppRouteHost(
         dependencies = viewModel.dependencies,
         appSessionState = uiState.appSessionState,
         conversationThreadsState = uiState.conversationThreadsState,
@@ -19,7 +19,7 @@ fun ArgusLensApp(
         registerFormState = uiState.registerFormState,
         callSessionState = uiState.callSessionState,
         contactsState = uiState.contactsState,
-        walletState = uiState.walletState,
+        walletStateModel = uiState.walletState,
         friends = uiState.friends,
         selectedConversationId = uiState.selectedConversationId,
         chatStatusMessage = uiState.chatStatusMessage,
