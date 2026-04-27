@@ -9,6 +9,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.kzzz3.argus.lens.app.navigation.AppRoute
 import com.kzzz3.argus.lens.feature.auth.navigation.AuthGraphRoute
+import com.kzzz3.argus.lens.feature.inbox.ChatStateHolder
 import com.kzzz3.argus.lens.feature.inbox.ConversationThreadsState
 import com.kzzz3.argus.lens.feature.inbox.InboxStateHolder
 import com.kzzz3.argus.lens.feature.realtime.buildRealtimeStatusLabel
@@ -23,6 +24,7 @@ internal fun AppRouteHostEffects(
     state: AppRouteHostState,
     callbacks: AppRouteHostCallbacks,
     routeRuntimes: AppRouteRuntimes,
+    chatStateHolder: ChatStateHolder,
     inboxStateHolder: InboxStateHolder,
     previewThreadsState: ConversationThreadsState,
     sessionBoundaryRuntime: AppSessionBoundaryRuntime,
@@ -38,6 +40,8 @@ internal fun AppRouteHostEffects(
     val conversationThreadsState = state.conversationThreadsState
     val currentRoute = state.currentRoute
     val selectedConversationId = state.selectedConversationId
+    val chatStatusMessage = state.chatStatusMessage
+    val chatStatusError = state.chatStatusError
     val realtimeConnectionState = state.realtimeConnectionState
     val friendRequestsSnapshot = state.friendRequestsSnapshot
     val hydratedConversationAccountId = state.hydratedConversationAccountId
@@ -69,6 +73,22 @@ internal fun AppRouteHostEffects(
 
     LaunchedEffect(selectedConversationId) {
         callbacks.onChatStatusCleared()
+    }
+
+    LaunchedEffect(
+        appSessionState.displayName,
+        conversationThreadsState,
+        selectedConversationId,
+        chatStatusMessage,
+        chatStatusError,
+    ) {
+        chatStateHolder.replaceInputs(
+            currentUserDisplayName = resolvePreviewDisplayName(appSessionState.displayName),
+            threadsState = conversationThreadsState,
+            selectedConversationId = selectedConversationId,
+            statusMessage = chatStatusMessage,
+            isStatusError = chatStatusError,
+        )
     }
 
     LaunchedEffect(appSessionState, conversationThreadsState, realtimeConnectionState) {

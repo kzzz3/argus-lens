@@ -7,6 +7,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.rememberNavController
 import com.kzzz3.argus.lens.feature.auth.AuthStateHolder
+import com.kzzz3.argus.lens.feature.inbox.ChatStateHolder
 import com.kzzz3.argus.lens.feature.inbox.InboxStateHolder
 import com.kzzz3.argus.lens.feature.wallet.WalletStateHolder
 import com.kzzz3.argus.lens.navigation.ArgusNavHost
@@ -18,6 +19,7 @@ internal fun AppRouteHost(
     dependencies: AppDependencies,
     runtimeScope: CoroutineScope,
     authStateHolder: AuthStateHolder,
+    chatStateHolder: ChatStateHolder,
     inboxStateHolder: InboxStateHolder,
     walletStateHolder: WalletStateHolder,
     state: AppRouteHostState,
@@ -53,6 +55,7 @@ internal fun AppRouteHost(
     val callSessionRuntime = routeRuntimes.callSessionRuntime
     val sessionRefreshRuntime = routeRuntimes.sessionRefreshRuntime
     val authStateModel by authStateHolder.state.collectAsStateWithLifecycle()
+    val chatStateModel by chatStateHolder.state.collectAsStateWithLifecycle()
     val inboxStateModel by inboxStateHolder.state.collectAsStateWithLifecycle()
     val walletStateModel by walletStateHolder.state.collectAsStateWithLifecycle()
     val appRouteNavigationRuntime = routeRuntimes.appRouteNavigationRuntime
@@ -67,6 +70,8 @@ internal fun AppRouteHost(
         conversationThreadsState = conversationThreadsState,
         realtimeConnectionState = realtimeConnectionState,
         inboxUiState = inboxStateModel.uiState,
+        chatState = chatStateModel.chatState,
+        chatUiState = chatStateModel.uiState,
         authFormState = authStateModel.authFormState,
         registerFormState = authStateModel.registerFormState,
         callSessionState = callSessionState,
@@ -140,6 +145,7 @@ internal fun AppRouteHost(
         state = state,
         callbacks = callbacks,
         routeRuntimes = routeRuntimes,
+        chatStateHolder = chatStateHolder,
         inboxStateHolder = inboxStateHolder,
         previewThreadsState = previewThreadsState,
         sessionBoundaryRuntime = sessionBoundaryRuntime,

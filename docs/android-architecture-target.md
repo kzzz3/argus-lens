@@ -39,6 +39,7 @@ The app shell has already moved past a single monolithic route host milestone:
 - `WalletStateHolder` owns wallet screen `StateFlow` state in the feature package and is owned by `ArgusLensAppViewModel` for now, so root app state no longer stores wallet feature state while app code still adapts route/session/navigation callbacks.
 - `AuthStateHolder` owns login/register form `StateFlow` state, reducer dispatch, and auth submission in the feature package; `ArgusLensAppViewModel` owns its lifetime while app code still adapts auth graph navigation and session-success side effects.
 - `InboxStateHolder` owns derived inbox UI state and route-agnostic inbox action dispatch in the feature package; `ArgusLensAppViewModel` owns its lifetime while app code still owns shared thread mutation, conversation-open sequencing, app routes, sign-out/session effects, realtime, persistence, and chat behavior.
+- `ChatStateHolder` owns selected-conversation chat state and UI derivation in the feature package; `ArgusLensAppViewModel` owns its lifetime while app code still owns chat action side effects, call routing, selected conversation, shared thread mutation, realtime, and persistence.
 - `:core:model` and `:core:ui` own the former shared `model` and `ui` modules without package renames, keeping the first physical core migration low risk.
 - `ArgusLensAppState` owns root UI state and pure session transition helpers.
 

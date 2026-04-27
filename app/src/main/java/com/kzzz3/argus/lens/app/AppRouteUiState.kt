@@ -19,7 +19,6 @@ import com.kzzz3.argus.lens.feature.inbox.ChatState
 import com.kzzz3.argus.lens.feature.inbox.ChatUiState
 import com.kzzz3.argus.lens.feature.inbox.ConversationThreadsState
 import com.kzzz3.argus.lens.feature.inbox.InboxUiState
-import com.kzzz3.argus.lens.feature.inbox.createChatUiState
 import com.kzzz3.argus.lens.feature.me.MeUiState
 import com.kzzz3.argus.lens.feature.me.createMeUiState
 import com.kzzz3.argus.lens.feature.register.RegisterFormState
@@ -49,6 +48,8 @@ internal fun rememberAppRouteUiState(
     conversationThreadsState: ConversationThreadsState,
     realtimeConnectionState: ConversationRealtimeConnectionState,
     inboxUiState: InboxUiState,
+    chatState: ChatState?,
+    chatUiState: ChatUiState?,
     authFormState: AuthFormState,
     registerFormState: RegisterFormState,
     callSessionState: CallSessionState,
@@ -85,33 +86,6 @@ internal fun rememberAppRouteUiState(
             threads = conversationThreads,
             currentAccountId = appSessionState.accountId,
         )
-    }
-    val selectedConversation = remember(selectedConversationId, conversationThreads) {
-        conversationThreads.firstOrNull { it.id == selectedConversationId }
-    }
-    val chatState = remember(selectedConversation, sessionDisplayName) {
-        selectedConversation?.let { conversation ->
-            ChatState(
-                conversationId = conversation.id,
-                conversationTitle = conversation.title,
-                conversationSubtitle = conversation.subtitle,
-                currentUserDisplayName = sessionDisplayName,
-                messages = conversation.messages,
-                draftMessage = conversation.draftMessage,
-                draftAttachments = conversation.draftAttachments,
-                isVoiceRecording = conversation.isVoiceRecording,
-                voiceRecordingSeconds = conversation.voiceRecordingSeconds,
-            )
-        }
-    }
-    val chatUiState = remember(chatState, chatStatusMessage, chatStatusError) {
-        chatState?.let {
-            createChatUiState(
-                state = it,
-                statusMessage = chatStatusMessage,
-                isStatusError = chatStatusError,
-            )
-        }
     }
     val callSessionUiState = remember(callSessionState) {
         createCallSessionUiState(callSessionState)

@@ -12,6 +12,7 @@ import com.kzzz3.argus.lens.feature.auth.reduceAuthFormState
 import com.kzzz3.argus.lens.feature.call.CallSessionState
 import com.kzzz3.argus.lens.feature.contacts.ContactsState
 import com.kzzz3.argus.lens.feature.contacts.FriendRequestStatusState
+import com.kzzz3.argus.lens.feature.inbox.ChatStateHolder
 import com.kzzz3.argus.lens.feature.inbox.ConversationThreadsState
 import com.kzzz3.argus.lens.feature.inbox.InboxStateHolder
 import com.kzzz3.argus.lens.feature.register.reduceRegisterFormState
@@ -35,6 +36,7 @@ class ArgusLensAppViewModel @Inject constructor(
 ) : ViewModel() {
     val runtimeScope: CoroutineScope = viewModelScope
     val authStateHolder: AuthStateHolder = createAuthStateHolder(dependencies, runtimeScope)
+    val chatStateHolder: ChatStateHolder = createChatStateHolder()
     val inboxStateHolder: InboxStateHolder = createInboxStateHolder()
     val walletStateHolder: WalletStateHolder = createWalletStateHolder(dependencies, runtimeScope)
 
@@ -178,6 +180,10 @@ class ArgusLensAppViewModel @Inject constructor(
             state.copy(realtimeReconnectGeneration = state.realtimeReconnectGeneration + 1)
         }
     }
+}
+
+private fun createChatStateHolder(): ChatStateHolder {
+    return ChatStateHolder()
 }
 
 private fun createInboxStateHolder(): InboxStateHolder {

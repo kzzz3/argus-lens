@@ -145,6 +145,23 @@ class ArgusLensAppViewModelTest {
     }
 
     @Test
+    fun appViewModelOwnsChatStateHolderLifetime() {
+        val viewModelSource = File("src/main/java/com/kzzz3/argus/lens/app/ArgusLensAppViewModel.kt").readText()
+        val appSource = File("src/main/java/com/kzzz3/argus/lens/app/ArgusLensApp.kt").readText()
+        val routeHostSource = File("src/main/java/com/kzzz3/argus/lens/app/AppRouteHost.kt").readText()
+        val routeHostEffectsSource = File("src/main/java/com/kzzz3/argus/lens/app/AppRouteHostEffects.kt").readText()
+        val routeUiStateSource = File("src/main/java/com/kzzz3/argus/lens/app/AppRouteUiState.kt").readText()
+
+        assertTrue(viewModelSource.contains("val chatStateHolder: ChatStateHolder"))
+        assertTrue(viewModelSource.contains("createChatStateHolder()"))
+        assertTrue(appSource.contains("chatStateHolder = viewModel.chatStateHolder"))
+        assertTrue(routeHostSource.contains("chatStateHolder.state.collectAsStateWithLifecycle()"))
+        assertTrue(routeHostEffectsSource.contains("chatStateHolder.replaceInputs("))
+        assertFalse(routeUiStateSource.contains("createChatUiState("))
+        assertFalse(routeUiStateSource.contains("ChatState("))
+    }
+
+    @Test
     fun appUiStateDoesNotOwnAuthOrRegisterFormState() {
         val stateSource = File("src/main/java/com/kzzz3/argus/lens/app/ArgusLensAppState.kt").readText()
         val viewModelSource = File("src/main/java/com/kzzz3/argus/lens/app/ArgusLensAppViewModel.kt").readText()
