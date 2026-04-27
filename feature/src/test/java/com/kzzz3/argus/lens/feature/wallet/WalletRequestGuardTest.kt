@@ -1,20 +1,16 @@
-package com.kzzz3.argus.lens.app
+package com.kzzz3.argus.lens.feature.wallet
 
 import com.kzzz3.argus.lens.model.session.AppSessionState
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-class ArgusLensWalletRequestGuardTest {
-
+class WalletRequestGuardTest {
     @Test
     fun acceptsMatchingAuthenticatedRequest() {
         val result = shouldApplyWalletRequestResult(
-            currentSession = AppSessionState(
-                isAuthenticated = true,
-                accountId = "tester",
-                displayName = "Argus Tester",
-            ),
+            currentSession = authenticatedSession("tester"),
             requestAccountId = "tester",
             requestGeneration = 3,
             activeGeneration = 3,
@@ -26,11 +22,7 @@ class ArgusLensWalletRequestGuardTest {
     @Test
     fun rejectsWhenGenerationHasMoved() {
         val result = shouldApplyWalletRequestResult(
-            currentSession = AppSessionState(
-                isAuthenticated = true,
-                accountId = "tester",
-                displayName = "Argus Tester",
-            ),
+            currentSession = authenticatedSession("tester"),
             requestAccountId = "tester",
             requestGeneration = 3,
             activeGeneration = 4,
@@ -48,11 +40,7 @@ class ArgusLensWalletRequestGuardTest {
             activeGeneration = 2,
         )
         val switchedAccount = shouldApplyWalletRequestResult(
-            currentSession = AppSessionState(
-                isAuthenticated = true,
-                accountId = "lisi",
-                displayName = "Li Si",
-            ),
+            currentSession = authenticatedSession("lisi"),
             requestAccountId = "tester",
             requestGeneration = 2,
             activeGeneration = 2,
@@ -60,5 +48,33 @@ class ArgusLensWalletRequestGuardTest {
 
         assertFalse(signedOut)
         assertFalse(switchedAccount)
+    }
+
+    @Test
+    fun applyWalletRequestResult_updatesStateOnlyWhenRequestIsActive() {
+        val currentState = WalletState(statusMessage = "Current")
+        val activeState = applyWalletRequestResult(
+            currentState = currentState,
+            isActive = true,
+        ) {
+            it.copy(statusMessage = "Updated")
+        }
+        val staleState = applyWalletRequestResult(
+            currentState = currentState,
+            isActive = false,
+        ) {
+            it.copy(statusMessage = "Updated")
+        }
+
+        assertEquals("Updated", activeState.statusMessage)
+        assertEquals("Current", staleState.statusMessage)
+    }
+
+    private fun authenticatedSession(accountId: String): AppSessionState {
+        return AppSessionState(
+            isAuthenticated = true,
+            accountId = accountId,
+            displayName = accountId,
+        )
     }
 }

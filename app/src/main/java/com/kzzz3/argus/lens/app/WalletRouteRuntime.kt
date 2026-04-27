@@ -2,6 +2,7 @@ package com.kzzz3.argus.lens.app
 
 import com.kzzz3.argus.lens.app.navigation.AppRoute
 import com.kzzz3.argus.lens.feature.wallet.WalletEffect
+import com.kzzz3.argus.lens.feature.wallet.WalletRequestRunner
 import com.kzzz3.argus.lens.feature.wallet.WalletState
 import com.kzzz3.argus.lens.model.session.AppSessionState
 
@@ -18,7 +19,7 @@ internal data class WalletRouteCallbacks(
 )
 
 internal class WalletRouteRuntime(
-    private val requestRuntime: WalletRequestRuntime,
+    private val requestRunner: WalletRequestRunner,
     private val loadWalletSummary: suspend (WalletState) -> WalletState,
     private val resolvePayload: suspend (WalletState, String) -> WalletState,
     private val confirmPayment: suspend (WalletState, String, String?, String) -> WalletState,
@@ -58,7 +59,7 @@ internal class WalletRouteRuntime(
         block: suspend (WalletState) -> WalletState,
     ) {
         var shouldUseRequestState = true
-        requestRuntime.launchStateRequest(
+        requestRunner.launchStateRequest(
             requestSession = request.session,
             getCurrentSession = callbacks.getCurrentSession,
             getCurrentState = {

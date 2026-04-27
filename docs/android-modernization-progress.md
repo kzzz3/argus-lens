@@ -30,6 +30,7 @@ Status: complete for the first God Composable split milestone and the host API b
 - `ArgusLensAppState.kt` owns the root UI state model and pure session transition helpers so `ArgusLensAppViewModel.kt` can focus on state mutation and runtime scope ownership.
 - `AppRouteActionBindings.kt` owns route request/callback/action adapters so `AppRouteHost.kt` no longer declares feature action factories inline.
 - `feature/wallet/WalletActionHandler.kt` owns wallet action reduction/effect dispatch, replacing the app-owned wallet action runtime bridge.
+- `feature/wallet/WalletRequestRunner.kt` and `WalletRequestGuard.kt` own wallet async request freshness and invalidation rules, replacing the app-owned wallet request runtime.
 - This boundary is the baseline for the future typed-navigation and feature ViewModel extraction roadmap in `docs/android-architecture-target.md`.
 
 Verification gate:
@@ -37,7 +38,7 @@ Verification gate:
 - `:app:compileDebugKotlin` must pass after route host decomposition changes.
 - `:app:testDebugUnitTest --tests "com.kzzz3.argus.lens.app.AppRouteNavigationRuntimeTest"` must pass after shell routing policy changes.
 - `:app:testDebugUnitTest --tests "com.kzzz3.argus.lens.app.ArgusLensAppViewModelTest"` must pass after app-shell state boundary changes.
-- Route action binding changes must also keep `EntryRouteRuntimeTest`, `ContactsRouteRuntimeTest`, `WalletRouteRuntimeTest`, `WalletActionHandlerTest`, and `RealtimeConnectionRuntimeTest` green.
+- Route action binding changes must also keep `EntryRouteRuntimeTest`, `ContactsRouteRuntimeTest`, `WalletRouteRuntimeTest`, `WalletActionHandlerTest`, `WalletRequestRunnerTest`, `WalletRequestGuardTest`, and `RealtimeConnectionRuntimeTest` green.
 
 Remaining lifecycle ownership work belongs to P1: long-running realtime/session refresh/call timer orchestration should continue moving out of the Composable layer.
 

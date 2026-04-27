@@ -6,6 +6,7 @@ import com.kzzz3.argus.lens.feature.auth.reduceAuthFormState
 import com.kzzz3.argus.lens.feature.call.CallSessionRuntime
 import com.kzzz3.argus.lens.feature.call.reduceCallSessionState
 import com.kzzz3.argus.lens.feature.register.reduceRegisterFormState
+import com.kzzz3.argus.lens.feature.wallet.WalletRequestRunner
 import kotlinx.coroutines.CoroutineScope
 
 internal data class AppRouteRuntimes(
@@ -13,7 +14,7 @@ internal data class AppRouteRuntimes(
     val callSessionRouteRuntime: CallSessionRouteRuntime,
     val realtimeReconnectRuntime: RealtimeReconnectRuntime,
     val sessionRefreshRuntime: SessionRefreshRuntime,
-    val walletRequestRuntime: WalletRequestRuntime,
+    val walletRequestRunner: WalletRequestRunner,
     val contactsRouteRuntime: ContactsRouteRuntime,
     val chatRouteRuntime: ChatRouteRuntime,
     val inboxRouteRuntime: InboxRouteRuntime,
@@ -58,7 +59,7 @@ internal fun rememberAppRouteRuntimes(
             credentialsStore = sessionCredentialsStore,
         )
     }
-    val walletRequestRuntime = remember(coroutineScope) { WalletRequestRuntime(coroutineScope) }
+    val walletRequestRunner = remember(coroutineScope) { WalletRequestRunner(coroutineScope) }
     val contactsRouteRuntime = remember(coroutineScope, contactsCoordinator, newFriendsCoordinator) {
         ContactsRouteRuntime(
             scope = coroutineScope,
@@ -107,9 +108,9 @@ internal fun rememberAppRouteRuntimes(
             register = authCoordinator::register,
         )
     }
-    val walletRouteRuntime = remember(walletRequestRuntime, walletRequestCoordinator) {
+    val walletRouteRuntime = remember(walletRequestRunner, walletRequestCoordinator) {
         WalletRouteRuntime(
-            requestRuntime = walletRequestRuntime,
+            requestRunner = walletRequestRunner,
             loadWalletSummary = walletRequestCoordinator::loadWalletSummary,
             resolvePayload = walletRequestCoordinator::resolvePayload,
             confirmPayment = walletRequestCoordinator::confirmPayment,
@@ -147,7 +148,7 @@ internal fun rememberAppRouteRuntimes(
         callSessionRouteRuntime = callSessionRouteRuntime,
         realtimeReconnectRuntime = realtimeReconnectRuntime,
         sessionRefreshRuntime = sessionRefreshRuntime,
-        walletRequestRuntime = walletRequestRuntime,
+        walletRequestRunner = walletRequestRunner,
         contactsRouteRuntime = contactsRouteRuntime,
         chatRouteRuntime = chatRouteRuntime,
         inboxRouteRuntime = inboxRouteRuntime,

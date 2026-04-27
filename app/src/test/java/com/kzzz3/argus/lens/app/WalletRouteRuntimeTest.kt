@@ -2,6 +2,7 @@ package com.kzzz3.argus.lens.app
 
 import com.kzzz3.argus.lens.app.navigation.AppRoute
 import com.kzzz3.argus.lens.feature.wallet.WalletEffect
+import com.kzzz3.argus.lens.feature.wallet.WalletRequestRunner
 import com.kzzz3.argus.lens.feature.wallet.WalletState
 import com.kzzz3.argus.lens.model.session.AppSessionState
 import kotlinx.coroutines.CoroutineScope
@@ -15,7 +16,7 @@ class WalletRouteRuntimeTest {
     @Test
     fun handleEffect_navigateBackToInboxRoutesToInbox() {
         val runtime = WalletRouteRuntime(
-            requestRuntime = WalletRequestRuntime(CoroutineScope(Dispatchers.Unconfined)),
+            requestRunner = WalletRequestRunner(CoroutineScope(Dispatchers.Unconfined)),
             loadWalletSummary = { state -> state },
             resolvePayload = { state, _ -> state },
             confirmPayment = { state, _, _, _ -> state },
@@ -42,7 +43,7 @@ class WalletRouteRuntimeTest {
     fun handleEffect_loadWalletSummaryLaunchesRequest() = runBlocking {
         val scope = CoroutineScope(Dispatchers.Unconfined)
         val runtime = WalletRouteRuntime(
-            requestRuntime = WalletRequestRuntime(scope),
+            requestRunner = WalletRequestRunner(scope),
             loadWalletSummary = { state -> state.copy(statusMessage = "summary loaded") },
             resolvePayload = { state, _ -> state },
             confirmPayment = { state, _, _, _ -> state },
@@ -74,7 +75,7 @@ class WalletRouteRuntimeTest {
         val scope = CoroutineScope(Dispatchers.Unconfined)
         var requestInputStatus: String? = null
         val runtime = WalletRouteRuntime(
-            requestRuntime = WalletRequestRuntime(scope),
+            requestRunner = WalletRequestRunner(scope),
             loadWalletSummary = { state ->
                 requestInputStatus = state.statusMessage
                 state.copy(statusMessage = "summary loaded")

@@ -181,31 +181,6 @@ class ArgusLensAppFunctionTest {
     }
 
     @Test
-    fun applyWalletRequestResult_updatesStateWhenRequestIsActive() {
-        val updatedState = applyWalletRequestResult(
-            currentState = WalletState(),
-            isActive = true,
-        ) {
-            it.copy(statusMessage = "Updated")
-        }
-
-        assertEquals("Updated", updatedState.statusMessage)
-    }
-
-    @Test
-    fun applyWalletRequestResult_keepsStateWhenRequestIsStale() {
-        val currentState = WalletState(statusMessage = "Current")
-        val updatedState = applyWalletRequestResult(
-            currentState = currentState,
-            isActive = false,
-        ) {
-            it.copy(statusMessage = "Updated")
-        }
-
-        assertEquals("Current", updatedState.statusMessage)
-    }
-
-    @Test
     fun resolveWalletTransferMetadata_returnsSentForPayer() {
         val metadata = resolveWalletTransferMetadata(
             currentAccountId = "tester",

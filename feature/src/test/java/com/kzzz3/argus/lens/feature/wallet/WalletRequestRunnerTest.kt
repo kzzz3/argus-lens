@@ -1,25 +1,25 @@
-package com.kzzz3.argus.lens.app
+package com.kzzz3.argus.lens.feature.wallet
 
 import com.kzzz3.argus.lens.model.session.AppSessionState
-import com.kzzz3.argus.lens.feature.wallet.WalletState
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
-class WalletRequestRuntimeTest {
+class WalletRequestRunnerTest {
     @Test
     fun launchStateRequest_appliesResultForStillActiveSession() = runBlocking {
         val scope = CoroutineScope(Dispatchers.Unconfined)
-        val runtime = WalletRequestRuntime(scope)
+        val runner = WalletRequestRunner(scope)
         val session = authenticatedSession("tester")
         var currentSession = session
         var walletState = WalletState(currentAccountId = "tester")
 
-        runtime.launchStateRequest(
+        runner.launchStateRequest(
             requestSession = session,
             getCurrentSession = { currentSession },
             getCurrentState = { walletState },
@@ -35,13 +35,13 @@ class WalletRequestRuntimeTest {
     @Test
     fun invalidatePreventsStaleResultFromReplacingCurrentState() = runBlocking {
         val scope = CoroutineScope(Dispatchers.Default)
-        val runtime = WalletRequestRuntime(scope)
+        val runner = WalletRequestRunner(scope)
         val session = authenticatedSession("tester")
         var currentSession = session
         var walletState = WalletState(currentAccountId = "tester", statusMessage = "current")
         val releaseRequest = CompletableDeferred<Unit>()
 
-        runtime.launchStateRequest(
+        runner.launchStateRequest(
             requestSession = session,
             getCurrentSession = { currentSession },
             getCurrentState = { walletState },
@@ -50,10 +50,10 @@ class WalletRequestRuntimeTest {
             releaseRequest.await()
             state.copy(statusMessage = "stale")
         }
-        runtime.invalidate()
+        runner.invalidate()
         releaseRequest.complete(Unit)
 
-        kotlinx.coroutines.delay(100)
+        delay(100)
 
         assertEquals("current", walletState.statusMessage)
         currentSession = AppSessionState()

@@ -29,6 +29,7 @@ The app shell has already moved past a single monolithic route host milestone:
 - `AppRouteNavGraph` centralizes enum-backed Navigation Compose registration.
 - `AppRouteActionBindings` centralizes route request/callback/action adapters outside the Compose host.
 - `WalletActionHandler` keeps wallet action reduction/effect dispatch in the wallet feature package.
+- `WalletRequestRunner` keeps wallet async request freshness and invalidation in the wallet feature package.
 - `ArgusLensAppState` owns root UI state and pure session transition helpers.
 
 That baseline is intentionally preserved while the project migrates toward the target shape below.

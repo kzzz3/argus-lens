@@ -1,12 +1,11 @@
-package com.kzzz3.argus.lens.app
+package com.kzzz3.argus.lens.feature.wallet
 
-import com.kzzz3.argus.lens.feature.wallet.WalletState
 import com.kzzz3.argus.lens.model.session.AppSessionState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
-class WalletRequestRuntime(
+class WalletRequestRunner(
     private val scope: CoroutineScope,
 ) {
     private var generation: Int = 0

@@ -59,7 +59,7 @@ internal fun AppRouteHost(
     val realtimeClient = dependencies.realtimeClient
     val callSessionRuntime = routeRuntimes.callSessionRuntime
     val sessionRefreshRuntime = routeRuntimes.sessionRefreshRuntime
-    val walletRequestRuntime = routeRuntimes.walletRequestRuntime
+    val walletRequestRunner = routeRuntimes.walletRequestRunner
     val realtimeConnectionRuntime = routeRuntimes.realtimeConnectionRuntime
     val appPersistenceRuntime = routeRuntimes.appPersistenceRuntime
     val appInitialHydrationRuntime = routeRuntimes.appInitialHydrationRuntime
@@ -114,7 +114,7 @@ internal fun AppRouteHost(
             )
         },
         cancelSessionRefreshLoop = sessionRefreshRuntime::cancel,
-        invalidateWalletRequests = walletRequestRuntime::invalidate,
+        invalidateWalletRequests = walletRequestRunner::invalidate,
         cancelCallSession = callSessionRuntime::cancel,
     )
     val sessionBoundaryCallbacks = AppSessionBoundaryCallbacks(
