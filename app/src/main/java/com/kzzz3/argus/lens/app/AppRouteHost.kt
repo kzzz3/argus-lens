@@ -35,49 +35,51 @@ import kotlinx.coroutines.CoroutineScope
 internal fun AppRouteHost(
     dependencies: AppDependencies,
     runtimeScope: CoroutineScope,
-    appSessionState: AppSessionState,
-    conversationThreadsState: ConversationThreadsState,
-    currentRoute: AppRoute,
-    authFormState: AuthFormState,
-    registerFormState: RegisterFormState,
-    callSessionState: CallSessionState,
-    contactsState: ContactsState,
-    walletStateModel: WalletState,
-    friends: List<FriendEntry>,
-    selectedConversationId: String,
-    chatStatusMessage: String?,
-    chatStatusError: Boolean,
-    friendRequestsSnapshot: FriendRequestsSnapshot,
-    friendRequestsStatusMessage: String?,
-    friendRequestsStatusError: Boolean,
-    hydratedConversationAccountId: String?,
-    realtimeConnectionState: ConversationRealtimeConnectionState,
-    realtimeLastEventId: String,
-    realtimeReconnectGeneration: Int,
-    onRouteChanged: (AppRoute) -> Unit,
-    onAuthFormStateChanged: (AuthFormState) -> Unit,
-    onRegisterFormStateChanged: (RegisterFormState) -> Unit,
-    onCallSessionStateChanged: (CallSessionState) -> Unit,
-    onContactsStateChanged: (ContactsState) -> Unit,
-    onWalletStateChanged: (WalletState) -> Unit,
-    onFriendsChanged: (List<FriendEntry>) -> Unit,
-    onConversationOpened: (String) -> Unit,
-    onChatStatusChanged: (String?, Boolean) -> Unit,
-    onChatStatusCleared: () -> Unit,
-    onFriendRequestStatusChanged: (FriendRequestStatusState) -> Unit,
-    onFriendRequestsSnapshotChanged: (FriendRequestsSnapshot) -> Unit,
-    onFriendRequestStatusReset: () -> Unit,
-    onHydratedSessionApplied: (AppSessionState, String?) -> Unit,
-    onAuthenticatedSessionApplied: (AppSessionState, SessionCredentials, String, Int) -> Unit,
-    onSessionRefreshed: (AppSessionState) -> Unit,
-    onSessionCleared: () -> Unit,
-    onConversationThreadsChanged: (ConversationThreadsState) -> Unit,
-    onHydratedConversationAccountChanged: (String?) -> Unit,
-    onRealtimeConnectionStateChanged: (ConversationRealtimeConnectionState) -> Unit,
-    onRealtimeEventIdRecorded: (String) -> Unit,
-    onRealtimeLastEventIdReset: () -> Unit,
-    onRealtimeReconnectIncremented: () -> Unit,
+    state: AppRouteHostState,
+    callbacks: AppRouteHostCallbacks,
 ) {
+    val appSessionState = state.appSessionState
+    val conversationThreadsState = state.conversationThreadsState
+    val currentRoute = state.currentRoute
+    val authFormState = state.authFormState
+    val registerFormState = state.registerFormState
+    val callSessionState = state.callSessionState
+    val contactsState = state.contactsState
+    val walletStateModel = state.walletStateModel
+    val friends = state.friends
+    val selectedConversationId = state.selectedConversationId
+    val chatStatusMessage = state.chatStatusMessage
+    val chatStatusError = state.chatStatusError
+    val friendRequestsSnapshot = state.friendRequestsSnapshot
+    val friendRequestsStatusMessage = state.friendRequestsStatusMessage
+    val friendRequestsStatusError = state.friendRequestsStatusError
+    val hydratedConversationAccountId = state.hydratedConversationAccountId
+    val realtimeConnectionState = state.realtimeConnectionState
+    val realtimeLastEventId = state.realtimeLastEventId
+    val realtimeReconnectGeneration = state.realtimeReconnectGeneration
+    val onRouteChanged = callbacks.onRouteChanged
+    val onAuthFormStateChanged = callbacks.onAuthFormStateChanged
+    val onRegisterFormStateChanged = callbacks.onRegisterFormStateChanged
+    val onCallSessionStateChanged = callbacks.onCallSessionStateChanged
+    val onContactsStateChanged = callbacks.onContactsStateChanged
+    val onWalletStateChanged = callbacks.onWalletStateChanged
+    val onFriendsChanged = callbacks.onFriendsChanged
+    val onConversationOpened = callbacks.onConversationOpened
+    val onChatStatusChanged = callbacks.onChatStatusChanged
+    val onChatStatusCleared = callbacks.onChatStatusCleared
+    val onFriendRequestStatusChanged = callbacks.onFriendRequestStatusChanged
+    val onFriendRequestsSnapshotChanged = callbacks.onFriendRequestsSnapshotChanged
+    val onFriendRequestStatusReset = callbacks.onFriendRequestStatusReset
+    val onHydratedSessionApplied = callbacks.onHydratedSessionApplied
+    val onAuthenticatedSessionApplied = callbacks.onAuthenticatedSessionApplied
+    val onSessionRefreshed = callbacks.onSessionRefreshed
+    val onSessionCleared = callbacks.onSessionCleared
+    val onConversationThreadsChanged = callbacks.onConversationThreadsChanged
+    val onHydratedConversationAccountChanged = callbacks.onHydratedConversationAccountChanged
+    val onRealtimeConnectionStateChanged = callbacks.onRealtimeConnectionStateChanged
+    val onRealtimeEventIdRecorded = callbacks.onRealtimeEventIdRecorded
+    val onRealtimeLastEventIdReset = callbacks.onRealtimeLastEventIdReset
+    val onRealtimeReconnectIncremented = callbacks.onRealtimeReconnectIncremented
     val navController = rememberNavController()
     val routeRuntimes = rememberAppRouteRuntimes(dependencies, runtimeScope)
     val appShellCoordinator = dependencies.appShellCoordinator

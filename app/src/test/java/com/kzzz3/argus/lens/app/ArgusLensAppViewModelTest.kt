@@ -25,11 +25,44 @@ class ArgusLensAppViewModelTest {
     }
 
     @Test
+    fun appRouteHost_usesExplicitStateAndCallbackBoundaryObjects() {
+        val boundaryFile = File("src/main/java/com/kzzz3/argus/lens/app/AppRouteHostState.kt")
+        val routeHostSource = File("src/main/java/com/kzzz3/argus/lens/app/AppRouteHost.kt").readText()
+        val appSource = File("src/main/java/com/kzzz3/argus/lens/app/ArgusLensApp.kt").readText()
+
+        assertTrue("AppRouteHostState.kt should define the host boundary objects", boundaryFile.exists())
+        val boundarySource = boundaryFile.readText()
+        assertTrue(boundarySource.contains("data class AppRouteHostState"))
+        assertTrue(boundarySource.contains("data class AppRouteHostCallbacks"))
+        assertTrue(routeHostSource.contains("state: AppRouteHostState"))
+        assertTrue(routeHostSource.contains("callbacks: AppRouteHostCallbacks"))
+        assertTrue(appSource.contains("AppRouteHostState("))
+        assertTrue(appSource.contains("AppRouteHostCallbacks("))
+        assertFalse(routeHostSource.contains("appSessionState: AppSessionState"))
+        assertFalse(routeHostSource.contains("onAuthFormStateChanged: (AuthFormState) -> Unit"))
+    }
+
+    @Test
     fun appViewModel_exposesRuntimeScopeBackedByViewModelScope() {
         val viewModelSource = File("src/main/java/com/kzzz3/argus/lens/app/ArgusLensAppViewModel.kt").readText()
 
         assertTrue(viewModelSource.contains("viewModelScope"))
         assertTrue(viewModelSource.contains("val runtimeScope"))
+    }
+
+    @Test
+    fun appViewModel_keepsStateModelAndTransitionsInDedicatedStateFile() {
+        val stateFile = File("src/main/java/com/kzzz3/argus/lens/app/ArgusLensAppState.kt")
+        val viewModelSource = File("src/main/java/com/kzzz3/argus/lens/app/ArgusLensAppViewModel.kt").readText()
+
+        assertTrue("ArgusLensAppState.kt should own the app state model", stateFile.exists())
+        val stateSource = stateFile.readText()
+        assertTrue(stateSource.contains("data class ArgusLensAppUiState"))
+        assertTrue(stateSource.contains("internal fun resolveInitialAppRoute"))
+        assertTrue(stateSource.contains("internal fun applySessionClearedTransition"))
+        assertFalse(viewModelSource.contains("data class ArgusLensAppUiState"))
+        assertFalse(viewModelSource.contains("internal fun resolveInitialAppRoute"))
+        assertFalse(viewModelSource.contains("internal fun applySessionClearedTransition"))
     }
 
     @Test
