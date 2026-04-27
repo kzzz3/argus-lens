@@ -42,7 +42,8 @@ The app shell has already moved past a single monolithic route host milestone:
 - `ChatStateHolder` owns selected-conversation chat state and UI derivation in the feature package; `ArgusLensAppViewModel` owns its lifetime while app code still owns chat action side effects, call routing, selected conversation, shared thread mutation, realtime, and persistence.
 - `AppRouteContract` owns stable app route descriptors and route strings, so app navigation no longer depends on enum names. AndroidX `composable<T>` typed route registration, Kotlin serialization setup, and route args remain future slices after process-death restoration and selected-conversation ownership are explicit.
 - `AppRouteHostEffectDependencies` narrows host lifecycle/effects inputs so the effects layer no longer receives the full Hilt-backed `AppDependencies` aggregate.
-- `LocalSessionStore` remains the concrete `SessionRepository` facade, with safe identity persistence and encrypted credential persistence split behind package-internal stores while storage semantics remain unchanged.
+- `LocalSessionStore` remains the concrete `SessionRepository` facade, with safe identity persistence and encrypted credential persistence split behind module-internal stores while storage semantics remain unchanged.
+- `RemoteMediaRepository` remains behind the public `MediaRepository` factory contract and delegates Android download file persistence to module-internal `MediaFileDataSource`.
 - `:core:model` and `:core:ui` own the former shared `model` and `ui` modules without package renames, keeping the first physical core migration low risk.
 - `ArgusLensAppState` owns root UI state and pure session transition helpers.
 
@@ -189,7 +190,7 @@ Repository
 
 DataSource
   - talks to exactly one storage/network/session mechanism
-  - examples: Room DAO adapter, Retrofit service adapter, DataStore adapter, token crypto adapter
+  - examples: Room DAO adapter, Retrofit service adapter, DataStore adapter, token crypto adapter, Android file adapter
 ```
 
 State and events:
@@ -296,7 +297,7 @@ MessageRepository
 
 MediaRepository
   -> MediaRemoteDataSource / upload-download service
-  -> MediaFileDataSource / Android file access boundary
+  -> MediaFileDataSource / Android file access boundary (first verified download persistence seam)
   -> MediaQueueDataSource / Room-backed retry state
 ```
 

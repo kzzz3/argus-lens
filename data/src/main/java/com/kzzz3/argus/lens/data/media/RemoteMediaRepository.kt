@@ -1,21 +1,17 @@
 package com.kzzz3.argus.lens.data.media
 
-import android.content.Context
-import android.os.Environment
 import com.google.gson.Gson
 import com.kzzz3.argus.lens.data.auth.ApiErrorResponse
 import com.kzzz3.argus.lens.data.session.SessionRepository
 import com.kzzz3.argus.lens.model.conversation.ChatDraftAttachmentKind
-import java.io.File
-import java.io.FileOutputStream
 import java.io.IOException
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.RequestBody.Companion.toRequestBody
 
-class RemoteMediaRepository(
-    private val context: Context,
+internal class RemoteMediaRepository(
     private val sessionRepository: SessionRepository,
     private val mediaApiService: MediaApiService,
+    private val mediaFileDataSource: MediaFileDataSource,
     private val gson: Gson = Gson(),
 ) : MediaRepository {
     override suspend fun createUploadSession(
@@ -189,21 +185,15 @@ class RemoteMediaRepository(
                     code = "EMPTY_DOWNLOAD_RESPONSE",
                     message = "Media service returned an empty download response.",
                 )
-                val downloadsDir = (context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS) ?: context.filesDir).also {
-                    if (!it.exists()) {
-                        it.mkdirs()
-                    }
-                }
-                val safeFileName = sanitizeMediaFileName(fileName, attachmentId)
-                val targetFile = File(downloadsDir, safeFileName)
-
-                responseBody.byteStream().use { input ->
-                    FileOutputStream(targetFile).use { output ->
-                        input.copyTo(output)
-                    }
+                val savedPath = responseBody.byteStream().use { input ->
+                    mediaFileDataSource.saveDownloadedAttachment(
+                        attachmentId = attachmentId,
+                        fileName = fileName,
+                        content = input,
+                    )
                 }
 
-                MediaRepositoryResult.DownloadSuccess(savedPath = targetFile.absolutePath)
+                MediaRepositoryResult.DownloadSuccess(savedPath = savedPath)
             }
         } catch (_: IOException) {
             MediaRepositoryResult.Failure(
@@ -275,11 +265,18 @@ fun sanitizeMediaFileName(
     attachmentId: String,
 ): String {
     val sanitized = fileName
-        .trim()
+        .toSafeMediaFileSegment()
+    val safeAttachmentId = attachmentId.toSafeMediaFileSegment()
+    return sanitized.ifBlank {
+        safeAttachmentId.ifBlank { "attachment" }.let { "attachment-$it" }
+    }
+}
+
+private fun String.toSafeMediaFileSegment(): String {
+    return trim()
         .replace('\\', '_')
         .replace('/', '_')
         .replace(Regex("[^a-zA-Z0-9._-]"), "_")
         .replace(Regex("^[._]+"), "")
         .replace(Regex("_+"), "_")
-    return sanitized.ifBlank { "attachment-$attachmentId" }
 }

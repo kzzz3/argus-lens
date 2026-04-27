@@ -20,9 +20,9 @@ private fun createRemoteMediaRepository(
     val retrofit = createAppRetrofit(gson = gson)
 
     return RemoteMediaRepository(
-        context = context,
         sessionRepository = sessionRepository,
         mediaApiService = retrofit.create(MediaApiService::class.java),
+        mediaFileDataSource = AndroidMediaFileDataSource(context),
         gson = gson,
     )
 }

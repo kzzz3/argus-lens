@@ -13,4 +13,9 @@ class MediaFileNameTest {
     fun sanitizeMediaFileName_usesAttachmentFallbackForBlankNames() {
         assertEquals("attachment-attachment-1", sanitizeMediaFileName("   ", "attachment-1"))
     }
+
+    @Test
+    fun sanitizeMediaFileName_sanitizesAttachmentFallback() {
+        assertEquals("attachment-evil_invoice.png", sanitizeMediaFileName("   ", "../evil/invoice.png"))
+    }
 }

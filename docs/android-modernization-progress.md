@@ -106,6 +106,20 @@ Verification gate:
 
 - `:feature:testDebugUnitTest --tests "com.kzzz3.argus.lens.feature.inbox.SendOutgoingChatMessageUseCaseTest"` must pass after outgoing chat send/media workflow changes.
 
+## P2 Repository And DataSource Boundaries
+
+Status: in progress; complete for the first media download file-persistence seam.
+
+- `MediaRepository` remains the public data-layer contract for media upload/download workflows.
+- `RemoteMediaRepository` is now module-internal and keeps session token checks, Cortex API calls, response parsing, and repository result mapping.
+- `MediaFileDataSource` owns Android download-directory/file-copy persistence for downloaded attachments, with `AndroidMediaFileDataSource` supplied by `createMediaRepository`.
+- The first slice deliberately avoids a broad media repository rewrite, remote datasource extraction, durable media queue, or new Gradle module until more seams are proven.
+
+Verification gate:
+
+- `:data:testDebugUnitTest --tests "com.kzzz3.argus.lens.data.media.RemoteMediaRepositoryTest"` must pass after media repository/download datasource wiring changes.
+- `MediaFileNameTest` must stay green after filename sanitization changes in the file datasource path.
+
 ## P2 Module Split And Gradle Conventions
 
 Status: complete for the readiness plan; no physical modules or convention plugins were added.
@@ -198,7 +212,7 @@ Status: complete for the modernization regression baseline.
 - P2 WorkManager behavior is guarded by `BackgroundSyncWorkTest`, `BackgroundSyncTaskTest`, and `BackgroundSyncWorkerTest`.
 - P3 release/module/event boundaries are guarded by `ReleaseAndModuleBoundaryTest` and `EventModelBoundaryTest`.
 - P2 role taxonomy and runtime-like naming boundaries are guarded by `RoleNamingBoundaryTest`.
-- Media contract and download filename boundaries are guarded by `MediaApiModelsTest` and `MediaFileNameTest`.
+- Media contract, download filename, and repository/data-source delegation boundaries are guarded by `MediaApiModelsTest`, `MediaFileNameTest`, and `RemoteMediaRepositoryTest`.
 - The instrumentation baseline now uses `ArgusLensLaunchInstrumentedTest` instead of Android template tests.
 - `ModernizationCoverageTest` guards the presence of these regression gates and this progress document.
 
