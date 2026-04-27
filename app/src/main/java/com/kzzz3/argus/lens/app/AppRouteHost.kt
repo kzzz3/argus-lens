@@ -209,6 +209,12 @@ internal fun AppRouteHost(
     val appPersistenceRuntime = remember(appShellCoordinator) {
         AppPersistenceRuntime(appShellCoordinator)
     }
+    val appInitialHydrationRuntime = remember(appShellCoordinator) {
+        AppInitialHydrationRuntime(
+            loadInitialAuthenticatedConversations = appShellCoordinator::loadInitialAuthenticatedConversations,
+            hydrateAppState = appShellCoordinator::hydrateAppState,
+        )
+    }
     val startDestination = remember { currentRoute.name }
     val conversationThreads = conversationThreadsState.threads
 
@@ -361,16 +367,19 @@ internal fun AppRouteHost(
     }
 
     LaunchedEffect(initialSessionSnapshot.isAuthenticated, initialSessionSnapshot.accountId) {
-        if (initialSessionSnapshot.isAuthenticated && initialSessionSnapshot.accountId.isNotBlank() && dependencies.initialSessionCredentials.hasAccessToken) {
-            onConversationThreadsChanged(appShellCoordinator.loadInitialAuthenticatedConversations(initialSessionSnapshot))
-            onHydratedConversationAccountChanged(initialSessionSnapshot.accountId)
-            onRouteChanged(AppRoute.Inbox)
-            return@LaunchedEffect
-        }
-
-        val hydratedState = appShellCoordinator.hydrateAppState(previewThreadsState)
-        onHydratedSessionApplied(hydratedState.session, hydratedState.hydratedConversationAccountId)
-        onConversationThreadsChanged(hydratedState.conversationThreadsState)
+        appInitialHydrationRuntime.hydrate(
+            request = AppInitialHydrationRequest(
+                initialSession = initialSessionSnapshot,
+                initialCredentials = dependencies.initialSessionCredentials,
+                previewThreadsState = previewThreadsState,
+            ),
+            callbacks = AppInitialHydrationCallbacks(
+                onConversationThreadsChanged = onConversationThreadsChanged,
+                onHydratedConversationAccountChanged = onHydratedConversationAccountChanged,
+                onRouteChanged = onRouteChanged,
+                onHydratedSessionApplied = onHydratedSessionApplied,
+            ),
+        )
     }
 
     LaunchedEffect(appSessionState) {
