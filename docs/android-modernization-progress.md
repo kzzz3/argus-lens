@@ -9,7 +9,7 @@ Status: complete for the access/refresh token UI-state boundary.
 - `accessToken` and `refreshToken` are owned by `data/session/SessionCredentials` and persisted through `SessionRepository` implementations.
 - `AppSessionState` remains a Parcelable UI identity snapshot with only authentication status, account id, and display name.
 - `rememberSaveable` is guarded by regression tests so access/refresh tokens cannot be reintroduced into saveable Compose state.
-- Parcelable UI state in `feature` and `model` is guarded by regression tests so access/refresh tokens cannot be added there.
+- Parcelable UI state in `:feature` and `:core:model` is guarded by regression tests so access/refresh tokens cannot be added there.
 - Android backup is disabled and both full-backup and data-extraction rules exclude shared preferences, databases, and DataStore files.
 
 Verification gate:
@@ -120,11 +120,12 @@ Status: complete for repository-enforced release baseline.
 
 ## P3 Module Boundaries
 
-Status: complete for current product scale.
+Status: complete for the first physical core-module sync slice.
 
-- The Android project is split into `:app`, `:data`, `:feature`, `:model`, and `:ui`.
-- `:app` depends on lower modules; `:data`, `:model`, and `:ui` remain explicit modules instead of hidden source sets.
-- Further feature granularity such as `:feature:chat` or `:core:network` should be driven by future ownership pressure, not premature splitting.
+- The Android project is split into `:app`, `:data`, `:feature`, `:core:model`, and `:core:ui`.
+- `:core:model` and `:core:ui` preserve the old Kotlin package names while making shared model/UI ownership explicit in Gradle.
+- `:app` depends on lower modules; `:data` depends on `:core:model`; `:feature` depends on `:data`, `:core:model`, and `:core:ui`.
+- Further feature granularity such as `:feature:chat` or infrastructure granularity such as `:core:network` should be driven by future ownership pressure, not premature splitting.
 - The durable extraction roadmap for `:core:*` and `:feature:*` modules lives in `docs/android-architecture-target.md`.
 
 ## P3 Event Model

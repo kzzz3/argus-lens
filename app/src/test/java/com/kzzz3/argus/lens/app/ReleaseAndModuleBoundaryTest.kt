@@ -21,10 +21,10 @@ class ReleaseAndModuleBoundaryTest {
         val settings = File("../settings.gradle.kts").readText()
         val appBuildFile = File("build.gradle.kts").readText()
 
-        listOf(":app", ":data", ":feature", ":model", ":ui").forEach { moduleName ->
+        listOf(":app", ":data", ":feature", ":core:model", ":core:ui").forEach { moduleName ->
             assertTrue(settings.contains("include(\"$moduleName\")"))
         }
-        listOf(":data", ":feature", ":model", ":ui").forEach { dependencyName ->
+        listOf(":data", ":feature", ":core:model", ":core:ui").forEach { dependencyName ->
             assertTrue(appBuildFile.contains("implementation(project(\"$dependencyName\"))"))
         }
     }

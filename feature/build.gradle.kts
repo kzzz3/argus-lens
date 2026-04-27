@@ -28,8 +28,8 @@ android {
 
 dependencies {
     implementation(project(":data"))
-    implementation(project(":model"))
-    implementation(project(":ui"))
+    implementation(project(":core:model"))
+    implementation(project(":core:ui"))
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.graphics)

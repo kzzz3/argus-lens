@@ -38,7 +38,7 @@ class SessionBoundaryTest {
     @Test
     fun parcelableUiState_doesNotDeclareSessionTokenFields() {
         val tokenFieldPattern = Regex("\\b(val|var)\\s+(accessToken|refreshToken)\\b")
-        val violations = listOf("../feature/src/main", "../model/src/main")
+        val violations = listOf("../feature/src/main", "../core/model/src/main")
             .flatMap { root -> File(root).walkTopDown().filter { it.extension == "kt" }.toList() }
             .filter { sourceFile ->
                 val source = sourceFile.readText()
@@ -54,7 +54,7 @@ class SessionBoundaryTest {
 
     @Test
     fun rememberSaveableState_doesNotPersistSessionTokens() {
-        val violations = listOf("src/main", "../feature/src/main", "../model/src/main", "../ui/src/main")
+        val violations = listOf("src/main", "../feature/src/main", "../core/model/src/main", "../core/ui/src/main")
             .flatMap { root -> File(root).walkTopDown().filter { it.extension == "kt" }.toList() }
             .filter { sourceFile ->
                 val source = sourceFile.readText()

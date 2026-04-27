@@ -91,8 +91,8 @@ ksp {
 dependencies {
     implementation(project(":data"))
     implementation(project(":feature"))
-    implementation(project(":model"))
-    implementation(project(":ui"))
+    implementation(project(":core:model"))
+    implementation(project(":core:ui"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.runtime.compose)

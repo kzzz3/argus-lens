@@ -10,15 +10,16 @@ This file owns the long-term Android structure and migration roadmap. `PLAN.md` 
 
 ## Current Baseline
 
-The current project is a five-module modular baseline:
+The current project is a transitional modular baseline: `:core:model` and `:core:ui` have been physically extracted, while `:data` and `:feature` remain aggregate modules until their package-level boundaries are stable.
 
 ```text
 argus-lens/
-├── app/      app shell, Navigation Compose host, Hilt entry wiring, app tests
-├── feature/  package-level auth, inbox, chat, contacts, wallet, call, realtime flows
-├── data/     repositories, Room, DataStore, Retrofit/OkHttp, media/sync/session clients
-├── model/    shared Parcelable/domain models
-└── ui/       theme and reusable UI primitives
+├── app/          app shell, Navigation Compose host, Hilt entry wiring, app tests
+├── core/
+│   ├── model/   shared Parcelable/domain models
+│   └── ui/      theme and reusable UI primitives
+├── data/         repositories, Room, DataStore, Retrofit/OkHttp, media/sync/session clients
+└── feature/      package-level auth, inbox, chat, contacts, wallet, call, realtime flows
 ```
 
 The app shell has already moved past a single monolithic route host milestone:
@@ -34,6 +35,7 @@ The app shell has already moved past a single monolithic route host milestone:
 - `WalletEffectHandler` keeps wallet effect dispatch and request launch policy in the wallet feature package.
 - `WalletFeatureController` composes wallet action reduction and effect handling behind feature-owned callbacks, preparing the wallet screen for a dedicated ViewModel without moving app navigation ownership into the feature module.
 - `WalletStateHolder` owns wallet screen `StateFlow` state in the feature package and is owned by `ArgusLensAppViewModel` for now, so root app state no longer stores wallet feature state while app code still adapts route/session/navigation callbacks.
+- `:core:model` and `:core:ui` own the former shared `model` and `ui` modules without package renames, keeping the first physical core migration low risk.
 - `ArgusLensAppState` owns root UI state and pure session transition helpers.
 
 That baseline is intentionally preserved while the project migrates toward the target shape below.
@@ -349,7 +351,7 @@ Exit evidence:
 
 Goal: extract modules only after package boundaries are stable.
 
-- Extract low-risk core modules first: `:core:model`, `:core:designsystem` or `:core:ui`, then `:core:navigation`.
+- Keep the verified `:core:model` / `:core:ui` baseline stable, then extract `:core:designsystem` or `:core:navigation` only when shared UI/navigation ownership pressure appears.
 - Extract data infrastructure modules after package-level data-source boundaries exist: `:core:network`, `:core:database`, `:core:datastore`, `:core:session`.
 - Split aggregate `:feature` into `:feature:*` modules when feature ViewModels/routes/use cases are already independent.
 - Move shared Gradle configuration toward convention plugins when repeated module boilerplate becomes a maintenance problem.

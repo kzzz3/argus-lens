@@ -89,7 +89,7 @@ Lens becomes the Android simulator of smart glasses:
 
 ## 4.3 Long-Term Android Code Organization
 
-The current Lens implementation is a five-module Android Studio-centered baseline: `:app`, `:feature`, `:data`, `:model`, and `:ui`. The durable target is an `:app` composition shell supported by shared `:core:*` modules and independently owned `:feature:*` modules.
+The current Lens implementation is an Android Studio-centered transitional module baseline: `:app`, `:feature`, `:data`, `:core:model`, and `:core:ui`. The durable target is an `:app` composition shell supported by shared `:core:*` modules and independently owned `:feature:*` modules.
 
 The target feature slice is `Route -> Screen -> ViewModel -> UseCase -> Repository -> DataSource`. Routes own navigation arguments and ViewModel lookup, screens stay stateless, ViewModels own screen-level state, use cases are added only for meaningful business composition, repositories expose data-layer APIs, and data sources isolate Room, Retrofit/OkHttp, DataStore, session, media, or native boundaries.
 
