@@ -137,6 +137,29 @@ class AppRouteActionBindingsTest {
         harness.close()
     }
 
+    @Test
+    fun realtimeConnectionCallbacksDelegateRealtimeStateAndSignOutThroughAppBindings() = runBlocking {
+        val harness = createHarness()
+        val callbacks = harness.bindings.realtimeConnectionCallbacks()
+        val updatedThreads = ConversationThreadsState()
+
+        callbacks.onConnectionStateChanged(ConversationRealtimeConnectionState.RECOVERING)
+        callbacks.onEventIdRecorded("event-1")
+        callbacks.onLastEventIdReset()
+        callbacks.onConversationThreadsChanged(updatedThreads)
+        callbacks.onReconnectGenerationIncremented()
+        callbacks.signOutToEntry("Session expired.")
+
+        assertEquals(listOf(ConversationRealtimeConnectionState.RECOVERING), harness.hostCallbacks.realtimeConnectionStates)
+        assertEquals(listOf("event-1"), harness.hostCallbacks.realtimeEventIds)
+        assertEquals(1, harness.hostCallbacks.realtimeLastEventResetCount)
+        assertEquals(1, harness.hostCallbacks.realtimeReconnectIncrementCount)
+        assertEquals(listOf(updatedThreads), harness.hostCallbacks.conversationThreadsStates)
+        assertEquals(1, harness.sessionCallbacks.sessionClearedCount)
+        assertEquals("Session expired.", harness.sessionCallbacks.authFormState?.submitResult)
+        harness.close()
+    }
+
     private fun createHarness(
         openInboxConversation: (ConversationThreadsState, String) -> OpenInboxConversationResult = { threads, conversationId ->
             OpenInboxConversationResult(threads, conversationId)
@@ -211,6 +234,10 @@ class AppRouteActionBindingsTest {
         val routes = mutableListOf<AppRoute>()
         val conversationThreadsStates = mutableListOf<ConversationThreadsState>()
         val openedConversations = mutableListOf<String>()
+        val realtimeConnectionStates = mutableListOf<ConversationRealtimeConnectionState>()
+        val realtimeEventIds = mutableListOf<String>()
+        var realtimeLastEventResetCount: Int = 0
+        var realtimeReconnectIncrementCount: Int = 0
 
         fun asHostCallbacks(): AppRouteHostCallbacks {
             return AppRouteHostCallbacks(
@@ -232,10 +259,10 @@ class AppRouteActionBindingsTest {
                 onConversationThreadsChanged = conversationThreadsStates::add,
                 onHydratedConversationAccountChanged = {},
                 onRestorableEntryContextCleared = {},
-                onRealtimeConnectionStateChanged = {},
-                onRealtimeEventIdRecorded = {},
-                onRealtimeLastEventIdReset = {},
-                onRealtimeReconnectIncremented = {},
+                onRealtimeConnectionStateChanged = realtimeConnectionStates::add,
+                onRealtimeEventIdRecorded = realtimeEventIds::add,
+                onRealtimeLastEventIdReset = { realtimeLastEventResetCount += 1 },
+                onRealtimeReconnectIncremented = { realtimeReconnectIncrementCount += 1 },
             )
         }
     }
