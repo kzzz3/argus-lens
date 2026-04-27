@@ -190,6 +190,7 @@ internal fun AppRouteHost(
             synchronizeConversation = chatCoordinator::synchronizeConversation,
         )
     }
+    val inboxActionRouteRuntime = remember { InboxActionRouteRuntime() }
     val entryRouteRuntime = remember(coroutineScope, authCoordinator) {
         EntryRouteRuntime(
             scope = coroutineScope,
@@ -517,6 +518,14 @@ internal fun AppRouteHost(
         )
     }
 
+    fun inboxActionRouteCallbacks(): InboxActionRouteCallbacks {
+        return InboxActionRouteCallbacks(
+            openConversation = ::openInboxConversation,
+            openTopLevelRoute = ::openTopLevelRoute,
+            signOutToEntry = { signOutToEntry() },
+        )
+    }
+
     suspend fun refreshSessionTokens(): AuthRepositoryResult {
         return sessionBoundaryRuntime.refreshSessionTokens(
             session = appSessionState,
@@ -643,13 +652,7 @@ internal fun AppRouteHost(
             InboxScreen(
                 state = inboxState,
                 onAction = { action ->
-                    when (action) {
-                        is InboxAction.OpenConversation -> openInboxConversation(action.conversationId)
-
-                        InboxAction.OpenContacts -> openTopLevelRoute(AppRoute.Contacts)
-                        InboxAction.OpenWallet -> openTopLevelRoute(AppRoute.Wallet)
-                        InboxAction.SignOutToHud -> signOutToEntry()
-                    }
+                    inboxActionRouteRuntime.handleAction(action, inboxActionRouteCallbacks())
                 },
                 modifier = Modifier.padding(innerPadding),
             )
@@ -769,13 +772,7 @@ internal fun AppRouteHost(
                     InboxScreen(
                         state = inboxState,
                         onAction = { action ->
-                            when (action) {
-                                is InboxAction.OpenConversation -> openInboxConversation(action.conversationId)
-
-                                InboxAction.OpenContacts -> openTopLevelRoute(AppRoute.Contacts)
-                                InboxAction.OpenWallet -> openTopLevelRoute(AppRoute.Wallet)
-                                InboxAction.SignOutToHud -> signOutToEntry()
-                            }
+                            inboxActionRouteRuntime.handleAction(action, inboxActionRouteCallbacks())
                         },
                         modifier = Modifier.padding(innerPadding),
                     )
