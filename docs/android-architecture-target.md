@@ -136,6 +136,23 @@ Rules:
 - `:app` may compose the graph, but feature behavior should live in feature routes/ViewModels/use cases.
 - Module splitting is staged. Do not create a module only to move one file unless it removes a concrete ownership or build-time problem.
 
+## Module Split Readiness Plan
+
+Current included modules remain `:app`, `:data`, `:feature`, `:core:model`, and `:core:ui`. The following target modules are planned but intentionally not included in `settings.gradle.kts` until readiness is proven: `:core:session`, `:core:network`, `:core:database`, `:feature:auth`, `:feature:inbox`, `:feature:chat`, and `:feature:wallet`.
+
+First physical split candidate: `:core:network`. It has the clearest package seed under `data/network`, but extraction must first isolate product BuildConfig inputs from reusable Retrofit/OkHttp/SSE setup. `:core:database` follows after Room database/entity/DAO/migration ownership is separated from repository adapters. `:core:session` follows only after session identity, credential storage, token crypto, and app-level session orchestration contracts are distinct. Feature modules are later: `:feature:auth` must include register flow ownership, `:feature:wallet` must resolve scan/payment DTO contracts, and `:feature:inbox` / `:feature:chat` need explicit shared conversation contracts before splitting from the current inbox package.
+
+Readiness gates before adding a physical module:
+
+- Package-level ownership is already stable inside the aggregate module.
+- The new module has at least one coherent source owner and direct tests that move with it.
+- Dependency direction is acyclic and does not require sibling feature dependencies.
+- Shared contracts are in `:core:*` or existing data/model APIs rather than imported from another feature implementation.
+- `ReleaseAndModuleBoundaryTest` is updated before changing `settings.gradle.kts`.
+- `testDebugUnitTest`, `lint`, and `assembleDebug` pass serially after any Gradle wiring change.
+
+Gradle convention plugins are deferred until a dedicated build-logic slice. Keep `settings.gradle.kts` repository centralization and `gradle/libs.versions.toml` as the source of plugin/dependency versions. Do not introduce `buildSrc` or included `build-logic` until a dedicated convention-plugin slice.
+
 ## Layering Contract
 
 Each feature should converge on this vertical slice:

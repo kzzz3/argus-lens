@@ -106,6 +106,19 @@ Verification gate:
 
 - `:feature:testDebugUnitTest --tests "com.kzzz3.argus.lens.feature.inbox.SendOutgoingChatMessageUseCaseTest"` must pass after outgoing chat send/media workflow changes.
 
+## P2 Module Split And Gradle Conventions
+
+Status: complete for the readiness plan; no physical modules or convention plugins were added.
+
+- Current included modules stay limited to `:app`, `:data`, `:feature`, `:core:model`, and `:core:ui` until package-level ownership is stable.
+- Future modules such as `:core:session`, `:core:network`, `:core:database`, `:feature:auth`, `:feature:inbox`, `:feature:chat`, and `:feature:wallet` are documented as target modules, not current Gradle includes.
+- `:core:network` is the first physical split candidate, but it must first isolate product BuildConfig inputs from reusable network client setup.
+- Build convention plugins are deferred to a dedicated slice; repository resolution remains centralized in `settings.gradle.kts` and versions remain in `gradle/libs.versions.toml`.
+
+Verification gate:
+
+- `:app:testDebugUnitTest --tests "com.kzzz3.argus.lens.app.ReleaseAndModuleBoundaryTest"` must pass after module-readiness, Gradle-convention, or module-include changes.
+
 ## P2 Hilt Dependency Injection
 
 Status: complete for the current module baseline.
