@@ -1,15 +1,11 @@
 package com.kzzz3.argus.lens.app
 
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.kzzz3.argus.lens.app.navigation.AppRoute
 import com.kzzz3.argus.lens.feature.wallet.WalletStateHolder
 import kotlinx.coroutines.CoroutineScope
 
@@ -35,17 +31,12 @@ internal fun AppRouteHost(
     val friendRequestsSnapshot = state.friendRequestsSnapshot
     val friendRequestsStatusMessage = state.friendRequestsStatusMessage
     val friendRequestsStatusError = state.friendRequestsStatusError
-    val hydratedConversationAccountId = state.hydratedConversationAccountId
     val realtimeConnectionState = state.realtimeConnectionState
-    val realtimeLastEventId = state.realtimeLastEventId
-    val realtimeReconnectGeneration = state.realtimeReconnectGeneration
-    val onRouteChanged = callbacks.onRouteChanged
     val onAuthFormStateChanged = callbacks.onAuthFormStateChanged
     val onRegisterFormStateChanged = callbacks.onRegisterFormStateChanged
     val onCallSessionStateChanged = callbacks.onCallSessionStateChanged
     val onContactsStateChanged = callbacks.onContactsStateChanged
     val onFriendsChanged = callbacks.onFriendsChanged
-    val onChatStatusCleared = callbacks.onChatStatusCleared
     val onFriendRequestStatusReset = callbacks.onFriendRequestStatusReset
     val onHydratedSessionApplied = callbacks.onHydratedSessionApplied
     val onAuthenticatedSessionApplied = callbacks.onAuthenticatedSessionApplied
@@ -57,21 +48,15 @@ internal fun AppRouteHost(
     val routeRuntimes = rememberAppRouteRuntimes(dependencies, runtimeScope)
     val appShellCoordinator = dependencies.appShellCoordinator
     val sessionCredentialsStore = dependencies.sessionCredentialsStore
-    val realtimeClient = dependencies.realtimeClient
     val callSessionRuntime = routeRuntimes.callSessionRuntime
     val sessionRefreshRuntime = routeRuntimes.sessionRefreshRuntime
     val walletStateModel by walletStateHolder.state.collectAsStateWithLifecycle()
-    val realtimeConnectionRuntime = routeRuntimes.realtimeConnectionRuntime
-    val appPersistenceRuntime = routeRuntimes.appPersistenceRuntime
-    val appInitialHydrationRuntime = routeRuntimes.appInitialHydrationRuntime
-    val appRouteLoadRuntime = routeRuntimes.appRouteLoadRuntime
     val appRouteNavigationRuntime = routeRuntimes.appRouteNavigationRuntime
     val previewThreadsState = remember {
         appShellCoordinator.createPreviewConversationThreads(
             currentUserDisplayName = DEFAULT_PREVIEW_DISPLAY_NAME,
         )
     }
-    val initialSessionSnapshot = dependencies.initialSessionSnapshot
     val startDestination = remember { currentRoute.name }
     val routeUiState = rememberAppRouteUiState(
         appSessionState = appSessionState,
@@ -142,91 +127,22 @@ internal fun AppRouteHost(
         sessionBoundaryCallbacks = sessionBoundaryCallbacks,
         getLatestCurrentRoute = { latestCurrentRoute },
     )
-    LaunchedEffect(initialSessionSnapshot.isAuthenticated, initialSessionSnapshot.accountId) {
-        appInitialHydrationRuntime.hydrate(
-            request = AppInitialHydrationRequest(
-                initialSession = initialSessionSnapshot,
-                initialCredentials = dependencies.initialSessionCredentials,
-                previewThreadsState = previewThreadsState,
-            ),
-            callbacks = AppInitialHydrationCallbacks(
-                onConversationThreadsChanged = onConversationThreadsChanged,
-                onHydratedConversationAccountChanged = onHydratedConversationAccountChanged,
-                onRouteChanged = onRouteChanged,
-                onHydratedSessionApplied = onHydratedSessionApplied,
-            ),
-        )
-    }
-
-    LaunchedEffect(appSessionState) {
-        appPersistenceRuntime.persistSession(appSessionState, sessionCredentialsStore.current)
-    }
-
-    LaunchedEffect(selectedConversationId) {
-        onChatStatusCleared()
-    }
-
-    LaunchedEffect(appSessionState.isAuthenticated, appSessionState.accountId, appSessionState.displayName) {
-        sessionBoundaryRuntime.applySessionBoundary(
-            session = appSessionState,
-            callbacks = sessionBoundaryCallbacks,
-        )
-    }
-
-    LaunchedEffect(appSessionState.isAuthenticated, appSessionState.accountId, realtimeReconnectGeneration) {
-        realtimeConnectionRuntime.connect(
-            request = RealtimeConnectionRequest(
-                isAuthenticated = appSessionState.isAuthenticated,
-                accountId = appSessionState.accountId,
-                credentials = sessionCredentialsStore.current,
-                lastEventId = realtimeLastEventId,
-                reconnectGeneration = realtimeReconnectGeneration,
-                isRealtimeEnabled = { latestRealtimeEnabled },
-                getSession = { latestAppSessionState },
-                getConversationThreadsState = { latestConversationThreadsState },
-                getSelectedConversationId = { latestSelectedConversationId },
-                getCurrentRoute = { latestCurrentRoute },
-            ),
-            callbacks = routeActionBindings.realtimeConnectionCallbacks(),
-        )
-    }
-
-    DisposableEffect(realtimeClient) {
-        onDispose {
-            realtimeConnectionRuntime.dispose(routeActionBindings.realtimeConnectionCallbacks())
-        }
-    }
-
-    LaunchedEffect(appSessionState.isAuthenticated, appSessionState.accountId, hydratedConversationAccountId, conversationThreadsState) {
-        appPersistenceRuntime.persistConversationThreads(
-            session = appSessionState,
-            hydratedConversationAccountId = hydratedConversationAccountId,
-            state = conversationThreadsState,
-        )
-    }
-
-    LaunchedEffect(currentRoute, appSessionState.isAuthenticated) {
-        appRouteLoadRuntime.loadForRoute(
-            request = AppRouteLoadRequest(
-                route = currentRoute,
-                isAuthenticated = appSessionState.isAuthenticated,
-                friendRequestsSnapshot = friendRequestsSnapshot,
-            ),
-            callbacks = AppRouteLoadCallbacks(
-                onFriendsChanged = onFriendsChanged,
-                onFriendRequestStatusChanged = routeActionBindings::applyFriendRequestStatus,
-            ),
-        )
-    }
-
-    val currentBackStackEntry by navController.currentBackStackEntryAsState()
-    LaunchedEffect(currentRoute, currentBackStackEntry?.destination?.route) {
-        if (currentBackStackEntry?.destination?.route != currentRoute.name) {
-            navController.navigate(currentRoute.name) {
-                launchSingleTop = true
-            }
-        }
-    }
+    AppRouteHostEffects(
+        navController = navController,
+        dependencies = dependencies,
+        state = state,
+        callbacks = callbacks,
+        routeRuntimes = routeRuntimes,
+        previewThreadsState = previewThreadsState,
+        sessionBoundaryRuntime = sessionBoundaryRuntime,
+        sessionBoundaryCallbacks = sessionBoundaryCallbacks,
+        routeActionBindings = routeActionBindings,
+        getLatestConversationThreadsState = { latestConversationThreadsState },
+        getLatestSelectedConversationId = { latestSelectedConversationId },
+        getLatestAppSessionState = { latestAppSessionState },
+        getLatestCurrentRoute = { latestCurrentRoute },
+        isRealtimeEnabled = { latestRealtimeEnabled },
+    )
 
     AppRouteNavGraph(
         navController = navController,

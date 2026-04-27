@@ -25,6 +25,7 @@ Status: complete for the first God Composable split milestone and the host API b
 - `AppRouteHost.kt` no longer owns route UI-state derivation; `AppRouteUiState.kt` builds the per-screen state bundle.
 - `AppRouteHost.kt` no longer constructs every route/runtime inline; `AppRouteRuntimes.kt` centralizes runtime creation with Compose `remember` boundaries.
 - `AppRouteHost.kt` no longer embeds the full `NavHost` route-to-screen graph; `AppRouteNavGraph.kt` owns route registration and screen binding.
+- `AppRouteHost.kt` no longer declares route lifecycle side effects inline; `AppRouteHostEffects.kt` owns hydration, persistence, session boundary, realtime connection, route loading, disposal, and navigation-sync effects.
 - Host-only shell policy for `NewFriends` and missing-chat fallback moved into `AppRouteNavigationRuntime.resolveRouteShellDestination` with JVM regression coverage.
 - `ArgusLensApp.kt` now passes app-shell state and callbacks through `AppRouteHostState` / `AppRouteHostCallbacks`, keeping route behavior unchanged while narrowing the `AppRouteHost` API.
 - `ArgusLensAppState.kt` owns the root UI state model and pure session transition helpers so `ArgusLensAppViewModel.kt` can focus on state mutation and runtime scope ownership.
@@ -41,6 +42,7 @@ Verification gate:
 - `:app:compileDebugKotlin` must pass after route host decomposition changes.
 - `:app:testDebugUnitTest --tests "com.kzzz3.argus.lens.app.AppRouteNavigationRuntimeTest"` must pass after shell routing policy changes.
 - `:app:testDebugUnitTest --tests "com.kzzz3.argus.lens.app.ArgusLensAppViewModelTest"` must pass after app-shell state boundary changes.
+- `ArgusLensAppViewModelTest.appRouteHost_delegatesLifecycleEffects` must pass after moving host lifecycle/effect orchestration.
 - Route action binding changes must also keep `EntryRouteRuntimeTest`, `ContactsRouteRuntimeTest`, `WalletActionHandlerTest`, `WalletRequestRunnerTest`, `WalletRequestGuardTest`, `WalletEffectHandlerTest`, `WalletFeatureControllerTest`, `WalletStateHolderTest`, and `RealtimeConnectionRuntimeTest` green.
 
 Remaining lifecycle ownership work belongs to P1: the wallet state holder is a feature-owned precursor to an AndroidX/Hilt `WalletViewModel`, and long-running realtime/session refresh/call timer orchestration should continue moving out of the Composable layer.

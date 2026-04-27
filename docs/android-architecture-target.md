@@ -28,6 +28,7 @@ The app shell has already moved past a single monolithic route host milestone:
 - `AppRouteRuntimes` centralizes route runtime construction with ViewModel-owned coroutine scope.
 - `AppRouteNavGraph` centralizes enum-backed Navigation Compose registration.
 - `AppRouteActionBindings` centralizes route request/callback/action adapters outside the Compose host.
+- `AppRouteHostEffects` centralizes host lifecycle effects outside the Compose host body.
 - `WalletActionHandler` keeps wallet action reduction/effect dispatch in the wallet feature package.
 - `WalletRequestRunner` keeps wallet async request freshness and invalidation in the wallet feature package.
 - `WalletEffectHandler` keeps wallet effect dispatch and request launch policy in the wallet feature package.

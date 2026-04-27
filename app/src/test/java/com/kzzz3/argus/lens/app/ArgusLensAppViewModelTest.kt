@@ -79,6 +79,17 @@ class ArgusLensAppViewModelTest {
     }
 
     @Test
+    fun appRouteHost_delegatesLifecycleEffects() {
+        val effectsFile = File("src/main/java/com/kzzz3/argus/lens/app/AppRouteHostEffects.kt")
+        val routeHostSource = File("src/main/java/com/kzzz3/argus/lens/app/AppRouteHost.kt").readText()
+
+        assertTrue("AppRouteHostEffects.kt should own host lifecycle effects", effectsFile.exists())
+        assertTrue(routeHostSource.contains("AppRouteHostEffects("))
+        assertFalse(routeHostSource.contains("LaunchedEffect("))
+        assertFalse(routeHostSource.contains("DisposableEffect("))
+    }
+
+    @Test
     fun appViewModel_exposesRuntimeScopeBackedByViewModelScope() {
         val viewModelSource = File("src/main/java/com/kzzz3/argus/lens/app/ArgusLensAppViewModel.kt").readText()
 

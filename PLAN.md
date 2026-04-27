@@ -14,6 +14,7 @@ Argus Lens provides the Android runtime for Argus by delivering a reliable local
 - [x] Instrumentation smoke coverage and modernization regression gates.
 - [x] P0 app shell state-boundary slice: introduce `AppRouteHostState` and `AppRouteHostCallbacks` to slim `AppRouteHost` / `ArgusLensApp` without changing navigation semantics.
 - [x] P0 app shell action-binding slice: move route request/callback adapters into `AppRouteActionBindings` while preserving existing runtime and navigation behavior.
+- [x] P0 app shell effect-boundary slice: move host `LaunchedEffect` / `DisposableEffect` orchestration into `AppRouteHostEffects` while preserving route/session/realtime behavior.
 - [x] P0 wallet action-boundary slice: move wallet action reduction/effect dispatch into feature-owned `WalletActionHandler`.
 - [x] P0 wallet request-boundary slice: move wallet async request freshness/invalidation into feature-owned `WalletRequestRunner` and request guard tests.
 - [x] P0 wallet effect-boundary slice: move wallet effect dispatch/request launch rules into feature-owned `WalletEffectHandler` and remove the obsolete app wallet route runtime.
@@ -66,6 +67,7 @@ Long-term target topology is documented in `docs/android-architecture-target.md`
 ### Phase 3 — Stage 1 Runtime Maturity
 - [x] Slim `AppRouteHost` by replacing scattered state/callback parameters with explicit host boundary objects.
 - [x] Extract `AppRouteActionBindings` so `AppRouteHost` no longer declares route action/request/callback factories inline.
+- [x] Extract `AppRouteHostEffects` so `AppRouteHost` no longer declares lifecycle effect blocks inline.
 - [ ] RTC signaling integration.
 - [ ] Stronger process-death restoration rules.
 - [ ] Background reconciliation strategy for sync.
@@ -133,3 +135,4 @@ Run Gradle tasks serially.
 | 2026-04-27 | P0 wallet effect-boundary TDD | Red `WalletEffectHandlerTest`; green `WalletEffectHandlerTest`; targeted app wallet adapter tests; `:feature:testDebugUnitTest`; `:app:testDebugUnitTest`; `testDebugUnitTest`; `lint`; `assembleDebug`; Kotlin LSP unavailable because `kotlin-lsp` is not installed | PASS |
 | 2026-04-27 | P0 wallet controller shell TDD | Red `WalletFeatureControllerTest`; green `WalletFeatureControllerTest`; obsolete app wallet route adapter deleted after controller wiring; `:feature:testDebugUnitTest`; `:app:testDebugUnitTest`; `testDebugUnitTest`; `lint`; `assembleDebug`; Kotlin LSP unavailable because `kotlin-lsp` is not installed | PASS |
 | 2026-04-27 | P0 wallet state-holder TDD | Red `WalletStateHolderTest`; green `WalletStateHolderTest`; red/green `ArgusLensAppViewModelTest.appViewModelOwnsWalletStateHolderLifetime` for ViewModel-owned holder/request lifetime; app navigation runtime test updated for holder account-open callback; root `uiState.walletState` / `updateWalletState` stale-reference scan clean; `:feature:testDebugUnitTest`; `:app:testDebugUnitTest`; `testDebugUnitTest`; `lint`; `assembleDebug`; Kotlin LSP unavailable because `kotlin-lsp` is not installed | PASS |
+| 2026-04-27 | P0 app host effect-boundary TDD | Red/green `ArgusLensAppViewModelTest.appRouteHost_delegatesLifecycleEffects`; moved host `LaunchedEffect` / `DisposableEffect` blocks into `AppRouteHostEffects`; `:app:testDebugUnitTest`; `testDebugUnitTest`; `lint`; `assembleDebug`; Kotlin LSP unavailable because `kotlin-lsp` is not installed | PASS |
