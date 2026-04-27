@@ -47,6 +47,25 @@ class BackgroundSyncTaskTest {
         assertEquals("tester", conversationRepository.savedAccountId)
     }
 
+    @Test
+    fun run_retriesWhenConversationSyncFailsForAuthenticatedSession() = runBlocking {
+        val conversationRepository = FakeConversationRepository(
+            loadFailure = IllegalStateException("network unavailable"),
+        )
+        val task = BackgroundSyncTask(
+            sessionRepository = FakeSessionRepository(
+                session = AppSessionState(isAuthenticated = true, accountId = "tester", displayName = "Tester"),
+                credentials = SessionCredentials(accessToken = "access-token"),
+            ),
+            conversationRepository = conversationRepository,
+        )
+
+        val result = task.run()
+
+        assertEquals(BackgroundSyncResult.Retry, result)
+        assertEquals(0, conversationRepository.saveCount)
+    }
+
     private class FakeSessionRepository(
         private val session: AppSessionState,
         private val credentials: SessionCredentials,
@@ -57,7 +76,9 @@ class BackgroundSyncTaskTest {
         override suspend fun clearSession() = Unit
     }
 
-    private class FakeConversationRepository : ConversationRepository {
+    private class FakeConversationRepository(
+        private val loadFailure: RuntimeException? = null,
+    ) : ConversationRepository {
         var saveCount: Int = 0
         var savedAccountId: String = ""
 
@@ -66,7 +87,10 @@ class BackgroundSyncTaskTest {
         override suspend fun loadOrCreateConversationThreads(
             accountId: String,
             currentUserDisplayName: String,
-        ): ConversationThreadsState = ConversationThreadsState()
+        ): ConversationThreadsState {
+            loadFailure?.let { throw it }
+            return ConversationThreadsState()
+        }
 
         override suspend fun saveConversationThreads(accountId: String, state: ConversationThreadsState) {
             saveCount += 1

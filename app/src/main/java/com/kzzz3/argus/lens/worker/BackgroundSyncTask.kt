@@ -2,6 +2,7 @@ package com.kzzz3.argus.lens.worker
 
 import com.kzzz3.argus.lens.data.conversation.ConversationRepository
 import com.kzzz3.argus.lens.data.session.SessionRepository
+import kotlin.coroutines.cancellation.CancellationException
 import javax.inject.Inject
 
 class BackgroundSyncTask @Inject constructor(
@@ -15,19 +16,25 @@ class BackgroundSyncTask @Inject constructor(
             return BackgroundSyncResult.SkippedNoSession
         }
 
-        val currentState = conversationRepository.loadOrCreateConversationThreads(
-            accountId = session.accountId,
-            currentUserDisplayName = session.displayName,
-        )
-        conversationRepository.saveConversationThreads(
-            accountId = session.accountId,
-            state = currentState,
-        )
-        return BackgroundSyncResult.Synced
+        return try {
+            val currentState = conversationRepository.loadOrCreateConversationThreads(
+                accountId = session.accountId,
+                currentUserDisplayName = session.displayName,
+            )
+            conversationRepository.saveConversationThreads(
+                accountId = session.accountId,
+                state = currentState,
+            )
+            BackgroundSyncResult.Synced
+        } catch (exception: Exception) {
+            if (exception is CancellationException) throw exception
+            BackgroundSyncResult.Retry
+        }
     }
 }
 
 enum class BackgroundSyncResult {
     Synced,
     SkippedNoSession,
+    Retry,
 }
