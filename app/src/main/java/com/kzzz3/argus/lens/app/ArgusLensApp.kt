@@ -14,6 +14,7 @@ fun ArgusLensApp(
         dependencies = viewModel.dependencies,
         runtimeScope = viewModel.runtimeScope,
         authStateHolder = viewModel.authStateHolder,
+        inboxStateHolder = viewModel.inboxStateHolder,
         walletStateHolder = viewModel.walletStateHolder,
         state = AppRouteHostState(
             appSessionState = uiState.appSessionState,

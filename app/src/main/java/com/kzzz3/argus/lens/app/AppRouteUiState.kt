@@ -20,13 +20,11 @@ import com.kzzz3.argus.lens.feature.inbox.ChatUiState
 import com.kzzz3.argus.lens.feature.inbox.ConversationThreadsState
 import com.kzzz3.argus.lens.feature.inbox.InboxUiState
 import com.kzzz3.argus.lens.feature.inbox.createChatUiState
-import com.kzzz3.argus.lens.feature.inbox.createInboxUiState
 import com.kzzz3.argus.lens.feature.me.MeUiState
 import com.kzzz3.argus.lens.feature.me.createMeUiState
 import com.kzzz3.argus.lens.feature.register.RegisterFormState
 import com.kzzz3.argus.lens.feature.register.RegisterUiState
 import com.kzzz3.argus.lens.feature.register.createRegisterUiState
-import com.kzzz3.argus.lens.feature.realtime.buildRealtimeStatusLabel
 import com.kzzz3.argus.lens.feature.wallet.WalletState
 import com.kzzz3.argus.lens.feature.wallet.WalletUiState
 import com.kzzz3.argus.lens.feature.wallet.createWalletUiState
@@ -50,6 +48,7 @@ internal fun rememberAppRouteUiState(
     appSessionState: AppSessionState,
     conversationThreadsState: ConversationThreadsState,
     realtimeConnectionState: ConversationRealtimeConnectionState,
+    inboxUiState: InboxUiState,
     authFormState: AuthFormState,
     registerFormState: RegisterFormState,
     callSessionState: CallSessionState,
@@ -74,30 +73,10 @@ internal fun rememberAppRouteUiState(
         resolvePreviewDisplayName(appSessionState.displayName)
     }
     val shellStatusLabel = remember(appSessionState.isAuthenticated, realtimeConnectionState) {
-        when {
-            !appSessionState.isAuthenticated -> "Signed out"
-            realtimeConnectionState == ConversationRealtimeConnectionState.LIVE -> "Online"
-            realtimeConnectionState == ConversationRealtimeConnectionState.RECOVERING -> "Reconnecting"
-            realtimeConnectionState == ConversationRealtimeConnectionState.CONNECTING -> "Connecting"
-            else -> "Offline"
-        }
+        resolveShellStatusLabel(appSessionState, realtimeConnectionState)
     }
     val shellStatusSummary = remember(appSessionState.isAuthenticated, realtimeConnectionState) {
-        when {
-            !appSessionState.isAuthenticated -> "Sign in to enter the Argus IM shell."
-            realtimeConnectionState == ConversationRealtimeConnectionState.LIVE -> "Realtime channel connected and syncing now."
-            realtimeConnectionState == ConversationRealtimeConnectionState.RECOVERING -> "Network unavailable or connection interrupted. Reconnecting now."
-            realtimeConnectionState == ConversationRealtimeConnectionState.CONNECTING -> "Connecting secure realtime channel..."
-            else -> "Cached shell is available offline. Sign in again if your session was revoked or wait for the network to recover."
-        }
-    }
-    val inboxState = remember(appSessionState, conversationThreads, realtimeConnectionState, shellStatusLabel) {
-        createInboxUiState(
-            sessionState = appSessionState,
-            threads = conversationThreads,
-            realtimeStatusLabel = buildRealtimeStatusLabel(realtimeConnectionState),
-            shellStatusLabel = shellStatusLabel,
-        )
+        resolveShellStatusSummary(appSessionState, realtimeConnectionState)
     }
     val contactsUiState = remember(contactsState, friends, conversationThreads, appSessionState.accountId) {
         createContactsUiState(
@@ -172,7 +151,7 @@ internal fun rememberAppRouteUiState(
     return AppRouteUiState(
         authState = authState,
         registerState = registerState,
-        inboxState = inboxState,
+        inboxState = inboxUiState,
         contactsUiState = contactsUiState,
         chatState = chatState,
         chatUiState = chatUiState,
@@ -181,4 +160,30 @@ internal fun rememberAppRouteUiState(
         meUiState = meUiState,
         newFriendsUiState = newFriendsUiState,
     )
+}
+
+internal fun resolveShellStatusLabel(
+    appSessionState: AppSessionState,
+    realtimeConnectionState: ConversationRealtimeConnectionState,
+): String {
+    return when {
+        !appSessionState.isAuthenticated -> "Signed out"
+        realtimeConnectionState == ConversationRealtimeConnectionState.LIVE -> "Online"
+        realtimeConnectionState == ConversationRealtimeConnectionState.RECOVERING -> "Reconnecting"
+        realtimeConnectionState == ConversationRealtimeConnectionState.CONNECTING -> "Connecting"
+        else -> "Offline"
+    }
+}
+
+internal fun resolveShellStatusSummary(
+    appSessionState: AppSessionState,
+    realtimeConnectionState: ConversationRealtimeConnectionState,
+): String {
+    return when {
+        !appSessionState.isAuthenticated -> "Sign in to enter the Argus IM shell."
+        realtimeConnectionState == ConversationRealtimeConnectionState.LIVE -> "Realtime channel connected and syncing now."
+        realtimeConnectionState == ConversationRealtimeConnectionState.RECOVERING -> "Network unavailable or connection interrupted. Reconnecting now."
+        realtimeConnectionState == ConversationRealtimeConnectionState.CONNECTING -> "Connecting secure realtime channel..."
+        else -> "Cached shell is available offline. Sign in again if your session was revoked or wait for the network to recover."
+    }
 }

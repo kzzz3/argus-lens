@@ -10,6 +10,8 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import com.kzzz3.argus.lens.app.navigation.AppRoute
 import com.kzzz3.argus.lens.feature.auth.navigation.AuthGraphRoute
 import com.kzzz3.argus.lens.feature.inbox.ConversationThreadsState
+import com.kzzz3.argus.lens.feature.inbox.InboxStateHolder
+import com.kzzz3.argus.lens.feature.realtime.buildRealtimeStatusLabel
 import com.kzzz3.argus.lens.model.session.AppSessionState
 import com.kzzz3.argus.lens.navigation.MainGraphRoute
 import com.kzzz3.argus.lens.navigation.graphRouteForAppRoute
@@ -21,6 +23,7 @@ internal fun AppRouteHostEffects(
     state: AppRouteHostState,
     callbacks: AppRouteHostCallbacks,
     routeRuntimes: AppRouteRuntimes,
+    inboxStateHolder: InboxStateHolder,
     previewThreadsState: ConversationThreadsState,
     sessionBoundaryRuntime: AppSessionBoundaryRuntime,
     sessionBoundaryCallbacks: AppSessionBoundaryCallbacks,
@@ -35,6 +38,7 @@ internal fun AppRouteHostEffects(
     val conversationThreadsState = state.conversationThreadsState
     val currentRoute = state.currentRoute
     val selectedConversationId = state.selectedConversationId
+    val realtimeConnectionState = state.realtimeConnectionState
     val friendRequestsSnapshot = state.friendRequestsSnapshot
     val hydratedConversationAccountId = state.hydratedConversationAccountId
     val realtimeLastEventId = state.realtimeLastEventId
@@ -65,6 +69,15 @@ internal fun AppRouteHostEffects(
 
     LaunchedEffect(selectedConversationId) {
         callbacks.onChatStatusCleared()
+    }
+
+    LaunchedEffect(appSessionState, conversationThreadsState, realtimeConnectionState) {
+        inboxStateHolder.replaceInputs(
+            sessionState = appSessionState,
+            threadsState = conversationThreadsState,
+            realtimeStatusLabel = buildRealtimeStatusLabel(realtimeConnectionState),
+            shellStatusLabel = resolveShellStatusLabel(appSessionState, realtimeConnectionState),
+        )
     }
 
     LaunchedEffect(appSessionState.isAuthenticated, appSessionState.accountId, appSessionState.displayName) {

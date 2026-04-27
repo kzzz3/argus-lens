@@ -21,6 +21,7 @@ Argus Lens provides the Android runtime for Argus by delivering a reliable local
 - [x] P0 wallet controller shell slice: introduce feature-owned `WalletFeatureController` so wallet action/effect composition is ready for ViewModel extraction while app keeps root state/session/navigation callbacks.
 - [x] P0 wallet state-holder slice: move wallet screen state out of `ArgusLensAppUiState` into a ViewModel-owned feature `WalletStateHolder`, with app code retaining only route/session/navigation adaptation.
 - [x] P0 auth state-holder slice: move login/register form state and reducer/submission orchestration out of `ArgusLensAppUiState` and the app-owned entry runtime into a ViewModel-owned feature `AuthStateHolder`, while app code retains route/session-success callbacks.
+- [x] P0 inbox state-holder slice: move inbox UI-state derivation and route-agnostic inbox action dispatch into a ViewModel-owned feature `InboxStateHolder`, while app code retains conversation-open sequencing, route changes, sign-out, realtime, persistence, and chat ownership.
 - [x] P3 first core-module sync slice: move shared model/UI modules into `:core:model` and `:core:ui` while preserving package names and aggregate `:data` / `:feature` ownership.
 - [x] P1 navigation graph split slice: normalize root navigation into `ArgusNavHost`, separate auth/main child graphs, and move feature leaf registrations into feature-owned navigation files while preserving `AppRoute` compatibility.
 - [x] Long-term Android architecture target documented with `:app`, `:core:*`, `:feature:*`, typed navigation, session, data, test, and cleanup roadmaps.
@@ -74,6 +75,7 @@ Long-term target topology is documented in `docs/android-architecture-target.md`
 - [x] Extract `AppRouteHostEffects` so `AppRouteHost` no longer declares lifecycle effect blocks inline.
 - [x] Split navigation into a normalized root host with auth and main child graphs while keeping login/register and main shell behavior stable.
 - [x] Move auth/register form state and submit orchestration into a feature-owned state holder while keeping session application and route transitions app-owned.
+- [x] Move inbox UI derivation and simple action dispatch into a feature-owned state holder while keeping conversation-open sequencing and shared thread mutation in app-owned runtime boundaries.
 - [ ] RTC signaling integration.
 - [ ] Stronger process-death restoration rules.
 - [ ] Background reconciliation strategy for sync.
@@ -85,7 +87,7 @@ Long-term target topology is documented in `docs/android-architecture-target.md`
 
 ### Architecture Roadmap — Target Android Organization
 - [x] Document the durable target architecture and P0-P4 migration roadmap in `docs/android-architecture-target.md`.
-- [ ] P0: continue app-shell slimming and feature ViewModel extraction without changing route semantics; wallet and auth now have feature-owned state holders, and future AndroidX/Hilt feature ViewModel wrappers can land once lifecycle/module dependencies are explicit.
+- [ ] P0: continue app-shell slimming and feature ViewModel extraction without changing route semantics; wallet, auth, and inbox now have feature-owned state holders, and future AndroidX/Hilt feature ViewModel wrappers can land once lifecycle/module dependencies are explicit.
 - [ ] P1: build on the verified auth/main nested graph baseline with typed route contracts and process-death restoration rules one feature at a time.
 - [ ] P2: split session/token/crypto responsibilities and make repository/data-source/use-case boundaries explicit before Gradle extraction.
 - [ ] P3: continue `:core:*` and `:feature:*` extraction after the verified `:core:model` / `:core:ui` baseline, keeping ownership and package boundaries stable.
@@ -145,3 +147,4 @@ Run Gradle tasks serially.
 | 2026-04-27 | P3 core model/ui module sync | Red/green `ReleaseAndModuleBoundaryTest` and `SessionBoundaryTest` for `:core:model` / `:core:ui`; moved shared source/config from `model/` and `ui/` into `core/model/` and `core/ui/` without package renames; `:app:testDebugUnitTest`; `testDebugUnitTest`; `lint`; `assembleDebug`; Kotlin LSP unavailable because `kotlin-lsp` is not installed; Markdown LSP unavailable | PASS |
 | 2026-04-27 | P1 auth/main navigation split TDD | Red/green `NavigationGraphBoundaryTest`; updated `AppRouteNavigationRuntimeTest.argusNavHostGraphs_registerEveryDeclaredAppRoute`; introduced root `ArgusNavHost`, `AuthGraphRoute`, `MainGraphRoute`, `TopLevelDestination`, and feature-owned child navigation registrations; `:app:testDebugUnitTest`; `testDebugUnitTest`; `lint`; `assembleDebug`; Kotlin LSP unavailable because `kotlin-lsp` is not installed; Markdown LSP unavailable | PASS |
 | 2026-04-28 | P0 auth state-holder TDD | Red/green `AuthStateHolderTest`; red/green `ArgusLensAppViewModelTest.appViewModelOwnsAuthStateHolderLifetime` and `appUiStateDoesNotOwnAuthOrRegisterFormState`; removed obsolete app `EntryRouteRuntime`; `:app:testDebugUnitTest`; `testDebugUnitTest`; `lint`; `assembleDebug`; Kotlin LSP unavailable because `kotlin-lsp` is not installed; Markdown LSP unavailable | PASS |
+| 2026-04-28 | P0 inbox state-holder TDD | Red/green `InboxStateHolderTest`; red/green `ArgusLensAppViewModelTest.appViewModelOwnsInboxStateHolderLifetime`; removed obsolete app `InboxActionRouteRuntime` while keeping app `InboxRouteRuntime`; `:app:testDebugUnitTest`; `testDebugUnitTest`; `lint`; `assembleDebug`; Kotlin LSP unavailable because `kotlin-lsp` is not installed; Markdown LSP unavailable | PASS |

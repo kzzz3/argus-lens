@@ -8,12 +8,15 @@ import com.kzzz3.argus.lens.feature.contacts.ContactsState
 import com.kzzz3.argus.lens.feature.contacts.FriendRequestStatusState
 import com.kzzz3.argus.lens.feature.contacts.reduceContactsState
 import com.kzzz3.argus.lens.feature.inbox.ConversationThreadsState
+import com.kzzz3.argus.lens.feature.inbox.InboxStateHolder
+import com.kzzz3.argus.lens.feature.inbox.InboxStateHolderCallbacks
 import com.kzzz3.argus.lens.feature.wallet.WalletStateHolder
 import com.kzzz3.argus.lens.ui.shell.ShellDestination
 
 internal class AppRouteActionBindings(
     private val state: AppRouteHostState,
     private val authStateHolder: AuthStateHolder,
+    private val inboxStateHolder: InboxStateHolder,
     private val walletStateHolder: WalletStateHolder,
     private val callbacks: AppRouteHostCallbacks,
     private val routeUiState: AppRouteUiState,
@@ -125,11 +128,12 @@ internal class AppRouteActionBindings(
         )
     }
 
-    fun inboxActionRouteCallbacks(): InboxActionRouteCallbacks {
-        return InboxActionRouteCallbacks(
-            openConversation = ::openInboxConversation,
-            openTopLevelRoute = ::openTopLevelRoute,
-            signOutToEntry = { signOutToEntry() },
+    fun inboxStateHolderCallbacks(): InboxStateHolderCallbacks {
+        return InboxStateHolderCallbacks(
+            onOpenConversation = ::openInboxConversation,
+            onOpenContacts = { openTopLevelRoute(AppRoute.Contacts) },
+            onOpenWallet = { openTopLevelRoute(AppRoute.Wallet) },
+            onSignOutToHud = { signOutToEntry() },
         )
     }
 
@@ -175,7 +179,7 @@ internal class AppRouteActionBindings(
     }
 
     fun handleInboxAction(action: com.kzzz3.argus.lens.feature.inbox.InboxAction) {
-        routeRuntimes.inboxActionRouteRuntime.handleAction(action, inboxActionRouteCallbacks())
+        inboxStateHolder.handleAction(action, inboxStateHolderCallbacks())
     }
 
     fun handleContactsAction(action: com.kzzz3.argus.lens.feature.contacts.ContactsAction) {

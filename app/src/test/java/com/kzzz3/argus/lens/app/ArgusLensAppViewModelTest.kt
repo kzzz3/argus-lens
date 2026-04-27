@@ -57,9 +57,11 @@ class ArgusLensAppViewModelTest {
             "fun authStateHolderCallbacks",
             "AppRoute.RegisterEntry",
             "AppRoute.AuthEntry",
+            "fun inboxStateHolderCallbacks",
+            "AppRoute.Contacts",
+            "AppRoute.Wallet",
             "fun contactsRouteRequest",
             "fun contactsRouteCallbacks",
-            "fun inboxActionRouteCallbacks",
             "fun realtimeConnectionCallbacks",
         ).forEach { expectedSource ->
             assertTrue("Expected AppRouteActionBindings.kt to contain $expectedSource", actionBindingsSource.contains(expectedSource))
@@ -69,9 +71,9 @@ class ArgusLensAppViewModelTest {
             "fun openShellDestination(",
             "fun openInboxConversation(",
             "fun authStateHolderCallbacks(",
+            "fun inboxStateHolderCallbacks(",
             "fun contactsRouteRequest(",
             "fun contactsRouteCallbacks(",
-            "fun inboxActionRouteCallbacks(",
             "fun realtimeConnectionCallbacks(",
         ).forEach { forbiddenSource ->
             assertFalse("AppRouteHost.kt should not declare $forbiddenSource", routeHostSource.contains(forbiddenSource))
@@ -122,6 +124,24 @@ class ArgusLensAppViewModelTest {
         assertFalse(routeRuntimesSource.contains("EntryRouteRuntime("))
         assertFalse(routeRuntimesSource.contains("reduceAuthFormState"))
         assertFalse(routeRuntimesSource.contains("reduceRegisterFormState"))
+    }
+
+    @Test
+    fun appViewModelOwnsInboxStateHolderLifetime() {
+        val viewModelSource = File("src/main/java/com/kzzz3/argus/lens/app/ArgusLensAppViewModel.kt").readText()
+        val routeRuntimesSource = File("src/main/java/com/kzzz3/argus/lens/app/AppRouteRuntimes.kt").readText()
+        val appSource = File("src/main/java/com/kzzz3/argus/lens/app/ArgusLensApp.kt").readText()
+        val routeHostSource = File("src/main/java/com/kzzz3/argus/lens/app/AppRouteHost.kt").readText()
+        val routeUiStateSource = File("src/main/java/com/kzzz3/argus/lens/app/AppRouteUiState.kt").readText()
+        val actionBindingsSource = File("src/main/java/com/kzzz3/argus/lens/app/AppRouteActionBindings.kt").readText()
+
+        assertTrue(viewModelSource.contains("val inboxStateHolder: InboxStateHolder"))
+        assertTrue(viewModelSource.contains("createInboxStateHolder()"))
+        assertTrue(appSource.contains("inboxStateHolder = viewModel.inboxStateHolder"))
+        assertTrue(routeHostSource.contains("inboxStateHolder.state.collectAsStateWithLifecycle()"))
+        assertTrue(actionBindingsSource.contains("InboxStateHolderCallbacks"))
+        assertFalse(routeRuntimesSource.contains("InboxActionRouteRuntime"))
+        assertFalse(routeUiStateSource.contains("createInboxUiState("))
     }
 
     @Test

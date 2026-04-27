@@ -14,7 +14,6 @@ internal data class AppRouteRuntimes(
     val contactsRouteRuntime: ContactsRouteRuntime,
     val chatRouteRuntime: ChatRouteRuntime,
     val inboxRouteRuntime: InboxRouteRuntime,
-    val inboxActionRouteRuntime: InboxActionRouteRuntime,
     val realtimeConnectionRuntime: RealtimeConnectionRuntime,
     val appPersistenceRuntime: AppPersistenceRuntime,
     val appInitialHydrationRuntime: AppInitialHydrationRuntime,
@@ -89,7 +88,6 @@ internal fun rememberAppRouteRuntimes(
             synchronizeConversation = chatCoordinator::synchronizeConversation,
         )
     }
-    val inboxActionRouteRuntime = remember { InboxActionRouteRuntime() }
     val realtimeConnectionRuntime = remember(coroutineScope, realtimeClient, realtimeCoordinator, realtimeReconnectRuntime) {
         RealtimeConnectionRuntime(
             scope = coroutineScope,
@@ -123,7 +121,6 @@ internal fun rememberAppRouteRuntimes(
         contactsRouteRuntime = contactsRouteRuntime,
         chatRouteRuntime = chatRouteRuntime,
         inboxRouteRuntime = inboxRouteRuntime,
-        inboxActionRouteRuntime = inboxActionRouteRuntime,
         realtimeConnectionRuntime = realtimeConnectionRuntime,
         appPersistenceRuntime = appPersistenceRuntime,
         appInitialHydrationRuntime = appInitialHydrationRuntime,

@@ -7,6 +7,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.rememberNavController
 import com.kzzz3.argus.lens.feature.auth.AuthStateHolder
+import com.kzzz3.argus.lens.feature.inbox.InboxStateHolder
 import com.kzzz3.argus.lens.feature.wallet.WalletStateHolder
 import com.kzzz3.argus.lens.navigation.ArgusNavHost
 import com.kzzz3.argus.lens.navigation.graphRouteForAppRoute
@@ -17,6 +18,7 @@ internal fun AppRouteHost(
     dependencies: AppDependencies,
     runtimeScope: CoroutineScope,
     authStateHolder: AuthStateHolder,
+    inboxStateHolder: InboxStateHolder,
     walletStateHolder: WalletStateHolder,
     state: AppRouteHostState,
     callbacks: AppRouteHostCallbacks,
@@ -51,6 +53,7 @@ internal fun AppRouteHost(
     val callSessionRuntime = routeRuntimes.callSessionRuntime
     val sessionRefreshRuntime = routeRuntimes.sessionRefreshRuntime
     val authStateModel by authStateHolder.state.collectAsStateWithLifecycle()
+    val inboxStateModel by inboxStateHolder.state.collectAsStateWithLifecycle()
     val walletStateModel by walletStateHolder.state.collectAsStateWithLifecycle()
     val appRouteNavigationRuntime = routeRuntimes.appRouteNavigationRuntime
     val previewThreadsState = remember {
@@ -63,6 +66,7 @@ internal fun AppRouteHost(
         appSessionState = appSessionState,
         conversationThreadsState = conversationThreadsState,
         realtimeConnectionState = realtimeConnectionState,
+        inboxUiState = inboxStateModel.uiState,
         authFormState = authStateModel.authFormState,
         registerFormState = authStateModel.registerFormState,
         callSessionState = callSessionState,
@@ -120,6 +124,7 @@ internal fun AppRouteHost(
     val routeActionBindings = AppRouteActionBindings(
         state = state,
         authStateHolder = authStateHolder,
+        inboxStateHolder = inboxStateHolder,
         walletStateHolder = walletStateHolder,
         callbacks = callbacks,
         routeUiState = routeUiState,
@@ -135,6 +140,7 @@ internal fun AppRouteHost(
         state = state,
         callbacks = callbacks,
         routeRuntimes = routeRuntimes,
+        inboxStateHolder = inboxStateHolder,
         previewThreadsState = previewThreadsState,
         sessionBoundaryRuntime = sessionBoundaryRuntime,
         sessionBoundaryCallbacks = sessionBoundaryCallbacks,
