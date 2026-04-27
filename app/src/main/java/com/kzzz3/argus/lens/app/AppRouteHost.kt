@@ -69,7 +69,6 @@ import com.kzzz3.argus.lens.feature.wallet.reduceWalletState
 import com.kzzz3.argus.lens.model.session.AppSessionState
 import com.kzzz3.argus.lens.ui.shell.AuthenticatedShell
 import com.kzzz3.argus.lens.ui.shell.ShellDestination
-import kotlinx.coroutines.launch
 
 @Composable
 internal fun AppRouteHost(
@@ -176,6 +175,13 @@ internal fun AppRouteHost(
             dispatchOutgoingMessages = chatCoordinator::dispatchOutgoingMessages,
             downloadAttachment = chatCoordinator::downloadAttachment,
             recallMessage = chatCoordinator::recallMessage,
+        )
+    }
+    val inboxRouteRuntime = remember(coroutineScope, chatCoordinator) {
+        InboxRouteRuntime(
+            scope = coroutineScope,
+            openConversation = chatCoordinator::openConversation,
+            synchronizeConversation = chatCoordinator::synchronizeConversation,
         )
     }
     val entryRouteRuntime = remember(coroutineScope, authCoordinator) {
@@ -433,18 +439,14 @@ internal fun AppRouteHost(
     }
 
     fun openInboxConversation(conversationId: String) {
-        val openResult = chatCoordinator.openConversation(
-            state = conversationThreadsState,
+        inboxRouteRuntime.openConversation(
             conversationId = conversationId,
+            request = InboxRouteRequest(threadsState = conversationThreadsState),
+            callbacks = InboxRouteCallbacks(
+                onConversationThreadsChanged = onConversationThreadsChanged,
+                onConversationOpened = onConversationOpened,
+            ),
         )
-        onConversationThreadsChanged(openResult.conversationThreadsState)
-        onConversationOpened(openResult.conversationId)
-        coroutineScope.launch {
-            onConversationThreadsChanged(chatCoordinator.synchronizeConversation(
-                state = openResult.conversationThreadsState,
-                conversationId = conversationId,
-            ))
-        }
     }
 
     suspend fun applySuccessfulAuthResult(
