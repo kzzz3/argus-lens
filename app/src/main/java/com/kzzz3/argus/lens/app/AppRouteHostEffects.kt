@@ -66,12 +66,15 @@ internal fun AppRouteHostEffects(
                 initialSession = initialSessionSnapshot,
                 initialCredentials = effectDependencies.initialSessionCredentials,
                 previewThreadsState = previewThreadsState,
+                restorableEntryContext = state.restorableEntryContext,
             ),
             callbacks = AppInitialHydrationCallbacks(
                 onConversationThreadsChanged = callbacks.onConversationThreadsChanged,
                 onHydratedConversationAccountChanged = callbacks.onHydratedConversationAccountChanged,
                 onRouteChanged = callbacks.onRouteChanged,
                 onHydratedSessionApplied = callbacks.onHydratedSessionApplied,
+                onSelectedConversationChanged = callbacks.onSelectedConversationChanged,
+                onRestorableEntryContextCleared = callbacks.onRestorableEntryContextCleared,
             ),
         )
     }

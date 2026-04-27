@@ -70,6 +70,30 @@ class SessionBoundaryTest {
     }
 
     @Test
+    fun appRestorableEntryContext_doesNotDeclareSessionTokenFields() {
+        val fieldNames = AppRestorableEntryContext::class.java.declaredFields.map { it.name }.toSet()
+
+        assertFalse("Restorable entry context must not expose access tokens to saved state.", "accessToken" in fieldNames)
+        assertFalse("Restorable entry context must not expose refresh tokens to saved state.", "refreshToken" in fieldNames)
+    }
+
+    @Test
+    fun savedStateHandleState_doesNotPersistSessionTokens() {
+        val viewModelSource = File("src/main/java/com/kzzz3/argus/lens/app/ArgusLensAppViewModel.kt").readText()
+        val savedStateSource = viewModelSource
+            .lineSequence()
+            .filter { line ->
+                line.contains("SavedStateHandle") ||
+                    line.contains("savedStateHandle") ||
+                    line.contains("RESTORABLE_ENTRY")
+            }
+            .joinToString("\n")
+
+        assertFalse("SavedStateHandle state must not persist access tokens.", savedStateSource.contains("accessToken"))
+        assertFalse("SavedStateHandle state must not persist refresh tokens.", savedStateSource.contains("refreshToken"))
+    }
+
+    @Test
     fun androidBackupConfiguration_excludesSessionPersistence() {
         val manifest = File("src/main/AndroidManifest.xml").readText()
         val backupRules = File("src/main/res/xml/backup_rules.xml").readText()

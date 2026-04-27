@@ -18,6 +18,7 @@ data class ArgusLensAppUiState(
     val contactsState: ContactsState = ContactsState(),
     val friends: List<FriendEntry> = emptyList(),
     val selectedConversationId: String = "",
+    val restorableEntryContext: AppRestorableEntryContext? = null,
     val chatStatusMessage: String? = null,
     val chatStatusError: Boolean = false,
     val friendRequestsSnapshot: FriendRequestsSnapshot = FriendRequestsSnapshot(emptyList(), emptyList()),
@@ -70,6 +71,7 @@ internal fun applyAuthenticatedSessionTransition(
         appSessionState = session,
         currentRoute = AppRoute.Inbox,
         selectedConversationId = "",
+        restorableEntryContext = null,
         hydratedConversationAccountId = hydratedConversationAccountId,
         realtimeReconnectGeneration = state.realtimeReconnectGeneration + realtimeReconnectIncrement,
     )
@@ -87,6 +89,7 @@ internal fun applySessionClearedTransition(state: ArgusLensAppUiState): ArgusLen
         appSessionState = AppSessionState(),
         currentRoute = AppRoute.AuthEntry,
         selectedConversationId = "",
+        restorableEntryContext = null,
         hydratedConversationAccountId = null,
     )
 }

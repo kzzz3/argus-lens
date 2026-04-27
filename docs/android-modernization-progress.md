@@ -9,13 +9,16 @@ Status: complete for the access/refresh token UI-state boundary.
 - `accessToken` and `refreshToken` are owned by `data/session/SessionCredentials` and persisted through `SessionRepository` implementations.
 - `LocalSessionStore` remains the concrete `SessionRepository` facade, but now delegates safe identity persistence to `LocalSessionStateStore` and encrypted token persistence to `LocalSessionCredentialsStore` so identity and credential responsibilities can evolve independently.
 - `AppSessionState` remains a Parcelable UI identity snapshot with only authentication status, account id, and display name.
+- Process-death entry restoration uses token-free `AppRestorableEntryContext` state only: account id, stable app route string, and selected conversation id. `SavedStateHandle` must not persist bearer tokens, refresh tokens, message bodies, media payloads, or conversation objects.
 - `rememberSaveable` is guarded by regression tests so access/refresh tokens cannot be reintroduced into saveable Compose state.
+- `SavedStateHandle` restore keys are guarded by regression tests so access/refresh tokens cannot be reintroduced into process-death state.
 - Parcelable UI state in `:feature` and `:core:model` is guarded by regression tests so access/refresh tokens cannot be added there.
 - Android backup is disabled and both full-backup and data-extraction rules exclude shared preferences, databases, and DataStore files.
 
 Verification gate:
 
 - `:app:testDebugUnitTest` must pass after changes to session state, token storage, manifest backup settings, or saveable UI state.
+- `:app:testDebugUnitTest --tests "com.kzzz3.argus.lens.app.SessionBoundaryTest"` must pass after changing `SavedStateHandle`, Parcelable, or saveable state boundaries.
 - `:data:testDebugUnitTest --tests "com.kzzz3.argus.lens.data.session.LocalSessionStoreDelegationTest"` must pass after local session store responsibility split changes.
 
 Remaining security review items are release-hardening work, not blockers for this P0 boundary: evaluate token rotation, device-lock policy, and whether to replace the custom Android Keystore AES/GCM wrapper with Jetpack Security.
@@ -203,6 +206,22 @@ Status: complete for the current reducer/effect architecture.
 
 Future refinement: introduce root snackbar rendering only after the producing features, lifecycle ownership, sign-out clearing behavior, and duplicate-delivery policy are explicit and covered by tests.
 
+## P3 Process-Death Restoration
+
+Status: complete for the safe selected-chat compatibility slice.
+
+- `ArgusLensAppViewModel` owns process-death restore keys through `SavedStateHandle`, but stores only a token-free `AppRestorableEntryContext`: account id, stable `AppRoute` route string, and selected conversation id.
+- The current route is not blindly replayed after process recreation. Initial authenticated startup still enters the main shell safely, then `AppInitialHydrationRuntime` loads conversation threads before restoring `AppRoute.Chat`.
+- Restored `Chat` is allowed only when the initial session is authenticated, an access credential is present in the existing credential boundary, the saved account matches the current account, the saved route string is `Chat`, and the selected conversation id exists in the loaded thread snapshot.
+- Missing credentials, stale conversations, route mismatch, or account mismatch clear the restorable entry context and fall back to the existing Inbox/Auth behavior.
+- This slice deliberately defers broad route restoration, typed route args, Kotlin serialization route migration, and durable cross-launch “last opened conversation” preferences.
+
+Verification gate:
+
+- `:app:testDebugUnitTest --tests "com.kzzz3.argus.lens.app.AppInitialHydrationRuntimeTest"` must pass after hydration or selected-entry restore policy changes.
+- `:app:testDebugUnitTest --tests "com.kzzz3.argus.lens.app.ArgusLensAppViewModelTest"` must pass after app state / host boundary wiring changes.
+- `:app:testDebugUnitTest --tests "com.kzzz3.argus.lens.app.SessionBoundaryTest"` must pass after saved-state, Parcelable, or saveable session boundary changes.
+
 ## P4 Test Structure
 
 Status: complete for the modernization regression baseline.
@@ -210,6 +229,7 @@ Status: complete for the modernization regression baseline.
 - P0 token/session boundaries are guarded by `SessionBoundaryTest`.
 - P0/P1 route and Navigation Compose policy are guarded by `AppRouteNavigationRuntimeTest` and app compilation.
 - P1 ViewModel/runtime ownership is guarded by `ArgusLensAppViewModelTest`.
+- P3 safe selected-chat process-death restoration is guarded by `AppInitialHydrationRuntimeTest`, `ArgusLensAppViewModelTest`, and `SessionBoundaryTest`.
 - P2 Room migration/schema work is guarded by `ArgusLensDatabaseMigrationTest`.
 - P2 WorkManager behavior is guarded by `BackgroundSyncWorkTest`, `BackgroundSyncTaskTest`, and `BackgroundSyncWorkerTest`.
 - P3 release/module/event boundaries are guarded by `ReleaseAndModuleBoundaryTest` and `EventModelBoundaryTest`.

@@ -213,6 +213,16 @@ class ArgusLensAppViewModelTest {
     }
 
     @Test
+    fun appViewModel_defersRestoredSelectedConversationUntilHydrationValidatesThreads() {
+        val viewModelSource = File("src/main/java/com/kzzz3/argus/lens/app/ArgusLensAppViewModel.kt").readText()
+        val appSource = File("src/main/java/com/kzzz3/argus/lens/app/ArgusLensApp.kt").readText()
+
+        assertTrue(viewModelSource.contains("restorableEntryContext = savedRestorableEntryContext"))
+        assertTrue(appSource.contains("onSelectedConversationChanged = viewModel::restoreSelectedConversation"))
+        assertFalse(viewModelSource.contains("selectedConversationId = initialRestorableEntryContext?.selectedConversationId.orEmpty()"))
+    }
+
+    @Test
     fun resolveInitialAppRoute_authenticatedSessionWithTokenStartsInInbox() {
         val route = resolveInitialAppRoute(
             session = AppSessionState(

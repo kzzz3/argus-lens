@@ -1,6 +1,7 @@
 package com.kzzz3.argus.lens.app
 
 import com.kzzz3.argus.lens.app.navigation.AppRoute
+import com.kzzz3.argus.lens.app.navigation.routeString
 import com.kzzz3.argus.lens.data.session.SessionCredentials
 import com.kzzz3.argus.lens.feature.inbox.ConversationThreadsState
 import com.kzzz3.argus.lens.feature.inbox.InboxConversationThread
@@ -12,6 +13,119 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class AppInitialHydrationRuntimeTest {
+    @Test
+    fun hydrate_withRestoredChatEntryAndMatchingConversationRoutesToChatAfterThreadsLoad() = runBlocking {
+        val initialSession = authenticatedSession("argus_tester")
+        val loadedThreads = threads("conversation-1")
+        val events = mutableListOf<String>()
+        var restoredConversationId: String? = null
+        var routedTo: AppRoute? = null
+        val runtime = AppInitialHydrationRuntime(
+            loadInitialAuthenticatedConversations = { loadedThreads },
+            hydrateAppState = { error("fallback hydration not expected") },
+        )
+
+        runtime.hydrate(
+            request = AppInitialHydrationRequest(
+                initialSession = initialSession,
+                initialCredentials = SessionCredentials(accessToken = "token"),
+                previewThreadsState = threads("preview"),
+                restorableEntryContext = AppRestorableEntryContext(
+                    accountId = "argus_tester",
+                    routeString = AppRoute.Chat.routeString,
+                    selectedConversationId = "conversation-1",
+                ),
+            ),
+            callbacks = AppInitialHydrationCallbacks(
+                onConversationThreadsChanged = { events += "threads" },
+                onHydratedConversationAccountChanged = { events += "hydratedAccount" },
+                onRouteChanged = {
+                    events += "route"
+                    routedTo = it
+                },
+                onHydratedSessionApplied = { _, _ -> error("hydrated session should not be applied") },
+                onSelectedConversationChanged = {
+                    events += "selectedConversation"
+                    restoredConversationId = it
+                },
+            ),
+        )
+
+        assertEquals("conversation-1", restoredConversationId)
+        assertEquals(AppRoute.Chat, routedTo)
+        assertEquals(listOf("threads", "hydratedAccount", "selectedConversation", "route"), events)
+    }
+
+    @Test
+    fun hydrate_withRestoredChatEntryAndMissingConversationFallsBackToInboxAndClearsEntry() = runBlocking {
+        val initialSession = authenticatedSession("argus_tester")
+        var routedTo: AppRoute? = null
+        var clearedRestorableEntry = false
+        val runtime = AppInitialHydrationRuntime(
+            loadInitialAuthenticatedConversations = { threads("different-conversation") },
+            hydrateAppState = { error("fallback hydration not expected") },
+        )
+
+        runtime.hydrate(
+            request = AppInitialHydrationRequest(
+                initialSession = initialSession,
+                initialCredentials = SessionCredentials(accessToken = "token"),
+                previewThreadsState = threads("preview"),
+                restorableEntryContext = AppRestorableEntryContext(
+                    accountId = "argus_tester",
+                    routeString = AppRoute.Chat.routeString,
+                    selectedConversationId = "conversation-1",
+                ),
+            ),
+            callbacks = AppInitialHydrationCallbacks(
+                onConversationThreadsChanged = {},
+                onHydratedConversationAccountChanged = {},
+                onRouteChanged = { routedTo = it },
+                onHydratedSessionApplied = { _, _ -> error("hydrated session should not be applied") },
+                onSelectedConversationChanged = { error("missing conversation must not be selected") },
+                onRestorableEntryContextCleared = { clearedRestorableEntry = true },
+            ),
+        )
+
+        assertTrue(clearedRestorableEntry)
+        assertEquals(AppRoute.Inbox, routedTo)
+    }
+
+    @Test
+    fun hydrate_withRestoredChatEntryForDifferentAccountFallsBackToInboxAndClearsEntry() = runBlocking {
+        val initialSession = authenticatedSession("argus_tester")
+        var routedTo: AppRoute? = null
+        var clearedRestorableEntry = false
+        val runtime = AppInitialHydrationRuntime(
+            loadInitialAuthenticatedConversations = { threads("conversation-1") },
+            hydrateAppState = { error("fallback hydration not expected") },
+        )
+
+        runtime.hydrate(
+            request = AppInitialHydrationRequest(
+                initialSession = initialSession,
+                initialCredentials = SessionCredentials(accessToken = "token"),
+                previewThreadsState = threads("preview"),
+                restorableEntryContext = AppRestorableEntryContext(
+                    accountId = "other_account",
+                    routeString = AppRoute.Chat.routeString,
+                    selectedConversationId = "conversation-1",
+                ),
+            ),
+            callbacks = AppInitialHydrationCallbacks(
+                onConversationThreadsChanged = {},
+                onHydratedConversationAccountChanged = {},
+                onRouteChanged = { routedTo = it },
+                onHydratedSessionApplied = { _, _ -> error("hydrated session should not be applied") },
+                onSelectedConversationChanged = { error("cross-account conversation must not be selected") },
+                onRestorableEntryContextCleared = { clearedRestorableEntry = true },
+            ),
+        )
+
+        assertTrue(clearedRestorableEntry)
+        assertEquals(AppRoute.Inbox, routedTo)
+    }
+
     @Test
     fun hydrate_withInitialAuthenticatedSessionAndTokenLoadsInitialThreadsAndRoutesToInbox() = runBlocking {
         val initialSession = authenticatedSession("argus_tester")
@@ -119,6 +233,52 @@ class AppInitialHydrationRuntimeTest {
         assertEquals(listOf("hydratedSession", "threads"), events)
         assertTrue(!loadInitialCalled)
         assertNull(routedTo)
+    }
+
+    @Test
+    fun hydrate_withoutInitialTokenClearsRestorableEntryAndDoesNotRoute() = runBlocking {
+        val initialSession = authenticatedSession("argus_tester")
+        var routedTo: AppRoute? = null
+        var clearedRestorableEntry = false
+        val events = mutableListOf<String>()
+        val runtime = AppInitialHydrationRuntime(
+            loadInitialAuthenticatedConversations = { error("initial authenticated load not expected") },
+            hydrateAppState = {
+                events += "hydratedState"
+                AppHydrationState(
+                    session = AppSessionState(),
+                    conversationThreadsState = threads("fallback"),
+                    hydratedConversationAccountId = null,
+                )
+            },
+        )
+
+        runtime.hydrate(
+            request = AppInitialHydrationRequest(
+                initialSession = initialSession,
+                initialCredentials = SessionCredentials(),
+                previewThreadsState = threads("preview"),
+                restorableEntryContext = AppRestorableEntryContext(
+                    accountId = "argus_tester",
+                    routeString = AppRoute.Chat.routeString,
+                    selectedConversationId = "conversation-1",
+                ),
+            ),
+            callbacks = AppInitialHydrationCallbacks(
+                onConversationThreadsChanged = { events += "threads" },
+                onHydratedConversationAccountChanged = {},
+                onRouteChanged = { routedTo = it },
+                onHydratedSessionApplied = { _, _ -> events += "session" },
+                onRestorableEntryContextCleared = {
+                    events += "clearRestorableEntry"
+                    clearedRestorableEntry = true
+                },
+            ),
+        )
+
+        assertTrue(clearedRestorableEntry)
+        assertNull(routedTo)
+        assertEquals(listOf("clearRestorableEntry", "hydratedState", "session", "threads"), events)
     }
 
     private fun authenticatedSession(accountId: String): AppSessionState {

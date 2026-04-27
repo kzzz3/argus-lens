@@ -42,6 +42,7 @@ The app shell has already moved past a single monolithic route host milestone:
 - `ChatStateHolder` owns selected-conversation chat state and UI derivation in the feature package; `ArgusLensAppViewModel` owns its lifetime while app code still owns chat action side effects, call routing, selected conversation, shared thread mutation, realtime, and persistence.
 - `AppRouteContract` owns stable app route descriptors and route strings, so app navigation no longer depends on enum names. AndroidX `composable<T>` typed route registration, Kotlin serialization setup, and route args remain future slices after process-death restoration and selected-conversation ownership are explicit.
 - `AppRouteHostEffectDependencies` narrows host lifecycle/effects inputs so the effects layer no longer receives the full Hilt-backed `AppDependencies` aggregate.
+- `SavedStateHandle` process-death restoration now has a narrow compatibility policy: app state stores only account id, stable route string, and selected conversation id, and hydration restores `Chat` only after same-account credentials and loaded conversation threads validate the selected id.
 - `LocalSessionStore` remains the concrete `SessionRepository` facade, with safe identity persistence and encrypted credential persistence split behind module-internal stores while storage semantics remain unchanged.
 - `RemoteMediaRepository` remains behind the public `MediaRepository` factory contract and delegates Android download file persistence to module-internal `MediaFileDataSource`.
 - `:core:model` and `:core:ui` own the former shared `model` and `ui` modules without package renames, keeping the first physical core migration low risk.
@@ -200,7 +201,7 @@ State and events:
 - Screen-scoped messages stay feature-owned and may use `UiStatusMessage` when a shared success/error message primitive is useful.
 - `SnackbarHostState`, `SharedFlow`, `Channel`, and `Toast` are not default event mechanisms; add root message rendering only when app-wide producer pressure, lifecycle ownership, sign-out clearing, and duplicate-delivery behavior are explicit and tested.
 - Compose screens do not receive `NavController`. They expose callbacks such as `onConversationClick(id)`.
-- Token material never enters Parcelable, saveable Compose state, logs, previews, or screenshots.
+- Token material never enters Parcelable, saveable Compose state, `SavedStateHandle` restore keys, logs, previews, or screenshots.
 - Use cases are not a mandatory layer. Add them when they remove real workflow orchestration from a coordinator, and keep single-repository mapping in coordinators/repositories until reuse or complexity justifies extraction.
 
 ## Role Naming Boundary
@@ -226,7 +227,7 @@ Current transitional names are classified rather than renamed in this slice:
 
 ## Navigation Target
 
-Current state: `ArgusNavHost` centralizes the root graph, with `AuthGraphRoute` for login/register and `MainGraphRoute` for authenticated destinations. `AppRoute` remains the compatibility route contract while feature-owned navigation files register leaf destinations.
+Current state: `ArgusNavHost` centralizes the root graph, with `AuthGraphRoute` for login/register and `MainGraphRoute` for authenticated destinations. `AppRoute` remains the compatibility route contract while feature-owned navigation files register leaf destinations. Process-death restoration is intentionally narrower than full route replay: it restores only a safe selected-chat entry after hydration validates same-account credentials and the selected conversation thread.
 
 Target state: type-safe Navigation Compose routes backed by Kotlin Serialization, nested feature graph registration, and route argument decoding in route/ViewModel boundaries.
 
@@ -280,7 +281,7 @@ Rules:
 
 - DataStore can persist small durable state, but it is not treated as a secure secret store by itself.
 - Android Keystore-backed crypto remains isolated behind a small interface.
-- Process-death restoration restores the selected safe entry context, not bearer tokens or sensitive payloads.
+- Process-death restoration restores the selected safe entry context, not bearer tokens or sensitive payloads. The current compatibility baseline stores only account id, route string, and selected conversation id in `SavedStateHandle`; stale, cross-account, tokenless, or missing-thread restore attempts clear the context and fall back to Inbox/Auth behavior.
 
 ## Data, Offline, and Sync Target
 
@@ -376,7 +377,7 @@ Goal: move from centralized enum registration to typed route contracts without l
 - Convert one feature route at a time to typed arguments.
 - Preserve the auth/main nested graph split and feature-owned leaf registration while typed routes are introduced.
 - Replace Composable-owned long-running scopes with ViewModel/repository/worker ownership.
-- Decide and document process-death restoration for selected conversation and session entry context.
+- Keep the documented process-death policy narrow: restore selected chat only after same-account credential and thread validation; defer broad route replay and durable last-opened preferences.
 
 Exit evidence:
 

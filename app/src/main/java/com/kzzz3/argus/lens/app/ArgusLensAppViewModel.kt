@@ -1,8 +1,10 @@
 package com.kzzz3.argus.lens.app
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.kzzz3.argus.lens.app.navigation.AppRoute
+import com.kzzz3.argus.lens.app.navigation.routeString
 import com.kzzz3.argus.lens.data.friend.FriendEntry
 import com.kzzz3.argus.lens.data.friend.FriendRequestsSnapshot
 import com.kzzz3.argus.lens.data.realtime.ConversationRealtimeConnectionState
@@ -33,12 +35,14 @@ import javax.inject.Inject
 @HiltViewModel
 class ArgusLensAppViewModel @Inject constructor(
     val dependencies: AppDependencies,
+    private val savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
     val runtimeScope: CoroutineScope = viewModelScope
     val authStateHolder: AuthStateHolder = createAuthStateHolder(dependencies, runtimeScope)
     val chatStateHolder: ChatStateHolder = createChatStateHolder()
     val inboxStateHolder: InboxStateHolder = createInboxStateHolder()
     val walletStateHolder: WalletStateHolder = createWalletStateHolder(dependencies, runtimeScope)
+    private val savedRestorableEntryContext = savedStateHandle.readRestorableEntryContext()
 
     private val _uiState = MutableStateFlow(
         ArgusLensAppUiState(
@@ -53,20 +57,63 @@ class ArgusLensAppViewModel @Inject constructor(
             hydratedConversationAccountId = resolveInitialHydratedConversationAccountId(
                 session = dependencies.initialSessionSnapshot,
             ),
+            restorableEntryContext = savedRestorableEntryContext,
         )
     )
     val uiState: StateFlow<ArgusLensAppUiState> = _uiState.asStateFlow()
 
     fun openRoute(route: AppRoute) {
-        _uiState.update { state -> state.copy(currentRoute = route) }
+        _uiState.update { state ->
+            val nextState = state.copy(
+                currentRoute = route,
+                restorableEntryContext = if (route == AppRoute.Chat) {
+                    createRestorableChatEntryContext(state.appSessionState, state.selectedConversationId)
+                } else {
+                    null
+                },
+            )
+            syncRestorableEntryContext(nextState.restorableEntryContext)
+            nextState
+        }
     }
 
     fun openConversation(conversationId: String) {
         _uiState.update { state ->
-            state.copy(
+            val nextState = state.copy(
                 currentRoute = AppRoute.Chat,
                 selectedConversationId = conversationId,
+                restorableEntryContext = createRestorableChatEntryContext(
+                    session = state.appSessionState,
+                    selectedConversationId = conversationId,
+                ),
             )
+            syncRestorableEntryContext(nextState.restorableEntryContext)
+            nextState
+        }
+    }
+
+    fun restoreSelectedConversation(conversationId: String) {
+        _uiState.update { state ->
+            val nextState = state.copy(
+                selectedConversationId = conversationId,
+                restorableEntryContext = createRestorableChatEntryContext(
+                    session = state.appSessionState,
+                    selectedConversationId = conversationId,
+                ),
+            )
+            syncRestorableEntryContext(nextState.restorableEntryContext)
+            nextState
+        }
+    }
+
+    fun clearRestorableEntryContext() {
+        _uiState.update { state ->
+            val nextState = state.copy(
+                selectedConversationId = "",
+                restorableEntryContext = null,
+            )
+            syncRestorableEntryContext(null)
+            nextState
         }
     }
 
@@ -128,7 +175,10 @@ class ArgusLensAppViewModel @Inject constructor(
         hydratedConversationAccountId: String?,
     ) {
         _uiState.update { state ->
-            applyHydratedSessionTransition(state, session, hydratedConversationAccountId)
+            val nextState = applyHydratedSessionTransition(state, session, hydratedConversationAccountId)
+                .withSyncedRestorableEntryContext()
+            syncRestorableEntryContext(nextState.restorableEntryContext)
+            nextState
         }
     }
 
@@ -140,12 +190,14 @@ class ArgusLensAppViewModel @Inject constructor(
     ) {
         dependencies.sessionCredentialsStore.update(credentials)
         _uiState.update { state ->
-            applyAuthenticatedSessionTransition(
+            val nextState = applyAuthenticatedSessionTransition(
                 state = state,
                 session = session,
                 hydratedConversationAccountId = hydratedConversationAccountId,
                 realtimeReconnectIncrement = realtimeReconnectIncrement,
             )
+            syncRestorableEntryContext(null)
+            nextState
         }
     }
 
@@ -155,7 +207,11 @@ class ArgusLensAppViewModel @Inject constructor(
 
     fun clearSession() {
         dependencies.sessionCredentialsStore.clear()
-        _uiState.update(::applySessionClearedTransition)
+        _uiState.update { state ->
+            val nextState = applySessionClearedTransition(state)
+            syncRestorableEntryContext(null)
+            nextState
+        }
     }
 
     fun updateHydratedConversationAccountId(accountId: String?) {
@@ -179,6 +235,19 @@ class ArgusLensAppViewModel @Inject constructor(
         _uiState.update { state ->
             state.copy(realtimeReconnectGeneration = state.realtimeReconnectGeneration + 1)
         }
+    }
+
+    private fun syncRestorableEntryContext(context: AppRestorableEntryContext?) {
+        if (context == null) {
+            savedStateHandle.remove<String>(RESTORABLE_ENTRY_ACCOUNT_ID_KEY)
+            savedStateHandle.remove<String>(RESTORABLE_ENTRY_ROUTE_KEY)
+            savedStateHandle.remove<String>(RESTORABLE_ENTRY_SELECTED_CONVERSATION_ID_KEY)
+            return
+        }
+
+        savedStateHandle[RESTORABLE_ENTRY_ACCOUNT_ID_KEY] = context.accountId
+        savedStateHandle[RESTORABLE_ENTRY_ROUTE_KEY] = context.routeString
+        savedStateHandle[RESTORABLE_ENTRY_SELECTED_CONVERSATION_ID_KEY] = context.selectedConversationId
     }
 }
 
@@ -226,4 +295,47 @@ private fun createWalletStateHolder(
         controller = walletFeatureController,
         invalidateRequests = walletRequestRunner::invalidate,
     )
+}
+
+private const val RESTORABLE_ENTRY_ACCOUNT_ID_KEY = "restorableEntryAccountId"
+private const val RESTORABLE_ENTRY_ROUTE_KEY = "restorableEntryRoute"
+private const val RESTORABLE_ENTRY_SELECTED_CONVERSATION_ID_KEY = "restorableEntrySelectedConversationId"
+
+private fun SavedStateHandle.readRestorableEntryContext(): AppRestorableEntryContext? {
+    val accountId = get<String>(RESTORABLE_ENTRY_ACCOUNT_ID_KEY).orEmpty()
+    val routeString = get<String>(RESTORABLE_ENTRY_ROUTE_KEY).orEmpty()
+    val selectedConversationId = get<String>(RESTORABLE_ENTRY_SELECTED_CONVERSATION_ID_KEY).orEmpty()
+    return AppRestorableEntryContext(
+        accountId = accountId,
+        routeString = routeString,
+        selectedConversationId = selectedConversationId,
+    ).takeIf {
+        it.accountId.isNotBlank() &&
+            it.routeString.isNotBlank() &&
+            it.selectedConversationId.isNotBlank()
+    }
+}
+
+private fun createRestorableChatEntryContext(
+    session: AppSessionState,
+    selectedConversationId: String,
+): AppRestorableEntryContext? {
+    return AppRestorableEntryContext(
+        accountId = session.accountId,
+        routeString = AppRoute.Chat.routeString,
+        selectedConversationId = selectedConversationId,
+    ).takeIf {
+        session.isAuthenticated &&
+            session.accountId.isNotBlank() &&
+            selectedConversationId.isNotBlank()
+    }
+}
+
+private fun ArgusLensAppUiState.withSyncedRestorableEntryContext(): ArgusLensAppUiState {
+    val context = if (currentRoute == AppRoute.Chat) {
+        createRestorableChatEntryContext(appSessionState, selectedConversationId)
+    } else {
+        null
+    }
+    return copy(restorableEntryContext = context)
 }
