@@ -509,6 +509,17 @@ internal fun AppRouteHost(
         )
     }
 
+    val contactsActionRouteRuntime = ContactsActionRouteRuntime(
+        reduceAction = ::reduceContactsState,
+        handleEffect = { effect ->
+            contactsRouteRuntime.handleContactsEffect(
+                effect = effect,
+                request = contactsRouteRequest(),
+                callbacks = contactsRouteCallbacks(),
+            )
+        },
+    )
+
     fun signOutToEntry(message: String? = null) {
         sessionBoundaryRuntime.signOutToEntry(
             currentSession = appSessionState,
@@ -665,16 +676,12 @@ internal fun AppRouteHost(
         ContactsScreen(
                 state = contactsUiState,
                 onAction = { action ->
-                    val result = reduceContactsState(
-                        currentState = contactsState,
+                    contactsActionRouteRuntime.handleAction(
                         action = action,
-                    )
-                    onContactsStateChanged(result.state)
-
-                    contactsRouteRuntime.handleContactsEffect(
-                        effect = result.effect,
-                        request = contactsRouteRequest(),
-                        callbacks = contactsRouteCallbacks(),
+                        request = ContactsActionRouteRequest(currentState = contactsState),
+                        callbacks = ContactsActionRouteCallbacks(
+                            onContactsStateChanged = onContactsStateChanged,
+                        ),
                     )
                 },
                 modifier = Modifier.padding(innerPadding),
