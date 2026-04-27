@@ -6,6 +6,9 @@
 ## STRUCTURE
 ```text
 argus-lens/
+├── README.md
+├── PLAN.md
+├── AGENTS.md
 ├── settings.gradle.kts
 ├── build.gradle.kts
 ├── app/
@@ -41,6 +44,7 @@ argus-lens/
 | Shared UI | `ui/src/main/java/com/kzzz3/argus/lens/ui/` | Theme, shell widgets, status UI primitives |
 | Local unit tests | `*/src/test/java/` | JVM tests live with their owning module |
 | Instrumentation/UI tests | `app/src/androidTest/java/` | AndroidX / Compose test path |
+| Onboarding and active plan | `README.md`, `PLAN.md` | Setup, navigation, current checklist, verification gates |
 | Project intent | `docs/project-plan.md`, `docs/wallet-payment-flow.md` | Product and UX boundaries |
 
 ## COMMANDS
@@ -62,6 +66,14 @@ argus-lens/
 - `data/build.gradle.kts` encodes debug/release backend URL behavior and `AUTH_MODE` / `CONVERSATION_MODE` BuildConfig boundaries.
 - `app` may depend on all lower modules; `feature` may depend on `data`, `model`, and `ui`; `data` may depend on `model`; `ui` and `model` should not depend on product modules.
 - Room is wired through KSP; preserve that path instead of casually switching annotation processing style.
+
+## DOCUMENTATION WORKFLOW
+- `README.md` is the Lens onboarding guide for Android setup, module navigation, and routine commands.
+- `PLAN.md` is the active Lens task plan, risk register, and verification ledger.
+- `docs/project-plan.md` remains the long-form product/architecture blueprint; do not duplicate active checklist state there unless the blueprint itself changes.
+- `docs/android-modernization-progress.md` remains the detailed modernization evidence ledger.
+- For non-trivial work, update `PLAN.md` before editing and complete Modify -> Review/Evaluate -> Document -> Cleanup before marking a task done.
+- Documentation changes should accompany code changes whenever UI behavior, runtime contracts, Gradle commands, or verification gates change.
 
 ## ANTI-PATTERNS
 - Do not put cloud routing, settlement/orchestration, or final authorization logic here.
