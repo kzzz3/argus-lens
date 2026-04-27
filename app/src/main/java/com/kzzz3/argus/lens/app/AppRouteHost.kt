@@ -137,6 +137,12 @@ internal fun AppRouteHost(
     }
     val initialSessionSnapshot = dependencies.initialSessionSnapshot
     val callSessionRuntime = remember(coroutineScope) { CallSessionRuntime(coroutineScope) }
+    val callSessionRouteRuntime = remember(callSessionRuntime) {
+        CallSessionRouteRuntime(
+            reduceAction = ::reduceCallSessionState,
+            endCall = callSessionRuntime::endCall,
+        )
+    }
     val realtimeReconnectRuntime = remember(coroutineScope) { RealtimeReconnectRuntime(coroutineScope) }
     val sessionRefreshRuntime = remember(coroutineScope, appSessionCoordinator, sessionCredentialsStore) {
         SessionRefreshRuntime(
@@ -695,15 +701,14 @@ internal fun AppRouteHost(
             CallSessionScreen(
                 state = callSessionUiState,
                 onAction = { action ->
-                    val nextCallSessionState = reduceCallSessionState(callSessionState, action)
-                    onCallSessionStateChanged(nextCallSessionState)
-                    if (action == CallSessionAction.EndCall) {
-                        callSessionRuntime.endCall(
-                            currentState = nextCallSessionState,
-                            setState = onCallSessionStateChanged,
-                            openChat = { onRouteChanged(AppRoute.Chat) },
-                        )
-                    }
+                    callSessionRouteRuntime.handleAction(
+                        action = action,
+                        request = CallSessionRouteRequest(currentState = callSessionState),
+                        callbacks = CallSessionRouteCallbacks(
+                            onCallSessionStateChanged = onCallSessionStateChanged,
+                            onRouteChanged = onRouteChanged,
+                        ),
+                    )
                 },
                 modifier = Modifier.padding(innerPadding),
             )
