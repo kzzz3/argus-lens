@@ -520,6 +520,25 @@ internal fun AppRouteHost(
         },
     )
 
+    val walletActionRouteRuntime = WalletActionRouteRuntime(
+        reduceAction = ::reduceWalletState,
+        handleEffect = { effect, currentState ->
+            walletRouteRuntime.handleEffect(
+                effect = effect,
+                request = WalletRouteRequest(
+                    session = appSessionState,
+                    currentState = currentState,
+                ),
+                callbacks = WalletRouteCallbacks(
+                    getCurrentSession = { appSessionState },
+                    getCurrentState = { walletStateModel },
+                    onRouteChanged = ::openTopLevelRoute,
+                    onStateChanged = onWalletStateChanged,
+                ),
+            )
+        },
+    )
+
     fun signOutToEntry(message: String? = null) {
         sessionBoundaryRuntime.signOutToEntry(
             currentSession = appSessionState,
@@ -732,23 +751,11 @@ internal fun AppRouteHost(
                 state = walletUiState,
                 permissionRequestPending = walletStateModel.shouldRequestCameraPermission,
                 onAction = { action ->
-                    val result = reduceWalletState(
-                        currentState = walletStateModel,
+                    walletActionRouteRuntime.handleAction(
                         action = action,
-                    )
-                    onWalletStateChanged(result.state)
-
-                    walletRouteRuntime.handleEffect(
-                        effect = result.effect,
-                        request = WalletRouteRequest(
-                            session = appSessionState,
-                            currentState = result.state,
-                        ),
-                        callbacks = WalletRouteCallbacks(
-                            getCurrentSession = { appSessionState },
-                            getCurrentState = { walletStateModel },
-                            onRouteChanged = ::openTopLevelRoute,
-                            onStateChanged = onWalletStateChanged,
+                        request = WalletActionRouteRequest(currentState = walletStateModel),
+                        callbacks = WalletActionRouteCallbacks(
+                            onWalletStateChanged = onWalletStateChanged,
                         ),
                     )
                 },
