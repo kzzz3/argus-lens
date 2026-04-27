@@ -21,47 +21,37 @@ import com.kzzz3.argus.lens.data.friend.FriendEntry
 import com.kzzz3.argus.lens.data.friend.FriendRequestsSnapshot
 import com.kzzz3.argus.lens.data.realtime.ConversationRealtimeConnectionState
 import com.kzzz3.argus.lens.data.session.SessionCredentials
-import com.kzzz3.argus.lens.feature.auth.AuthEntryAction
 import com.kzzz3.argus.lens.feature.auth.AuthEntryScreen
 import com.kzzz3.argus.lens.feature.auth.AuthFormState
 import com.kzzz3.argus.lens.feature.auth.createAuthEntryUiState
 import com.kzzz3.argus.lens.feature.auth.reduceAuthFormState
-import com.kzzz3.argus.lens.feature.call.CallSessionAction
 import com.kzzz3.argus.lens.feature.call.CallSessionMode
 import com.kzzz3.argus.lens.feature.call.CallSessionScreen
 import com.kzzz3.argus.lens.feature.call.CallSessionState
 import com.kzzz3.argus.lens.feature.call.CallSessionRuntime
 import com.kzzz3.argus.lens.feature.call.createCallSessionUiState
 import com.kzzz3.argus.lens.feature.call.reduceCallSessionState
-import com.kzzz3.argus.lens.feature.contacts.ContactsAction
-import com.kzzz3.argus.lens.feature.contacts.ContactsEffect
 import com.kzzz3.argus.lens.feature.contacts.ContactsScreen
 import com.kzzz3.argus.lens.feature.contacts.ContactsState
-import com.kzzz3.argus.lens.feature.contacts.NewFriendsAction
 import com.kzzz3.argus.lens.feature.contacts.NewFriendsScreen
 import com.kzzz3.argus.lens.feature.contacts.NewFriendsUiState
 import com.kzzz3.argus.lens.feature.contacts.FriendRequestStatusState
 import com.kzzz3.argus.lens.feature.contacts.createContactsUiState
 import com.kzzz3.argus.lens.feature.contacts.reduceContactsState
-import com.kzzz3.argus.lens.feature.inbox.ChatAction
 import com.kzzz3.argus.lens.feature.inbox.ChatCallMode
-import com.kzzz3.argus.lens.feature.inbox.ChatEffect
 import com.kzzz3.argus.lens.feature.inbox.ChatScreen
 import com.kzzz3.argus.lens.feature.inbox.ChatState
 import com.kzzz3.argus.lens.feature.inbox.ConversationThreadsState
-import com.kzzz3.argus.lens.feature.inbox.InboxAction
 import com.kzzz3.argus.lens.feature.inbox.InboxScreen
 import com.kzzz3.argus.lens.feature.inbox.createChatUiState
 import com.kzzz3.argus.lens.feature.inbox.createInboxUiState
 import com.kzzz3.argus.lens.feature.me.MeScreen
 import com.kzzz3.argus.lens.feature.me.createMeUiState
-import com.kzzz3.argus.lens.feature.register.RegisterAction
 import com.kzzz3.argus.lens.feature.register.RegisterFormState
 import com.kzzz3.argus.lens.feature.register.RegisterScreen
 import com.kzzz3.argus.lens.feature.register.createRegisterUiState
 import com.kzzz3.argus.lens.feature.register.reduceRegisterFormState
 import com.kzzz3.argus.lens.feature.realtime.buildRealtimeStatusLabel
-import com.kzzz3.argus.lens.feature.wallet.WalletAction
 import com.kzzz3.argus.lens.feature.wallet.WalletScreen
 import com.kzzz3.argus.lens.feature.wallet.WalletState
 import com.kzzz3.argus.lens.feature.wallet.createWalletUiState
@@ -651,128 +641,141 @@ internal fun AppRouteHost(
     ) {
         composable(AppRoute.AuthEntry.name) {
             AuthEntryScreen(
-            state = authState,
-            onAction = { action ->
-                entryRouteRuntime.handleAuthAction(
-                    action = action,
-                    request = entryRouteRequest(),
-                    callbacks = entryRouteCallbacks(),
-                )
-            }
+                state = authState,
+                onAction = { action ->
+                    entryRouteRuntime.handleAuthAction(
+                        action = action,
+                        request = entryRouteRequest(),
+                        callbacks = entryRouteCallbacks(),
+                    )
+                },
             )
         }
 
         composable(AppRoute.RegisterEntry.name) {
             RegisterScreen(
-            state = registerState,
-            onAction = { action ->
-                entryRouteRuntime.handleRegisterAction(
-                    action = action,
-                    request = entryRouteRequest(),
-                    callbacks = entryRouteCallbacks(),
-                )
-            }
+                state = registerState,
+                onAction = { action ->
+                    entryRouteRuntime.handleRegisterAction(
+                        action = action,
+                        request = entryRouteRequest(),
+                        callbacks = entryRouteCallbacks(),
+                    )
+                },
             )
         }
 
-        composable(AppRoute.Inbox.name) { AuthenticatedShell(
-            currentDestination = appRouteNavigationRuntime.toShellDestination(currentRoute),
-            onTabSelected = ::openShellDestination,
-        ) { innerPadding ->
-            InboxScreen(
-                state = inboxState,
-                onAction = { action ->
-                    inboxActionRouteRuntime.handleAction(action, inboxActionRouteCallbacks())
-                },
-                modifier = Modifier.padding(innerPadding),
-            )
-        } }
+        composable(AppRoute.Inbox.name) {
+            AuthenticatedShell(
+                currentDestination = appRouteNavigationRuntime.toShellDestination(currentRoute),
+                onTabSelected = ::openShellDestination,
+            ) { innerPadding ->
+                InboxScreen(
+                    state = inboxState,
+                    onAction = { action ->
+                        inboxActionRouteRuntime.handleAction(action, inboxActionRouteCallbacks())
+                    },
+                    modifier = Modifier.padding(innerPadding),
+                )
+            }
+        }
 
-        composable(AppRoute.Contacts.name) { AuthenticatedShell(
-            currentDestination = appRouteNavigationRuntime.toShellDestination(currentRoute),
-            onTabSelected = ::openShellDestination,
-        ) { innerPadding ->
-        ContactsScreen(
-                state = contactsUiState,
-                onAction = { action ->
-                    contactsActionRouteRuntime.handleAction(
-                        action = action,
-                        request = ContactsActionRouteRequest(currentState = contactsState),
-                        callbacks = ContactsActionRouteCallbacks(
-                            onContactsStateChanged = onContactsStateChanged,
-                        ),
-                    )
-                },
-                modifier = Modifier.padding(innerPadding),
-            )
-        } }
+        composable(AppRoute.Contacts.name) {
+            AuthenticatedShell(
+                currentDestination = appRouteNavigationRuntime.toShellDestination(currentRoute),
+                onTabSelected = ::openShellDestination,
+            ) { innerPadding ->
+                ContactsScreen(
+                    state = contactsUiState,
+                    onAction = { action ->
+                        contactsActionRouteRuntime.handleAction(
+                            action = action,
+                            request = ContactsActionRouteRequest(currentState = contactsState),
+                            callbacks = ContactsActionRouteCallbacks(
+                                onContactsStateChanged = onContactsStateChanged,
+                            ),
+                        )
+                    },
+                    modifier = Modifier.padding(innerPadding),
+                )
+            }
+        }
 
-        composable(AppRoute.NewFriends.name) { AuthenticatedShell(
-            currentDestination = ShellDestination.Contacts,
-            onTabSelected = ::openShellDestination,
-        ) { innerPadding ->
-            NewFriendsScreen(
-                state = newFriendsUiState,
-                onAction = { action ->
-                    contactsRouteRuntime.handleNewFriendsAction(
-                        action = action,
-                        request = contactsRouteRequest(),
-                        callbacks = contactsRouteCallbacks(),
-                    )
-                },
-                modifier = Modifier.padding(innerPadding),
-            )
-        } }
-        composable(AppRoute.CallSession.name) { AuthenticatedShell(
-            currentDestination = appRouteNavigationRuntime.toShellDestination(currentRoute),
-            onTabSelected = ::openShellDestination,
-        ) { innerPadding ->
-            CallSessionScreen(
-                state = callSessionUiState,
-                onAction = { action ->
-                    callSessionRouteRuntime.handleAction(
-                        action = action,
-                        request = CallSessionRouteRequest(currentState = callSessionState),
-                        callbacks = CallSessionRouteCallbacks(
-                            onCallSessionStateChanged = onCallSessionStateChanged,
-                            onRouteChanged = onRouteChanged,
-                        ),
-                    )
-                },
-                modifier = Modifier.padding(innerPadding),
-            )
-        } }
+        composable(AppRoute.NewFriends.name) {
+            AuthenticatedShell(
+                currentDestination = ShellDestination.Contacts,
+                onTabSelected = ::openShellDestination,
+            ) { innerPadding ->
+                NewFriendsScreen(
+                    state = newFriendsUiState,
+                    onAction = { action ->
+                        contactsRouteRuntime.handleNewFriendsAction(
+                            action = action,
+                            request = contactsRouteRequest(),
+                            callbacks = contactsRouteCallbacks(),
+                        )
+                    },
+                    modifier = Modifier.padding(innerPadding),
+                )
+            }
+        }
 
-        composable(AppRoute.Wallet.name) { AuthenticatedShell(
-            currentDestination = appRouteNavigationRuntime.toShellDestination(currentRoute),
-            onTabSelected = ::openShellDestination,
-        ) { innerPadding ->
-            WalletScreen(
-                state = walletUiState,
-                permissionRequestPending = walletStateModel.shouldRequestCameraPermission,
-                onAction = { action ->
-                    walletActionRouteRuntime.handleAction(
-                        action = action,
-                        request = WalletActionRouteRequest(currentState = walletStateModel),
-                        callbacks = WalletActionRouteCallbacks(
-                            onWalletStateChanged = onWalletStateChanged,
-                        ),
-                    )
-                },
-                modifier = Modifier.padding(innerPadding),
-            )
-        } }
+        composable(AppRoute.CallSession.name) {
+            AuthenticatedShell(
+                currentDestination = appRouteNavigationRuntime.toShellDestination(currentRoute),
+                onTabSelected = ::openShellDestination,
+            ) { innerPadding ->
+                CallSessionScreen(
+                    state = callSessionUiState,
+                    onAction = { action ->
+                        callSessionRouteRuntime.handleAction(
+                            action = action,
+                            request = CallSessionRouteRequest(currentState = callSessionState),
+                            callbacks = CallSessionRouteCallbacks(
+                                onCallSessionStateChanged = onCallSessionStateChanged,
+                                onRouteChanged = onRouteChanged,
+                            ),
+                        )
+                    },
+                    modifier = Modifier.padding(innerPadding),
+                )
+            }
+        }
 
-        composable(AppRoute.Me.name) { AuthenticatedShell(
-            currentDestination = appRouteNavigationRuntime.toShellDestination(currentRoute),
-            onTabSelected = ::openShellDestination,
-        ) { innerPadding ->
-            MeScreen(
-                state = meUiState,
-                onSignOut = ::signOutToEntry,
-                modifier = Modifier.padding(innerPadding),
-            )
-        } }
+        composable(AppRoute.Wallet.name) {
+            AuthenticatedShell(
+                currentDestination = appRouteNavigationRuntime.toShellDestination(currentRoute),
+                onTabSelected = ::openShellDestination,
+            ) { innerPadding ->
+                WalletScreen(
+                    state = walletUiState,
+                    permissionRequestPending = walletStateModel.shouldRequestCameraPermission,
+                    onAction = { action ->
+                        walletActionRouteRuntime.handleAction(
+                            action = action,
+                            request = WalletActionRouteRequest(currentState = walletStateModel),
+                            callbacks = WalletActionRouteCallbacks(
+                                onWalletStateChanged = onWalletStateChanged,
+                            ),
+                        )
+                    },
+                    modifier = Modifier.padding(innerPadding),
+                )
+            }
+        }
+
+        composable(AppRoute.Me.name) {
+            AuthenticatedShell(
+                currentDestination = appRouteNavigationRuntime.toShellDestination(currentRoute),
+                onTabSelected = ::openShellDestination,
+            ) { innerPadding ->
+                MeScreen(
+                    state = meUiState,
+                    onSignOut = ::signOutToEntry,
+                    modifier = Modifier.padding(innerPadding),
+                )
+            }
+        }
 
         composable(AppRoute.Chat.name) {
             val resolvedChatUiState = chatUiState
@@ -813,16 +816,11 @@ internal fun AppRouteHost(
                                     getCurrentRoute = { latestCurrentRoute },
                                 ),
                             )
-                        },                        modifier = Modifier.padding(innerPadding),
+                        },
+                        modifier = Modifier.padding(innerPadding),
                     )
                 }
             }
         }
     }
 }
-
-
-
-
-
-
