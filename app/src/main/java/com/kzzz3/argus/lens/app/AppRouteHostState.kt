@@ -11,7 +11,6 @@ import com.kzzz3.argus.lens.feature.contacts.ContactsState
 import com.kzzz3.argus.lens.feature.contacts.FriendRequestStatusState
 import com.kzzz3.argus.lens.feature.inbox.ConversationThreadsState
 import com.kzzz3.argus.lens.feature.register.RegisterFormState
-import com.kzzz3.argus.lens.feature.wallet.WalletState
 import com.kzzz3.argus.lens.model.session.AppSessionState
 
 internal data class AppRouteHostState(
@@ -22,7 +21,6 @@ internal data class AppRouteHostState(
     val registerFormState: RegisterFormState,
     val callSessionState: CallSessionState,
     val contactsState: ContactsState,
-    val walletStateModel: WalletState,
     val friends: List<FriendEntry>,
     val selectedConversationId: String,
     val chatStatusMessage: String?,
@@ -42,7 +40,6 @@ internal data class AppRouteHostCallbacks(
     val onRegisterFormStateChanged: (RegisterFormState) -> Unit,
     val onCallSessionStateChanged: (CallSessionState) -> Unit,
     val onContactsStateChanged: (ContactsState) -> Unit,
-    val onWalletStateChanged: (WalletState) -> Unit,
     val onFriendsChanged: (List<FriendEntry>) -> Unit,
     val onConversationOpened: (String) -> Unit,
     val onChatStatusChanged: (String?, Boolean) -> Unit,

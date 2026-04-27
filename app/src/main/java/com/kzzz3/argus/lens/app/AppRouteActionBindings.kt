@@ -6,12 +6,12 @@ import com.kzzz3.argus.lens.feature.contacts.ContactsState
 import com.kzzz3.argus.lens.feature.contacts.FriendRequestStatusState
 import com.kzzz3.argus.lens.feature.contacts.reduceContactsState
 import com.kzzz3.argus.lens.feature.inbox.ConversationThreadsState
-import com.kzzz3.argus.lens.feature.wallet.WalletFeatureCallbacks
-import com.kzzz3.argus.lens.feature.wallet.WalletFeatureRequest
+import com.kzzz3.argus.lens.feature.wallet.WalletStateHolder
 import com.kzzz3.argus.lens.ui.shell.ShellDestination
 
 internal class AppRouteActionBindings(
     private val state: AppRouteHostState,
+    private val walletStateHolder: WalletStateHolder,
     private val callbacks: AppRouteHostCallbacks,
     private val routeUiState: AppRouteUiState,
     private val routeRuntimes: AppRouteRuntimes,
@@ -36,10 +36,9 @@ internal class AppRouteActionBindings(
             route = route,
             request = AppRouteNavigationRequest(
                 accountId = state.appSessionState.accountId,
-                walletState = state.walletStateModel,
             ),
             callbacks = AppRouteNavigationCallbacks(
-                onWalletStateChanged = callbacks.onWalletStateChanged,
+                onWalletOpened = walletStateHolder::openForAccount,
                 onRouteChanged = callbacks.onRouteChanged,
             ),
         )
@@ -50,10 +49,9 @@ internal class AppRouteActionBindings(
             destination = destination,
             request = AppRouteNavigationRequest(
                 accountId = state.appSessionState.accountId,
-                walletState = state.walletStateModel,
             ),
             callbacks = AppRouteNavigationCallbacks(
-                onWalletStateChanged = callbacks.onWalletStateChanged,
+                onWalletOpened = walletStateHolder::openForAccount,
                 onRouteChanged = callbacks.onRouteChanged,
             ),
         )
@@ -217,18 +215,11 @@ internal class AppRouteActionBindings(
     }
 
     fun handleWalletAction(action: com.kzzz3.argus.lens.feature.wallet.WalletAction) {
-        routeRuntimes.walletFeatureController.handleAction(
+        walletStateHolder.handleAction(
             action = action,
-            request = WalletFeatureRequest(
-                session = state.appSessionState,
-                currentState = state.walletStateModel,
-            ),
-            callbacks = WalletFeatureCallbacks(
-                getCurrentSession = { state.appSessionState },
-                getCurrentState = { state.walletStateModel },
-                onNavigateBackToInbox = { openTopLevelRoute(AppRoute.Inbox) },
-                onStateChanged = callbacks.onWalletStateChanged,
-            ),
+            session = state.appSessionState,
+            getCurrentSession = { state.appSessionState },
+            onNavigateBackToInbox = { openTopLevelRoute(AppRoute.Inbox) },
         )
     }
 

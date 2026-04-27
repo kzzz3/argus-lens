@@ -18,6 +18,7 @@ Argus Lens provides the Android runtime for Argus by delivering a reliable local
 - [x] P0 wallet request-boundary slice: move wallet async request freshness/invalidation into feature-owned `WalletRequestRunner` and request guard tests.
 - [x] P0 wallet effect-boundary slice: move wallet effect dispatch/request launch rules into feature-owned `WalletEffectHandler` and remove the obsolete app wallet route runtime.
 - [x] P0 wallet controller shell slice: introduce feature-owned `WalletFeatureController` so wallet action/effect composition is ready for ViewModel extraction while app keeps root state/session/navigation callbacks.
+- [x] P0 wallet state-holder slice: move wallet screen state out of `ArgusLensAppUiState` into a ViewModel-owned feature `WalletStateHolder`, with app code retaining only route/session/navigation adaptation.
 - [x] Long-term Android architecture target documented with `:app`, `:core:*`, `:feature:*`, typed navigation, session, data, test, and cleanup roadmaps.
 - [ ] Process-death restoration decision for selected conversation/session entry context.
 - [ ] Richer first-class remote media send paths beyond the generic-file baseline.
@@ -76,7 +77,7 @@ Long-term target topology is documented in `docs/android-architecture-target.md`
 
 ### Architecture Roadmap — Target Android Organization
 - [x] Document the durable target architecture and P0-P4 migration roadmap in `docs/android-architecture-target.md`.
-- [ ] P0: continue app-shell slimming and feature ViewModel extraction without changing route semantics; next candidate is an AndroidX wallet ViewModel using the feature controller.
+- [ ] P0: continue app-shell slimming and feature ViewModel extraction without changing route semantics; wallet now has a feature-owned state holder, and the next wallet slice is an AndroidX/Hilt `WalletViewModel` wrapper once lifecycle dependencies are explicit.
 - [ ] P1: introduce typed route contracts and process-death restoration rules one feature at a time.
 - [ ] P2: split session/token/crypto responsibilities and make repository/data-source/use-case boundaries explicit before Gradle extraction.
 - [ ] P3: extract `:core:*` and `:feature:*` modules only after ownership and package boundaries are stable.
@@ -131,3 +132,4 @@ Run Gradle tasks serially.
 | 2026-04-27 | P0 wallet request-boundary TDD | Red `WalletRequestRunnerTest`; green `WalletRequestRunnerTest` and `WalletRequestGuardTest`; targeted app wallet route/support tests; `:feature:testDebugUnitTest`; `:app:testDebugUnitTest`; `testDebugUnitTest`; `lint`; `assembleDebug`; Kotlin LSP unavailable because `kotlin-lsp` is not installed | PASS |
 | 2026-04-27 | P0 wallet effect-boundary TDD | Red `WalletEffectHandlerTest`; green `WalletEffectHandlerTest`; targeted app wallet adapter tests; `:feature:testDebugUnitTest`; `:app:testDebugUnitTest`; `testDebugUnitTest`; `lint`; `assembleDebug`; Kotlin LSP unavailable because `kotlin-lsp` is not installed | PASS |
 | 2026-04-27 | P0 wallet controller shell TDD | Red `WalletFeatureControllerTest`; green `WalletFeatureControllerTest`; obsolete app wallet route adapter deleted after controller wiring; `:feature:testDebugUnitTest`; `:app:testDebugUnitTest`; `testDebugUnitTest`; `lint`; `assembleDebug`; Kotlin LSP unavailable because `kotlin-lsp` is not installed | PASS |
+| 2026-04-27 | P0 wallet state-holder TDD | Red `WalletStateHolderTest`; green `WalletStateHolderTest`; red/green `ArgusLensAppViewModelTest.appViewModelOwnsWalletStateHolderLifetime` for ViewModel-owned holder/request lifetime; app navigation runtime test updated for holder account-open callback; root `uiState.walletState` / `updateWalletState` stale-reference scan clean; `:feature:testDebugUnitTest`; `:app:testDebugUnitTest`; `testDebugUnitTest`; `lint`; `assembleDebug`; Kotlin LSP unavailable because `kotlin-lsp` is not installed | PASS |

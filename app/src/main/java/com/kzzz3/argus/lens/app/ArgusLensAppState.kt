@@ -10,7 +10,6 @@ import com.kzzz3.argus.lens.feature.call.CallSessionState
 import com.kzzz3.argus.lens.feature.contacts.ContactsState
 import com.kzzz3.argus.lens.feature.inbox.ConversationThreadsState
 import com.kzzz3.argus.lens.feature.register.RegisterFormState
-import com.kzzz3.argus.lens.feature.wallet.WalletState
 import com.kzzz3.argus.lens.model.session.AppSessionState
 
 data class ArgusLensAppUiState(
@@ -21,7 +20,6 @@ data class ArgusLensAppUiState(
     val registerFormState: RegisterFormState = RegisterFormState(),
     val callSessionState: CallSessionState = CallSessionState(),
     val contactsState: ContactsState = ContactsState(),
-    val walletState: WalletState = WalletState(),
     val friends: List<FriendEntry> = emptyList(),
     val selectedConversationId: String = "",
     val chatStatusMessage: String? = null,

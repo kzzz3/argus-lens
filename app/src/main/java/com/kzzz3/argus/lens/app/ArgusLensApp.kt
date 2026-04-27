@@ -13,6 +13,7 @@ fun ArgusLensApp(
     AppRouteHost(
         dependencies = viewModel.dependencies,
         runtimeScope = viewModel.runtimeScope,
+        walletStateHolder = viewModel.walletStateHolder,
         state = AppRouteHostState(
             appSessionState = uiState.appSessionState,
             conversationThreadsState = uiState.conversationThreadsState,
@@ -21,7 +22,6 @@ fun ArgusLensApp(
             registerFormState = uiState.registerFormState,
             callSessionState = uiState.callSessionState,
             contactsState = uiState.contactsState,
-            walletStateModel = uiState.walletState,
             friends = uiState.friends,
             selectedConversationId = uiState.selectedConversationId,
             chatStatusMessage = uiState.chatStatusMessage,
@@ -40,7 +40,6 @@ fun ArgusLensApp(
             onRegisterFormStateChanged = viewModel::updateRegisterFormState,
             onCallSessionStateChanged = viewModel::updateCallSessionState,
             onContactsStateChanged = viewModel::updateContactsState,
-            onWalletStateChanged = viewModel::updateWalletState,
             onFriendsChanged = viewModel::updateFriends,
             onConversationOpened = viewModel::openConversation,
             onChatStatusChanged = viewModel::updateChatStatus,

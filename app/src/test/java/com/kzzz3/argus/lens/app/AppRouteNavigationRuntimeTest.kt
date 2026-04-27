@@ -1,7 +1,6 @@
 package com.kzzz3.argus.lens.app
 
 import com.kzzz3.argus.lens.app.navigation.AppRoute
-import com.kzzz3.argus.lens.feature.wallet.WalletState
 import com.kzzz3.argus.lens.ui.shell.ShellDestination
 import java.io.File
 import org.junit.Assert.assertEquals
@@ -11,51 +10,52 @@ import org.junit.Test
 
 class AppRouteNavigationRuntimeTest {
     @Test
-    fun openTopLevelRoute_walletBindsCurrentAccountBeforeRouting() {
+    fun openTopLevelRoute_walletOpensCurrentAccountBeforeRouting() {
         val runtime = AppRouteNavigationRuntime()
-        val walletState = WalletState(
-            currentAccountId = "old-account",
-            hasAttemptedSummaryLoad = true,
-        )
-        var updatedWalletState: WalletState? = null
+        val events = mutableListOf<String>()
+        var openedWalletAccountId: String? = null
         var routedTo: AppRoute? = null
 
         runtime.openTopLevelRoute(
             route = AppRoute.Wallet,
             request = AppRouteNavigationRequest(
                 accountId = "new-account",
-                walletState = walletState,
             ),
             callbacks = AppRouteNavigationCallbacks(
-                onWalletStateChanged = { updatedWalletState = it },
-                onRouteChanged = { routedTo = it },
+                onWalletOpened = {
+                    events += "wallet"
+                    openedWalletAccountId = it
+                },
+                onRouteChanged = {
+                    events += "route"
+                    routedTo = it
+                },
             ),
         )
 
-        assertEquals("new-account", updatedWalletState?.currentAccountId)
-        assertEquals(false, updatedWalletState?.hasAttemptedSummaryLoad)
+        assertEquals(listOf("wallet", "route"), events)
+        assertEquals("new-account", openedWalletAccountId)
         assertEquals(AppRoute.Wallet, routedTo)
     }
 
     @Test
     fun openTopLevelRoute_nonWalletRoutesWithoutChangingWallet() {
         val runtime = AppRouteNavigationRuntime()
-        var updatedWalletState: WalletState? = null
+        var openedWalletAccountId: String? = null
         var routedTo: AppRoute? = null
 
         runtime.openTopLevelRoute(
             route = AppRoute.Contacts,
             request = AppRouteNavigationRequest(
                 accountId = "tester",
-                walletState = WalletState(),
             ),
             callbacks = AppRouteNavigationCallbacks(
-                onWalletStateChanged = { updatedWalletState = it },
+                onWalletOpened = { openedWalletAccountId = it },
                 onRouteChanged = { routedTo = it },
             ),
         )
 
-        assertNull(updatedWalletState)
+        assertNull(openedWalletAccountId)
         assertEquals(AppRoute.Contacts, routedTo)
     }
 
@@ -63,21 +63,20 @@ class AppRouteNavigationRuntimeTest {
     fun openShellDestination_secondaryDoesNothing() {
         val runtime = AppRouteNavigationRuntime()
         var routedTo: AppRoute? = null
-        var updatedWalletState: WalletState? = null
+        var openedWalletAccountId: String? = null
 
         runtime.openShellDestination(
             destination = ShellDestination.Secondary,
             request = AppRouteNavigationRequest(
                 accountId = "tester",
-                walletState = WalletState(),
             ),
             callbacks = AppRouteNavigationCallbacks(
-                onWalletStateChanged = { updatedWalletState = it },
+                onWalletOpened = { openedWalletAccountId = it },
                 onRouteChanged = { routedTo = it },
             ),
         )
 
-        assertNull(updatedWalletState)
+        assertNull(openedWalletAccountId)
         assertNull(routedTo)
     }
 
@@ -92,45 +91,40 @@ class AppRouteNavigationRuntimeTest {
 
         routes.forEach { (destination, route) ->
             var routedTo: AppRoute? = null
-            var updatedWalletState: WalletState? = null
+            var openedWalletAccountId: String? = null
 
             runtime.openShellDestination(
                 destination = destination,
                 request = AppRouteNavigationRequest(
                     accountId = "tester",
-                    walletState = WalletState(),
                 ),
                 callbacks = AppRouteNavigationCallbacks(
-                    onWalletStateChanged = { updatedWalletState = it },
+                    onWalletOpened = { openedWalletAccountId = it },
                     onRouteChanged = { routedTo = it },
                 ),
             )
 
-            assertNull(updatedWalletState)
+            assertNull(openedWalletAccountId)
             assertEquals(route, routedTo)
         }
     }
 
     @Test
-    fun openShellDestination_walletBindsCurrentAccountBeforeRouting() {
+    fun openShellDestination_walletOpensCurrentAccountBeforeRouting() {
         val runtime = AppRouteNavigationRuntime()
         val events = mutableListOf<String>()
-        var updatedWalletState: WalletState? = null
+        var openedWalletAccountId: String? = null
         var routedTo: AppRoute? = null
 
         runtime.openShellDestination(
             destination = ShellDestination.Wallet,
             request = AppRouteNavigationRequest(
                 accountId = "new-account",
-                walletState = WalletState(
-                    currentAccountId = "old-account",
-                    hasAttemptedSummaryLoad = true,
-                ),
             ),
             callbacks = AppRouteNavigationCallbacks(
-                onWalletStateChanged = {
+                onWalletOpened = {
                     events += "wallet"
-                    updatedWalletState = it
+                    openedWalletAccountId = it
                 },
                 onRouteChanged = {
                     events += "route"
@@ -140,8 +134,7 @@ class AppRouteNavigationRuntimeTest {
         )
 
         assertEquals(listOf("wallet", "route"), events)
-        assertEquals("new-account", updatedWalletState?.currentAccountId)
-        assertEquals(false, updatedWalletState?.hasAttemptedSummaryLoad)
+        assertEquals("new-account", openedWalletAccountId)
         assertEquals(AppRoute.Wallet, routedTo)
     }
 

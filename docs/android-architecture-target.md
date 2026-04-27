@@ -32,6 +32,7 @@ The app shell has already moved past a single monolithic route host milestone:
 - `WalletRequestRunner` keeps wallet async request freshness and invalidation in the wallet feature package.
 - `WalletEffectHandler` keeps wallet effect dispatch and request launch policy in the wallet feature package.
 - `WalletFeatureController` composes wallet action reduction and effect handling behind feature-owned callbacks, preparing the wallet screen for a dedicated ViewModel without moving app navigation ownership into the feature module.
+- `WalletStateHolder` owns wallet screen `StateFlow` state in the feature package and is owned by `ArgusLensAppViewModel` for now, so root app state no longer stores wallet feature state while app code still adapts route/session/navigation callbacks.
 - `ArgusLensAppState` owns root UI state and pure session transition helpers.
 
 That baseline is intentionally preserved while the project migrates toward the target shape below.
@@ -303,6 +304,7 @@ Goal: keep the app safe and navigable while shrinking the app shell.
 - Preserve the token/session UI-state boundary.
 - Continue slimming `AppRouteHost` and `ArgusLensApp` behind explicit state/callback/runtime objects.
 - Move feature-owned state and actions out of the root ViewModel when a feature has an independent lifecycle boundary.
+- Use feature-owned state holders as verified intermediate seams when adding a full AndroidX/Hilt ViewModel would require a separate Gradle/lifecycle dependency slice.
 - Keep route behavior covered by JVM source-boundary and navigation policy tests.
 
 Exit evidence:

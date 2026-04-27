@@ -87,6 +87,19 @@ class ArgusLensAppViewModelTest {
     }
 
     @Test
+    fun appViewModelOwnsWalletStateHolderLifetime() {
+        val viewModelSource = File("src/main/java/com/kzzz3/argus/lens/app/ArgusLensAppViewModel.kt").readText()
+        val routeRuntimesSource = File("src/main/java/com/kzzz3/argus/lens/app/AppRouteRuntimes.kt").readText()
+        val appSource = File("src/main/java/com/kzzz3/argus/lens/app/ArgusLensApp.kt").readText()
+
+        assertTrue(viewModelSource.contains("val walletStateHolder: WalletStateHolder"))
+        assertTrue(viewModelSource.contains("WalletRequestRunner(runtimeScope)"))
+        assertTrue(appSource.contains("walletStateHolder = viewModel.walletStateHolder"))
+        assertFalse(routeRuntimesSource.contains("WalletStateHolder("))
+        assertFalse(routeRuntimesSource.contains("WalletRequestRunner("))
+    }
+
+    @Test
     fun appViewModel_keepsStateModelAndTransitionsInDedicatedStateFile() {
         val stateFile = File("src/main/java/com/kzzz3/argus/lens/app/ArgusLensAppState.kt")
         val viewModelSource = File("src/main/java/com/kzzz3/argus/lens/app/ArgusLensAppViewModel.kt").readText()

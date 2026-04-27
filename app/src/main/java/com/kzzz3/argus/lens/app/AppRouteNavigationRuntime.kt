@@ -1,17 +1,14 @@
 package com.kzzz3.argus.lens.app
 
 import com.kzzz3.argus.lens.app.navigation.AppRoute
-import com.kzzz3.argus.lens.feature.wallet.WalletState
-import com.kzzz3.argus.lens.feature.wallet.withCurrentAccount
 import com.kzzz3.argus.lens.ui.shell.ShellDestination
 
 internal data class AppRouteNavigationRequest(
     val accountId: String,
-    val walletState: WalletState,
 )
 
 internal data class AppRouteNavigationCallbacks(
-    val onWalletStateChanged: (WalletState) -> Unit,
+    val onWalletOpened: (String) -> Unit,
     val onRouteChanged: (AppRoute) -> Unit,
 )
 
@@ -22,7 +19,7 @@ internal class AppRouteNavigationRuntime {
         callbacks: AppRouteNavigationCallbacks,
     ) {
         if (route == AppRoute.Wallet) {
-            callbacks.onWalletStateChanged(request.walletState.withCurrentAccount(request.accountId))
+            callbacks.onWalletOpened(request.accountId)
         }
         callbacks.onRouteChanged(route)
     }

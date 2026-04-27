@@ -6,15 +6,18 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.kzzz3.argus.lens.app.navigation.AppRoute
+import com.kzzz3.argus.lens.feature.wallet.WalletStateHolder
 import kotlinx.coroutines.CoroutineScope
 
 @Composable
 internal fun AppRouteHost(
     dependencies: AppDependencies,
     runtimeScope: CoroutineScope,
+    walletStateHolder: WalletStateHolder,
     state: AppRouteHostState,
     callbacks: AppRouteHostCallbacks,
 ) {
@@ -25,7 +28,6 @@ internal fun AppRouteHost(
     val registerFormState = state.registerFormState
     val callSessionState = state.callSessionState
     val contactsState = state.contactsState
-    val walletStateModel = state.walletStateModel
     val friends = state.friends
     val selectedConversationId = state.selectedConversationId
     val chatStatusMessage = state.chatStatusMessage
@@ -42,7 +44,6 @@ internal fun AppRouteHost(
     val onRegisterFormStateChanged = callbacks.onRegisterFormStateChanged
     val onCallSessionStateChanged = callbacks.onCallSessionStateChanged
     val onContactsStateChanged = callbacks.onContactsStateChanged
-    val onWalletStateChanged = callbacks.onWalletStateChanged
     val onFriendsChanged = callbacks.onFriendsChanged
     val onChatStatusCleared = callbacks.onChatStatusCleared
     val onFriendRequestStatusReset = callbacks.onFriendRequestStatusReset
@@ -59,7 +60,7 @@ internal fun AppRouteHost(
     val realtimeClient = dependencies.realtimeClient
     val callSessionRuntime = routeRuntimes.callSessionRuntime
     val sessionRefreshRuntime = routeRuntimes.sessionRefreshRuntime
-    val walletRequestRunner = routeRuntimes.walletRequestRunner
+    val walletStateModel by walletStateHolder.state.collectAsStateWithLifecycle()
     val realtimeConnectionRuntime = routeRuntimes.realtimeConnectionRuntime
     val appPersistenceRuntime = routeRuntimes.appPersistenceRuntime
     val appInitialHydrationRuntime = routeRuntimes.appInitialHydrationRuntime
@@ -114,13 +115,13 @@ internal fun AppRouteHost(
             )
         },
         cancelSessionRefreshLoop = sessionRefreshRuntime::cancel,
-        invalidateWalletRequests = walletRequestRunner::invalidate,
+        invalidateWalletRequests = walletStateHolder::invalidate,
         cancelCallSession = callSessionRuntime::cancel,
     )
     val sessionBoundaryCallbacks = AppSessionBoundaryCallbacks(
         onHydratedConversationAccountChanged = onHydratedConversationAccountChanged,
         onCallSessionStateChanged = onCallSessionStateChanged,
-        onWalletStateChanged = onWalletStateChanged,
+        onWalletStateChanged = walletStateHolder::replaceState,
         onConversationThreadsChanged = onConversationThreadsChanged,
         onAuthenticatedSessionApplied = onAuthenticatedSessionApplied,
         onAuthFormStateChanged = onAuthFormStateChanged,
@@ -132,6 +133,7 @@ internal fun AppRouteHost(
     )
     val routeActionBindings = AppRouteActionBindings(
         state = state,
+        walletStateHolder = walletStateHolder,
         callbacks = callbacks,
         routeUiState = routeUiState,
         routeRuntimes = routeRuntimes,

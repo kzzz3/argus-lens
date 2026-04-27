@@ -13,7 +13,11 @@ import com.kzzz3.argus.lens.feature.contacts.ContactsState
 import com.kzzz3.argus.lens.feature.contacts.FriendRequestStatusState
 import com.kzzz3.argus.lens.feature.inbox.ConversationThreadsState
 import com.kzzz3.argus.lens.feature.register.RegisterFormState
-import com.kzzz3.argus.lens.feature.wallet.WalletState
+import com.kzzz3.argus.lens.feature.wallet.WalletEffectHandler
+import com.kzzz3.argus.lens.feature.wallet.WalletFeatureController
+import com.kzzz3.argus.lens.feature.wallet.WalletRequestRunner
+import com.kzzz3.argus.lens.feature.wallet.WalletStateHolder
+import com.kzzz3.argus.lens.feature.wallet.reduceWalletState
 import com.kzzz3.argus.lens.model.session.AppSessionState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -28,6 +32,7 @@ class ArgusLensAppViewModel @Inject constructor(
     val dependencies: AppDependencies,
 ) : ViewModel() {
     val runtimeScope: CoroutineScope = viewModelScope
+    val walletStateHolder: WalletStateHolder = createWalletStateHolder(dependencies, runtimeScope)
 
     private val _uiState = MutableStateFlow(
         ArgusLensAppUiState(
@@ -104,10 +109,6 @@ class ArgusLensAppViewModel @Inject constructor(
         _uiState.update { state -> state.copy(contactsState = contactsState) }
     }
 
-    fun updateWalletState(walletState: WalletState) {
-        _uiState.update { state -> state.copy(walletState = walletState) }
-    }
-
     fun updateFriends(friends: List<FriendEntry>) {
         _uiState.update { state -> state.copy(friends = friends) }
     }
@@ -181,4 +182,28 @@ class ArgusLensAppViewModel @Inject constructor(
             state.copy(realtimeReconnectGeneration = state.realtimeReconnectGeneration + 1)
         }
     }
+}
+
+private fun createWalletStateHolder(
+    dependencies: AppDependencies,
+    runtimeScope: CoroutineScope,
+): WalletStateHolder {
+    val walletRequestRunner = WalletRequestRunner(runtimeScope)
+    val walletRequestCoordinator = dependencies.walletRequestCoordinator
+    val walletEffectHandler = WalletEffectHandler(
+        requestRunner = walletRequestRunner,
+        loadWalletSummary = walletRequestCoordinator::loadWalletSummary,
+        resolvePayload = walletRequestCoordinator::resolvePayload,
+        confirmPayment = walletRequestCoordinator::confirmPayment,
+        loadPaymentHistory = walletRequestCoordinator::loadPaymentHistory,
+        loadPaymentReceipt = walletRequestCoordinator::loadPaymentReceipt,
+    )
+    val walletFeatureController = WalletFeatureController(
+        reduceAction = ::reduceWalletState,
+        effectHandler = walletEffectHandler,
+    )
+    return WalletStateHolder(
+        controller = walletFeatureController,
+        invalidateRequests = walletRequestRunner::invalidate,
+    )
 }

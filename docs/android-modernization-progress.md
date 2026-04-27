@@ -33,6 +33,7 @@ Status: complete for the first God Composable split milestone and the host API b
 - `feature/wallet/WalletRequestRunner.kt` and `WalletRequestGuard.kt` own wallet async request freshness and invalidation rules, replacing the app-owned wallet request runtime.
 - `feature/wallet/WalletEffectHandler.kt` owns wallet effect dispatch and request launch rules.
 - `feature/wallet/WalletFeatureController.kt` composes wallet action reduction with effect handling; app code supplies only root state, session freshness, and navigation callbacks.
+- `feature/wallet/WalletStateHolder.kt` owns wallet screen `StateFlow` state, request invalidation, account binding, and wallet action dispatch; `ArgusLensAppViewModel` owns the holder lifetime so requests and state share the same ViewModel scope, while `ArgusLensAppUiState` no longer stores wallet feature state.
 - This boundary is the baseline for the future typed-navigation and feature ViewModel extraction roadmap in `docs/android-architecture-target.md`.
 
 Verification gate:
@@ -40,9 +41,9 @@ Verification gate:
 - `:app:compileDebugKotlin` must pass after route host decomposition changes.
 - `:app:testDebugUnitTest --tests "com.kzzz3.argus.lens.app.AppRouteNavigationRuntimeTest"` must pass after shell routing policy changes.
 - `:app:testDebugUnitTest --tests "com.kzzz3.argus.lens.app.ArgusLensAppViewModelTest"` must pass after app-shell state boundary changes.
-- Route action binding changes must also keep `EntryRouteRuntimeTest`, `ContactsRouteRuntimeTest`, `WalletActionHandlerTest`, `WalletRequestRunnerTest`, `WalletRequestGuardTest`, `WalletEffectHandlerTest`, `WalletFeatureControllerTest`, and `RealtimeConnectionRuntimeTest` green.
+- Route action binding changes must also keep `EntryRouteRuntimeTest`, `ContactsRouteRuntimeTest`, `WalletActionHandlerTest`, `WalletRequestRunnerTest`, `WalletRequestGuardTest`, `WalletEffectHandlerTest`, `WalletFeatureControllerTest`, `WalletStateHolderTest`, and `RealtimeConnectionRuntimeTest` green.
 
-Remaining lifecycle ownership work belongs to P1: long-running realtime/session refresh/call timer orchestration should continue moving out of the Composable layer.
+Remaining lifecycle ownership work belongs to P1: the wallet state holder is a feature-owned precursor to an AndroidX/Hilt `WalletViewModel`, and long-running realtime/session refresh/call timer orchestration should continue moving out of the Composable layer.
 
 ## P1 ViewModel And Runtime Lifecycle Ownership
 

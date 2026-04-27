@@ -6,10 +6,6 @@ import com.kzzz3.argus.lens.feature.auth.reduceAuthFormState
 import com.kzzz3.argus.lens.feature.call.CallSessionRuntime
 import com.kzzz3.argus.lens.feature.call.reduceCallSessionState
 import com.kzzz3.argus.lens.feature.register.reduceRegisterFormState
-import com.kzzz3.argus.lens.feature.wallet.WalletEffectHandler
-import com.kzzz3.argus.lens.feature.wallet.WalletFeatureController
-import com.kzzz3.argus.lens.feature.wallet.WalletRequestRunner
-import com.kzzz3.argus.lens.feature.wallet.reduceWalletState
 import kotlinx.coroutines.CoroutineScope
 
 internal data class AppRouteRuntimes(
@@ -17,8 +13,6 @@ internal data class AppRouteRuntimes(
     val callSessionRouteRuntime: CallSessionRouteRuntime,
     val realtimeReconnectRuntime: RealtimeReconnectRuntime,
     val sessionRefreshRuntime: SessionRefreshRuntime,
-    val walletRequestRunner: WalletRequestRunner,
-    val walletFeatureController: WalletFeatureController,
     val contactsRouteRuntime: ContactsRouteRuntime,
     val chatRouteRuntime: ChatRouteRuntime,
     val inboxRouteRuntime: InboxRouteRuntime,
@@ -41,7 +35,6 @@ internal fun rememberAppRouteRuntimes(
     val authCoordinator = dependencies.authCoordinator
     val newFriendsCoordinator = dependencies.newFriendsCoordinator
     val contactsCoordinator = dependencies.contactsCoordinator
-    val walletRequestCoordinator = dependencies.walletRequestCoordinator
     val chatCoordinator = dependencies.chatCoordinator
     val realtimeCoordinator = dependencies.realtimeCoordinator
     val sessionCredentialsStore = dependencies.sessionCredentialsStore
@@ -62,7 +55,6 @@ internal fun rememberAppRouteRuntimes(
             credentialsStore = sessionCredentialsStore,
         )
     }
-    val walletRequestRunner = remember(coroutineScope) { WalletRequestRunner(coroutineScope) }
     val contactsRouteRuntime = remember(coroutineScope, contactsCoordinator, newFriendsCoordinator) {
         ContactsRouteRuntime(
             scope = coroutineScope,
@@ -111,22 +103,6 @@ internal fun rememberAppRouteRuntimes(
             register = authCoordinator::register,
         )
     }
-    val walletEffectHandler = remember(walletRequestRunner, walletRequestCoordinator) {
-        WalletEffectHandler(
-            requestRunner = walletRequestRunner,
-            loadWalletSummary = walletRequestCoordinator::loadWalletSummary,
-            resolvePayload = walletRequestCoordinator::resolvePayload,
-            confirmPayment = walletRequestCoordinator::confirmPayment,
-            loadPaymentHistory = walletRequestCoordinator::loadPaymentHistory,
-            loadPaymentReceipt = walletRequestCoordinator::loadPaymentReceipt,
-        )
-    }
-    val walletFeatureController = remember(walletEffectHandler) {
-        WalletFeatureController(
-            reduceAction = ::reduceWalletState,
-            effectHandler = walletEffectHandler,
-        )
-    }
     val realtimeConnectionRuntime = remember(coroutineScope, realtimeClient, realtimeCoordinator, realtimeReconnectRuntime) {
         RealtimeConnectionRuntime(
             scope = coroutineScope,
@@ -157,8 +133,6 @@ internal fun rememberAppRouteRuntimes(
         callSessionRouteRuntime = callSessionRouteRuntime,
         realtimeReconnectRuntime = realtimeReconnectRuntime,
         sessionRefreshRuntime = sessionRefreshRuntime,
-        walletRequestRunner = walletRequestRunner,
-        walletFeatureController = walletFeatureController,
         contactsRouteRuntime = contactsRouteRuntime,
         chatRouteRuntime = chatRouteRuntime,
         inboxRouteRuntime = inboxRouteRuntime,
