@@ -7,7 +7,9 @@ import com.kzzz3.argus.lens.feature.call.CallSessionRuntime
 import com.kzzz3.argus.lens.feature.call.reduceCallSessionState
 import com.kzzz3.argus.lens.feature.register.reduceRegisterFormState
 import com.kzzz3.argus.lens.feature.wallet.WalletEffectHandler
+import com.kzzz3.argus.lens.feature.wallet.WalletFeatureController
 import com.kzzz3.argus.lens.feature.wallet.WalletRequestRunner
+import com.kzzz3.argus.lens.feature.wallet.reduceWalletState
 import kotlinx.coroutines.CoroutineScope
 
 internal data class AppRouteRuntimes(
@@ -16,12 +18,12 @@ internal data class AppRouteRuntimes(
     val realtimeReconnectRuntime: RealtimeReconnectRuntime,
     val sessionRefreshRuntime: SessionRefreshRuntime,
     val walletRequestRunner: WalletRequestRunner,
+    val walletFeatureController: WalletFeatureController,
     val contactsRouteRuntime: ContactsRouteRuntime,
     val chatRouteRuntime: ChatRouteRuntime,
     val inboxRouteRuntime: InboxRouteRuntime,
     val inboxActionRouteRuntime: InboxActionRouteRuntime,
     val entryRouteRuntime: EntryRouteRuntime,
-    val walletRouteRuntime: WalletRouteRuntime,
     val realtimeConnectionRuntime: RealtimeConnectionRuntime,
     val appPersistenceRuntime: AppPersistenceRuntime,
     val appInitialHydrationRuntime: AppInitialHydrationRuntime,
@@ -119,8 +121,11 @@ internal fun rememberAppRouteRuntimes(
             loadPaymentReceipt = walletRequestCoordinator::loadPaymentReceipt,
         )
     }
-    val walletRouteRuntime = remember(walletEffectHandler) {
-        WalletRouteRuntime(effectHandler = walletEffectHandler)
+    val walletFeatureController = remember(walletEffectHandler) {
+        WalletFeatureController(
+            reduceAction = ::reduceWalletState,
+            effectHandler = walletEffectHandler,
+        )
     }
     val realtimeConnectionRuntime = remember(coroutineScope, realtimeClient, realtimeCoordinator, realtimeReconnectRuntime) {
         RealtimeConnectionRuntime(
@@ -153,12 +158,12 @@ internal fun rememberAppRouteRuntimes(
         realtimeReconnectRuntime = realtimeReconnectRuntime,
         sessionRefreshRuntime = sessionRefreshRuntime,
         walletRequestRunner = walletRequestRunner,
+        walletFeatureController = walletFeatureController,
         contactsRouteRuntime = contactsRouteRuntime,
         chatRouteRuntime = chatRouteRuntime,
         inboxRouteRuntime = inboxRouteRuntime,
         inboxActionRouteRuntime = inboxActionRouteRuntime,
         entryRouteRuntime = entryRouteRuntime,
-        walletRouteRuntime = walletRouteRuntime,
         realtimeConnectionRuntime = realtimeConnectionRuntime,
         appPersistenceRuntime = appPersistenceRuntime,
         appInitialHydrationRuntime = appInitialHydrationRuntime,

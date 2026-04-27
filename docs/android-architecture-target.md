@@ -30,7 +30,8 @@ The app shell has already moved past a single monolithic route host milestone:
 - `AppRouteActionBindings` centralizes route request/callback/action adapters outside the Compose host.
 - `WalletActionHandler` keeps wallet action reduction/effect dispatch in the wallet feature package.
 - `WalletRequestRunner` keeps wallet async request freshness and invalidation in the wallet feature package.
-- `WalletEffectHandler` keeps wallet effect dispatch and request launch policy in the wallet feature package, while app navigation adaptation stays in the app shell.
+- `WalletEffectHandler` keeps wallet effect dispatch and request launch policy in the wallet feature package.
+- `WalletFeatureController` composes wallet action reduction and effect handling behind feature-owned callbacks, preparing the wallet screen for a dedicated ViewModel without moving app navigation ownership into the feature module.
 - `ArgusLensAppState` owns root UI state and pure session transition helpers.
 
 That baseline is intentionally preserved while the project migrates toward the target shape below.
