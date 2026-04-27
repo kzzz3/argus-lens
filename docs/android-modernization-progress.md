@@ -227,7 +227,7 @@ Verification gate:
 Status: complete for the modernization regression baseline.
 
 - P0 token/session boundaries are guarded by `SessionBoundaryTest`.
-- P0/P1 route and Navigation Compose policy are guarded by `AppRouteNavigationRuntimeTest` and app compilation.
+- P0/P1 route and Navigation Compose policy are guarded by `AppRouteNavigationRuntimeTest` and app compilation; P4 navigation mapping tests now directly cover `TopLevelDestination.fromRoute` and `fromShellDestination` for main shell tabs versus secondary/non-top-level routes.
 - P1 ViewModel/runtime ownership is guarded by `ArgusLensAppViewModelTest`; P4 direct app ViewModel tests now instantiate `ArgusLensAppViewModel` with handwritten app dependency fakes to verify `SavedStateHandle` restore keys and UI-state synchronization, not only source shape.
 - P3 safe selected-chat process-death restoration is guarded by `AppInitialHydrationRuntimeTest`, `ArgusLensAppViewModelTest`, and `SessionBoundaryTest`.
 - P2 Room migration/schema work is guarded by `ArgusLensDatabaseMigrationTest`.

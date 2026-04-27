@@ -5,6 +5,7 @@ import com.kzzz3.argus.lens.app.navigation.routeDescriptor
 import com.kzzz3.argus.lens.app.navigation.routeString
 import com.kzzz3.argus.lens.feature.auth.navigation.AuthGraphRoute
 import com.kzzz3.argus.lens.navigation.MainGraphRoute
+import com.kzzz3.argus.lens.navigation.TopLevelDestination
 import com.kzzz3.argus.lens.ui.shell.ShellDestination
 import java.io.File
 import org.junit.Assert.assertEquals
@@ -180,6 +181,28 @@ class AppRouteNavigationRuntimeTest {
         assertEquals(ShellDestination.Secondary, runtime.toShellDestination(AppRoute.NewFriends))
         assertEquals(ShellDestination.Secondary, runtime.toShellDestination(AppRoute.CallSession))
         assertEquals(ShellDestination.Secondary, runtime.toShellDestination(AppRoute.Chat))
+    }
+
+    @Test
+    fun topLevelDestinationFromRouteMapsOnlyMainShellTabs() {
+        assertEquals(TopLevelDestination.Inbox, TopLevelDestination.fromRoute(AppRoute.Inbox))
+        assertEquals(TopLevelDestination.Contacts, TopLevelDestination.fromRoute(AppRoute.Contacts))
+        assertEquals(TopLevelDestination.Wallet, TopLevelDestination.fromRoute(AppRoute.Wallet))
+        assertEquals(TopLevelDestination.Me, TopLevelDestination.fromRoute(AppRoute.Me))
+        assertNull(TopLevelDestination.fromRoute(AppRoute.AuthEntry))
+        assertNull(TopLevelDestination.fromRoute(AppRoute.RegisterEntry))
+        assertNull(TopLevelDestination.fromRoute(AppRoute.NewFriends))
+        assertNull(TopLevelDestination.fromRoute(AppRoute.CallSession))
+        assertNull(TopLevelDestination.fromRoute(AppRoute.Chat))
+    }
+
+    @Test
+    fun topLevelDestinationFromShellDestinationMapsOnlyMainShellTabs() {
+        assertEquals(TopLevelDestination.Inbox, TopLevelDestination.fromShellDestination(ShellDestination.Inbox))
+        assertEquals(TopLevelDestination.Contacts, TopLevelDestination.fromShellDestination(ShellDestination.Contacts))
+        assertEquals(TopLevelDestination.Wallet, TopLevelDestination.fromShellDestination(ShellDestination.Wallet))
+        assertEquals(TopLevelDestination.Me, TopLevelDestination.fromShellDestination(ShellDestination.Me))
+        assertNull(TopLevelDestination.fromShellDestination(ShellDestination.Secondary))
     }
 
     @Test
