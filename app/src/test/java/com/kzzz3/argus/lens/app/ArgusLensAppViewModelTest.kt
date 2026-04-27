@@ -8,6 +8,8 @@ import com.kzzz3.argus.lens.data.auth.AuthFailureKind
 import com.kzzz3.argus.lens.data.auth.AuthRepository
 import com.kzzz3.argus.lens.data.auth.AuthRepositoryResult
 import com.kzzz3.argus.lens.data.conversation.ConversationRepository
+import com.kzzz3.argus.lens.data.friend.FriendRequestEntry
+import com.kzzz3.argus.lens.data.friend.FriendRequestsSnapshot
 import com.kzzz3.argus.lens.data.friend.FriendRepository
 import com.kzzz3.argus.lens.data.friend.FriendRepositoryResult
 import com.kzzz3.argus.lens.data.media.MediaRepository
@@ -23,6 +25,7 @@ import com.kzzz3.argus.lens.data.session.SessionRepository
 import com.kzzz3.argus.lens.feature.auth.AuthCoordinator
 import com.kzzz3.argus.lens.feature.contacts.ContactsCoordinator
 import com.kzzz3.argus.lens.feature.contacts.NewFriendsCoordinator
+import com.kzzz3.argus.lens.feature.contacts.createFriendRequestStatusState
 import com.kzzz3.argus.lens.feature.inbox.ChatCoordinator
 import com.kzzz3.argus.lens.feature.inbox.ChatDraftAttachmentKind
 import com.kzzz3.argus.lens.feature.inbox.ChatMessageAttachment
@@ -456,6 +459,85 @@ class ArgusLensAppViewModelTest {
         assertEquals(AppRoute.AuthEntry, state.currentRoute)
         assertEquals("", state.selectedConversationId)
         assertEquals(null, state.hydratedConversationAccountId)
+    }
+
+    @Test
+    fun appViewModel_realtimeMutationsApplyConnectionEventAndGenerationState() {
+        val viewModel = createTestViewModel(savedStateHandle = SavedStateHandle())
+
+        viewModel.updateRealtimeConnectionState(ConversationRealtimeConnectionState.CONNECTING)
+        viewModel.recordRealtimeEventId("event-1")
+        viewModel.recordRealtimeEventId("   ")
+        viewModel.incrementRealtimeReconnectGeneration()
+        viewModel.incrementRealtimeReconnectGeneration()
+
+        assertEquals(ConversationRealtimeConnectionState.CONNECTING, viewModel.uiState.value.realtimeConnectionState)
+        assertEquals("event-1", viewModel.uiState.value.realtimeLastEventId)
+        assertEquals(2, viewModel.uiState.value.realtimeReconnectGeneration)
+
+        viewModel.resetRealtimeLastEventId()
+
+        assertEquals("", viewModel.uiState.value.realtimeLastEventId)
+    }
+
+    @Test
+    fun appViewModel_chatStatusMutationsSetAndClearMessageState() {
+        val viewModel = createTestViewModel(savedStateHandle = SavedStateHandle())
+
+        viewModel.updateChatStatus("Attachment downloaded.", isError = false)
+
+        assertEquals("Attachment downloaded.", viewModel.uiState.value.chatStatusMessage)
+        assertFalse(viewModel.uiState.value.chatStatusError)
+
+        viewModel.updateChatStatus("Attachment failed.", isError = true)
+
+        assertEquals("Attachment failed.", viewModel.uiState.value.chatStatusMessage)
+        assertTrue(viewModel.uiState.value.chatStatusError)
+
+        viewModel.clearChatStatus()
+
+        assertEquals(null, viewModel.uiState.value.chatStatusMessage)
+        assertFalse(viewModel.uiState.value.chatStatusError)
+    }
+
+    @Test
+    fun appViewModel_friendRequestStatusMutationsApplySnapshotAndResetState() {
+        val viewModel = createTestViewModel(savedStateHandle = SavedStateHandle())
+        val incoming = FriendRequestEntry(
+            requestId = "request-1",
+            accountId = "alice",
+            displayName = "Alice",
+            direction = "INCOMING",
+            status = "PENDING",
+            note = "hello",
+        )
+        val snapshot = FriendRequestsSnapshot(
+            incoming = listOf(incoming),
+            outgoing = emptyList(),
+        )
+
+        viewModel.updateFriendRequestStatus(
+            createFriendRequestStatusState(
+                snapshot = snapshot,
+                message = "Friend request accepted.",
+                isError = false,
+            )
+        )
+
+        assertEquals(snapshot, viewModel.uiState.value.friendRequestsSnapshot)
+        assertEquals("Friend request accepted.", viewModel.uiState.value.friendRequestsStatusMessage)
+        assertFalse(viewModel.uiState.value.friendRequestsStatusError)
+
+        viewModel.updateFriendRequestsSnapshot(FriendRequestsSnapshot(emptyList(), listOf(incoming)))
+
+        assertEquals(FriendRequestsSnapshot(emptyList(), listOf(incoming)), viewModel.uiState.value.friendRequestsSnapshot)
+        assertEquals("Friend request accepted.", viewModel.uiState.value.friendRequestsStatusMessage)
+
+        viewModel.resetFriendRequestStatus()
+
+        assertEquals(FriendRequestsSnapshot(emptyList(), emptyList()), viewModel.uiState.value.friendRequestsSnapshot)
+        assertEquals(null, viewModel.uiState.value.friendRequestsStatusMessage)
+        assertFalse(viewModel.uiState.value.friendRequestsStatusError)
     }
 
     private fun createTestViewModel(
