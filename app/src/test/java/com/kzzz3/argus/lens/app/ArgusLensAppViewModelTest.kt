@@ -1,13 +1,41 @@
 package com.kzzz3.argus.lens.app
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import com.kzzz3.argus.lens.app.navigation.AppRoute
+import com.kzzz3.argus.lens.app.navigation.routeString
+import com.kzzz3.argus.lens.data.auth.AuthFailureKind
+import com.kzzz3.argus.lens.data.auth.AuthRepository
+import com.kzzz3.argus.lens.data.auth.AuthRepositoryResult
+import com.kzzz3.argus.lens.data.conversation.ConversationRepository
+import com.kzzz3.argus.lens.data.friend.FriendRepository
+import com.kzzz3.argus.lens.data.friend.FriendRepositoryResult
+import com.kzzz3.argus.lens.data.media.MediaRepository
+import com.kzzz3.argus.lens.data.media.MediaRepositoryResult
+import com.kzzz3.argus.lens.data.payment.PaymentRepository
+import com.kzzz3.argus.lens.data.payment.PaymentRepositoryResult
+import com.kzzz3.argus.lens.data.realtime.ConversationRealtimeClient
 import com.kzzz3.argus.lens.data.realtime.ConversationRealtimeConnectionState
+import com.kzzz3.argus.lens.data.realtime.ConversationRealtimeEvent
+import com.kzzz3.argus.lens.data.realtime.ConversationRealtimeSubscription
 import com.kzzz3.argus.lens.data.session.SessionCredentials
+import com.kzzz3.argus.lens.data.session.SessionRepository
+import com.kzzz3.argus.lens.feature.auth.AuthCoordinator
+import com.kzzz3.argus.lens.feature.contacts.ContactsCoordinator
+import com.kzzz3.argus.lens.feature.contacts.NewFriendsCoordinator
+import com.kzzz3.argus.lens.feature.inbox.ChatCoordinator
+import com.kzzz3.argus.lens.feature.inbox.ChatDraftAttachmentKind
+import com.kzzz3.argus.lens.feature.inbox.ChatMessageAttachment
+import com.kzzz3.argus.lens.feature.inbox.ChatState
+import com.kzzz3.argus.lens.feature.inbox.ConversationThreadsState
+import com.kzzz3.argus.lens.feature.realtime.RealtimeCoordinator
+import com.kzzz3.argus.lens.feature.wallet.WalletRequestCoordinator
 import com.kzzz3.argus.lens.model.session.AppSessionState
+import com.kzzz3.argus.lens.worker.BackgroundSyncScheduler
 import java.io.File
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -223,6 +251,80 @@ class ArgusLensAppViewModelTest {
     }
 
     @Test
+    fun appViewModel_openConversationPersistsSafeRestorableEntryContext() {
+        val savedStateHandle = SavedStateHandle()
+        val viewModel = createTestViewModel(savedStateHandle = savedStateHandle)
+
+        viewModel.openConversation("conversation-1")
+
+        val state = viewModel.uiState.value
+        assertEquals(AppRoute.Chat, state.currentRoute)
+        assertEquals("conversation-1", state.selectedConversationId)
+        assertEquals(
+            AppRestorableEntryContext(
+                accountId = "argus_tester",
+                routeString = AppRoute.Chat.routeString,
+                selectedConversationId = "conversation-1",
+            ),
+            state.restorableEntryContext,
+        )
+        assertEquals("argus_tester", savedStateHandle["restorableEntryAccountId"])
+        assertEquals(AppRoute.Chat.routeString, savedStateHandle["restorableEntryRoute"])
+        assertEquals("conversation-1", savedStateHandle["restorableEntrySelectedConversationId"])
+        assertNull(savedStateHandle["accessToken"])
+        assertNull(savedStateHandle["refreshToken"])
+    }
+
+    @Test
+    fun appViewModel_nonChatRouteAndSessionClearRemoveRestorableEntryContext() {
+        val savedStateHandle = SavedStateHandle()
+        val viewModel = createTestViewModel(savedStateHandle = savedStateHandle)
+        viewModel.openConversation("conversation-1")
+
+        viewModel.openRoute(AppRoute.Inbox)
+
+        assertEquals(AppRoute.Inbox, viewModel.uiState.value.currentRoute)
+        assertEquals(null, viewModel.uiState.value.restorableEntryContext)
+        assertNull(savedStateHandle["restorableEntryAccountId"])
+        assertNull(savedStateHandle["restorableEntryRoute"])
+        assertNull(savedStateHandle["restorableEntrySelectedConversationId"])
+
+        viewModel.openConversation("conversation-2")
+        viewModel.clearSession()
+
+        assertEquals(AppRoute.AuthEntry, viewModel.uiState.value.currentRoute)
+        assertEquals("", viewModel.uiState.value.selectedConversationId)
+        assertEquals(null, viewModel.uiState.value.restorableEntryContext)
+        assertNull(savedStateHandle["restorableEntryAccountId"])
+        assertNull(savedStateHandle["restorableEntryRoute"])
+        assertNull(savedStateHandle["restorableEntrySelectedConversationId"])
+    }
+
+    @Test
+    fun appViewModel_savedRestorableEntryIsNotSelectedBeforeHydrationValidation() {
+        val savedStateHandle = SavedStateHandle(
+            mapOf(
+                "restorableEntryAccountId" to "argus_tester",
+                "restorableEntryRoute" to AppRoute.Chat.routeString,
+                "restorableEntrySelectedConversationId" to "conversation-1",
+            )
+        )
+        val viewModel = createTestViewModel(savedStateHandle = savedStateHandle)
+
+        val state = viewModel.uiState.value
+        assertEquals(AppRoute.Inbox, state.currentRoute)
+        assertEquals("", state.selectedConversationId)
+        assertEquals(
+            AppRestorableEntryContext(
+                accountId = "argus_tester",
+                routeString = AppRoute.Chat.routeString,
+                selectedConversationId = "conversation-1",
+            ),
+            state.restorableEntryContext,
+        )
+    }
+
+    @Test
     fun resolveInitialAppRoute_authenticatedSessionWithTokenStartsInInbox() {
         val route = resolveInitialAppRoute(
             session = AppSessionState(
@@ -354,5 +456,175 @@ class ArgusLensAppViewModelTest {
         assertEquals(AppRoute.AuthEntry, state.currentRoute)
         assertEquals("", state.selectedConversationId)
         assertEquals(null, state.hydratedConversationAccountId)
+    }
+
+    private fun createTestViewModel(
+        savedStateHandle: SavedStateHandle,
+        initialSession: AppSessionState = AppSessionState(
+            isAuthenticated = true,
+            accountId = "argus_tester",
+            displayName = "Argus Tester",
+        ),
+        initialCredentials: SessionCredentials = SessionCredentials(accessToken = "access-token"),
+    ): ArgusLensAppViewModel {
+        return ArgusLensAppViewModel(
+            dependencies = createTestDependencies(
+                initialSession = initialSession,
+                initialCredentials = initialCredentials,
+            ),
+            savedStateHandle = savedStateHandle,
+        )
+    }
+
+    private fun createTestDependencies(
+        initialSession: AppSessionState,
+        initialCredentials: SessionCredentials,
+    ): AppDependencies {
+        val authRepository = FakeAuthRepository()
+        val sessionRepository = FakeSessionRepository(initialSession, initialCredentials)
+        val conversationRepository = FakeConversationRepository()
+        val friendRepository = FakeFriendRepository()
+        val mediaRepository = FakeMediaRepository()
+        val paymentRepository = FakePaymentRepository()
+        val backgroundSyncScheduler = FakeBackgroundSyncScheduler()
+        return AppDependencies(
+            authRepository = authRepository,
+            sessionRepository = sessionRepository,
+            conversationRepository = conversationRepository,
+            friendRepository = friendRepository,
+            mediaRepository = mediaRepository,
+            paymentRepository = paymentRepository,
+            realtimeClient = FakeConversationRealtimeClient(),
+            appShellCoordinator = AppShellCoordinator(
+                sessionRepository = sessionRepository,
+                conversationRepository = conversationRepository,
+                paymentRepository = paymentRepository,
+                backgroundSyncScheduler = backgroundSyncScheduler,
+            ),
+            appSessionCoordinator = AppSessionCoordinator(authRepository, sessionRepository),
+            authCoordinator = AuthCoordinator(authRepository),
+            contactsCoordinator = ContactsCoordinator(conversationRepository, friendRepository),
+            newFriendsCoordinator = NewFriendsCoordinator(friendRepository, conversationRepository),
+            chatCoordinator = ChatCoordinator(conversationRepository, mediaRepository),
+            walletRequestCoordinator = WalletRequestCoordinator(paymentRepository),
+            realtimeCoordinator = RealtimeCoordinator(conversationRepository),
+            initialSessionSnapshot = initialSession,
+            initialSessionCredentials = initialCredentials,
+            sessionCredentialsStore = SessionCredentialsStore(initialCredentials),
+        )
+    }
+
+    private class FakeAuthRepository : AuthRepository {
+        override suspend fun restoreSession(accessToken: String): AuthRepositoryResult = failure()
+        override suspend fun refreshSession(refreshToken: String): AuthRepositoryResult = failure()
+        override suspend fun login(account: String, password: String): AuthRepositoryResult = failure()
+        override suspend fun register(displayName: String, account: String, password: String): AuthRepositoryResult = failure()
+
+        private fun failure(): AuthRepositoryResult = AuthRepositoryResult.Failure(
+            code = "UNUSED",
+            message = "unused",
+            kind = AuthFailureKind.NETWORK,
+        )
+    }
+
+    private class FakeSessionRepository(
+        private var session: AppSessionState,
+        private var credentials: SessionCredentials,
+    ) : SessionRepository {
+        override suspend fun loadSession(): AppSessionState = session
+        override suspend fun loadCredentials(): SessionCredentials = credentials
+        override suspend fun saveSession(state: AppSessionState, credentials: SessionCredentials) {
+            session = state
+            this.credentials = credentials
+        }
+        override suspend fun clearSession() {
+            session = AppSessionState()
+            credentials = SessionCredentials()
+        }
+    }
+
+    private class FakeConversationRepository : ConversationRepository {
+        private val threads = ConversationThreadsState()
+
+        override fun createPreviewState(currentUserDisplayName: String): ConversationThreadsState = threads
+        override suspend fun loadOrCreateConversationThreads(accountId: String, currentUserDisplayName: String): ConversationThreadsState = threads
+        override suspend fun saveConversationThreads(accountId: String, state: ConversationThreadsState) = Unit
+        override suspend fun clearConversationThreads(accountId: String) = Unit
+        override suspend fun refreshConversationMessages(state: ConversationThreadsState, conversationId: String): ConversationThreadsState = state
+        override suspend fun refreshConversationDetail(state: ConversationThreadsState, conversationId: String): ConversationThreadsState = state
+        override suspend fun sendMessage(state: ConversationThreadsState, conversationId: String, localMessageId: String, body: String, attachment: ChatMessageAttachment?): ConversationThreadsState = state
+        override suspend fun acknowledgeMessageDelivery(state: ConversationThreadsState, conversationId: String, messageId: String): ConversationThreadsState = state
+        override suspend fun acknowledgeMessageRead(state: ConversationThreadsState, conversationId: String, messageId: String): ConversationThreadsState = state
+        override suspend fun recallMessage(state: ConversationThreadsState, conversationId: String, messageId: String): ConversationThreadsState = state
+        override suspend fun markConversationReadRemote(state: ConversationThreadsState, conversationId: String): ConversationThreadsState = state
+        override fun markConversationAsRead(state: ConversationThreadsState, conversationId: String): ConversationThreadsState = state
+        override fun updateConversationFromChatState(state: ConversationThreadsState, updatedState: ChatState): ConversationThreadsState = state
+        override fun resolveOutgoingMessages(state: ConversationThreadsState, conversationId: String, messageIds: List<String>): ConversationThreadsState = state
+        override fun resolveDeliveredMessages(state: ConversationThreadsState, conversationId: String, messageIds: List<String>): ConversationThreadsState = state
+    }
+
+    private class FakeFriendRepository : FriendRepository {
+        override suspend fun listFriends(): FriendRepositoryResult = failure()
+        override suspend fun sendFriendRequest(friendAccountId: String): FriendRepositoryResult = failure()
+        override suspend fun listFriendRequests(): FriendRepositoryResult = failure()
+        override suspend fun acceptFriendRequest(requestId: String): FriendRepositoryResult = failure()
+        override suspend fun rejectFriendRequest(requestId: String): FriendRepositoryResult = failure()
+        override suspend fun ignoreFriendRequest(requestId: String): FriendRepositoryResult = failure()
+
+        private fun failure(): FriendRepositoryResult = FriendRepositoryResult.Failure("UNUSED", "unused")
+    }
+
+    private class FakeMediaRepository : MediaRepository {
+        override suspend fun createUploadSession(
+            conversationId: String,
+            attachmentKind: ChatDraftAttachmentKind,
+            fileName: String,
+            contentType: String,
+            contentLength: Long,
+            durationSeconds: Int?,
+        ): MediaRepositoryResult = failure()
+
+        override suspend fun finalizeUploadSession(
+            sessionId: String,
+            conversationId: String,
+            fileName: String,
+            contentType: String,
+            contentLength: Long,
+            objectKey: String,
+        ): MediaRepositoryResult = failure()
+
+        override suspend fun uploadContent(uploadSession: com.kzzz3.argus.lens.data.media.MediaUploadSession, contentBytes: ByteArray): MediaRepositoryResult = failure()
+        override suspend fun downloadAttachment(attachmentId: String, fileName: String): MediaRepositoryResult = failure()
+
+        private fun failure(): MediaRepositoryResult = MediaRepositoryResult.Failure("UNUSED", "unused")
+    }
+
+    private class FakePaymentRepository : PaymentRepository {
+        override suspend fun getWalletSummary(): PaymentRepositoryResult = failure()
+        override suspend fun resolveScanPayload(scanPayload: String): PaymentRepositoryResult = failure()
+        override suspend fun confirmPayment(sessionId: String, amount: Double?, note: String): PaymentRepositoryResult = failure()
+        override suspend fun listPayments(): PaymentRepositoryResult = failure()
+        override suspend fun getPaymentReceipt(paymentId: String): PaymentRepositoryResult = failure()
+
+        private fun failure(): PaymentRepositoryResult = PaymentRepositoryResult.Failure("UNUSED", "unused")
+    }
+
+    private class FakeConversationRealtimeClient : ConversationRealtimeClient {
+        override fun connect(
+            accessToken: String,
+            lastEventId: String?,
+            onConnected: () -> Unit,
+            onClosed: () -> Unit,
+            onEvent: (ConversationRealtimeEvent) -> Unit,
+            onError: (Throwable) -> Unit,
+        ): ConversationRealtimeSubscription {
+            return object : ConversationRealtimeSubscription {
+                override fun close() = Unit
+            }
+        }
+    }
+
+    private class FakeBackgroundSyncScheduler : BackgroundSyncScheduler {
+        override fun enqueue() = Unit
     }
 }

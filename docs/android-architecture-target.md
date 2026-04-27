@@ -347,6 +347,7 @@ Few device/emulator tests
 Testing rules:
 
 - Prefer handwritten fakes and test doubles over mocking implementation details.
+- App-shell ViewModel tests should instantiate `ArgusLensAppViewModel` with small handwritten `AppDependencies` fakes when checking state/SavedStateHandle synchronization; keep source-boundary tests for ownership shape only.
 - Every module split must move or add tests with the code it owns.
 - Boundary tests guard forbidden regressions: token material in UI state, direct Compose-to-JNI calls, release URL weakening, ad hoc route strings, and data-source access from screens.
 - Gradle tasks run serially in this workspace.
