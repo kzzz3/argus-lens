@@ -35,12 +35,9 @@ class RemoteMediaRepository(
         }
 
         val request = UploadSessionRequestBody(
-            conversationId = conversationId,
             attachmentType = attachmentKind.toBackendValue(),
             fileName = fileName,
-            contentType = contentType,
-            contentLength = contentLength,
-            durationSeconds = durationSeconds,
+            estimatedBytes = contentLength,
         )
 
         return try {
@@ -197,7 +194,7 @@ class RemoteMediaRepository(
                         it.mkdirs()
                     }
                 }
-                val safeFileName = fileName.takeIf { it.isNotBlank() } ?: "attachment-$attachmentId"
+                val safeFileName = sanitizeMediaFileName(fileName, attachmentId)
                 val targetFile = File(downloadsDir, safeFileName)
 
                 responseBody.byteStream().use { input ->
@@ -225,15 +222,15 @@ class RemoteMediaRepository(
         return MediaUploadSession(
             conversationId = conversationId,
             attachmentKind = attachmentKind,
-            uploadSessionId = uploadSessionId,
-            attachmentId = attachmentId,
+            uploadSessionId = sessionId,
+            attachmentId = "",
             uploadUrl = uploadUrl,
             objectKey = objectKey,
             uploadHeaders = uploadHeaders,
             uploaded = uploaded,
             contentType = contentType,
             contentLength = contentLength,
-            expiresAt = expiresAt,
+            expiresAt = "",
         )
     }
 
@@ -271,4 +268,18 @@ class RemoteMediaRepository(
             message = parsed?.message ?: "Media upload session request failed with HTTP $httpCode.",
         )
     }
+}
+
+fun sanitizeMediaFileName(
+    fileName: String,
+    attachmentId: String,
+): String {
+    val sanitized = fileName
+        .trim()
+        .replace('\\', '_')
+        .replace('/', '_')
+        .replace(Regex("[^a-zA-Z0-9._-]"), "_")
+        .replace(Regex("^[._]+"), "")
+        .replace(Regex("_+"), "_")
+    return sanitized.ifBlank { "attachment-$attachmentId" }
 }
