@@ -1,6 +1,8 @@
 package com.kzzz3.argus.lens.app
 
 import com.kzzz3.argus.lens.app.navigation.AppRoute
+import com.kzzz3.argus.lens.app.navigation.routeDescriptor
+import com.kzzz3.argus.lens.app.navigation.routeString
 import com.kzzz3.argus.lens.navigation.TopLevelDestination
 import com.kzzz3.argus.lens.ui.shell.ShellDestination
 
@@ -14,6 +16,10 @@ internal data class AppRouteNavigationCallbacks(
 )
 
 internal class AppRouteNavigationRuntime {
+    fun buildNavigationRoute(route: AppRoute): String {
+        return route.routeString
+    }
+
     fun openTopLevelRoute(
         route: AppRoute,
         request: AppRouteNavigationRequest,
@@ -36,7 +42,7 @@ internal class AppRouteNavigationRuntime {
     }
 
     fun toShellDestination(route: AppRoute): ShellDestination {
-        return TopLevelDestination.fromRoute(route)?.shellDestination ?: ShellDestination.Secondary
+        return route.routeDescriptor.shellDestination
     }
 
     fun resolveRouteShellDestination(
@@ -45,7 +51,7 @@ internal class AppRouteNavigationRuntime {
     ): ShellDestination {
         return when {
             route == AppRoute.NewFriends -> ShellDestination.Contacts
-            route == AppRoute.Chat && !hasSelectedConversation -> ShellDestination.Inbox
+            route.routeDescriptor.requiresSelectedConversation && !hasSelectedConversation -> ShellDestination.Inbox
             else -> toShellDestination(route)
         }
     }

@@ -40,6 +40,7 @@ Status: complete for the first God Composable split milestone and the host API b
 - `feature/auth/AuthStateHolder.kt` owns login/register form `StateFlow` state, reducer dispatch, and async auth submission; `ArgusLensAppViewModel` owns the holder lifetime, while app code keeps only route navigation and authenticated-session application callbacks.
 - `feature/inbox/InboxStateHolder.kt` owns derived inbox `InboxUiState` and route-agnostic `InboxAction` dispatch; `ArgusLensAppViewModel` owns the holder lifetime, while app code still owns shared `ConversationThreadsState`, conversation-open sequencing, route changes, sign-out/session effects, realtime, persistence, and chat behavior.
 - `feature/inbox/ChatStateHolder.kt` owns selected-conversation `ChatState` and `ChatUiState` derivation; `ArgusLensAppViewModel` owns the holder lifetime, while app code still owns chat action effects, call routing, outgoing dispatch, recall/download side effects, selected conversation routing, shared `ConversationThreadsState`, realtime, and persistence.
+- `app/navigation/AppRouteContract.kt` owns stable route descriptors for every `AppRoute`; app host navigation now builds route strings through that contract instead of relying on enum names. Feature navigation still owns the current string `composable(...)` registrations until a later AndroidX typed-route/serialization slice.
 - This boundary is the baseline for the future typed-navigation and feature ViewModel extraction roadmap in `docs/android-architecture-target.md`.
 
 Verification gate:
@@ -47,11 +48,12 @@ Verification gate:
 - `:app:compileDebugKotlin` must pass after route host decomposition changes.
 - `:app:testDebugUnitTest --tests "com.kzzz3.argus.lens.app.AppRouteNavigationRuntimeTest"` must pass after shell routing policy changes.
 - `NavigationGraphBoundaryTest` must pass after auth/main graph or feature-owned navigation registration changes.
+- `AppRouteNavigationRuntimeTest.appRouteDescriptorsExposeStableRouteStringsAndGraphMetadata` must pass after route contract changes.
 - `:app:testDebugUnitTest --tests "com.kzzz3.argus.lens.app.ArgusLensAppViewModelTest"` must pass after app-shell state boundary changes.
 - `ArgusLensAppViewModelTest.appRouteHost_delegatesLifecycleEffects` must pass after moving host lifecycle/effect orchestration.
 - Route action binding changes must also keep `AuthStateHolderTest`, `InboxStateHolderTest`, `ChatStateHolderTest`, `InboxRouteRuntimeTest`, `ChatRouteRuntimeTest`, `ContactsRouteRuntimeTest`, `WalletActionHandlerTest`, `WalletRequestRunnerTest`, `WalletRequestGuardTest`, `WalletEffectHandlerTest`, `WalletFeatureControllerTest`, `WalletStateHolderTest`, and `RealtimeConnectionRuntimeTest` green.
 
-Remaining lifecycle ownership work belongs to P1: the wallet, auth, inbox, and chat state holders are feature-owned precursors to AndroidX/Hilt feature ViewModels, and long-running realtime/session refresh/call timer orchestration should continue moving out of the Composable layer.
+Remaining lifecycle ownership work belongs to P1: the wallet, auth, inbox, and chat state holders are feature-owned precursors to AndroidX/Hilt feature ViewModels, and long-running realtime/session refresh/call timer orchestration should continue moving out of the Composable layer. AndroidX typed routes should now build on the stable `AppRouteContract` seam rather than coupling to enum names.
 
 ## P1 ViewModel And Runtime Lifecycle Ownership
 

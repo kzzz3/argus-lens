@@ -5,6 +5,7 @@ import androidx.navigation.navigation
 import com.kzzz3.argus.lens.app.AppRouteNavigationRuntime
 import com.kzzz3.argus.lens.app.AppRouteUiState
 import com.kzzz3.argus.lens.app.navigation.AppRoute
+import com.kzzz3.argus.lens.app.navigation.routeString
 import com.kzzz3.argus.lens.feature.call.CallSessionAction
 import com.kzzz3.argus.lens.feature.call.navigation.callNavigation
 import com.kzzz3.argus.lens.feature.contacts.ContactsAction
@@ -36,7 +37,7 @@ internal fun NavGraphBuilder.mainGraph(
     onChatAction: (ChatAction) -> Unit,
 ) {
     navigation(
-        startDestination = AppRoute.Inbox.name,
+        startDestination = AppRoute.Inbox.routeString,
         route = MainGraphRoute,
     ) {
         inboxNavigation(

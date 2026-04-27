@@ -1,6 +1,10 @@
 package com.kzzz3.argus.lens.app
 
 import com.kzzz3.argus.lens.app.navigation.AppRoute
+import com.kzzz3.argus.lens.app.navigation.routeDescriptor
+import com.kzzz3.argus.lens.app.navigation.routeString
+import com.kzzz3.argus.lens.feature.auth.navigation.AuthGraphRoute
+import com.kzzz3.argus.lens.navigation.MainGraphRoute
 import com.kzzz3.argus.lens.ui.shell.ShellDestination
 import java.io.File
 import org.junit.Assert.assertEquals
@@ -9,6 +13,31 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class AppRouteNavigationRuntimeTest {
+    @Test
+    fun appRouteDescriptorsExposeStableRouteStringsAndGraphMetadata() {
+        assertEquals("AuthEntry", AppRoute.AuthEntry.routeString)
+        assertEquals(AuthGraphRoute, AppRoute.AuthEntry.routeDescriptor.graphRoute)
+        assertEquals("RegisterEntry", AppRoute.RegisterEntry.routeString)
+        assertEquals(AuthGraphRoute, AppRoute.RegisterEntry.routeDescriptor.graphRoute)
+
+        assertEquals("Inbox", AppRoute.Inbox.routeString)
+        assertEquals(MainGraphRoute, AppRoute.Inbox.routeDescriptor.graphRoute)
+        assertEquals(ShellDestination.Inbox, AppRoute.Inbox.routeDescriptor.shellDestination)
+        assertEquals("Chat", AppRoute.Chat.routeString)
+        assertEquals(MainGraphRoute, AppRoute.Chat.routeDescriptor.graphRoute)
+        assertEquals(ShellDestination.Secondary, AppRoute.Chat.routeDescriptor.shellDestination)
+        assertTrue(AppRoute.Chat.routeDescriptor.requiresSelectedConversation)
+    }
+
+    @Test
+    fun buildNavigationRouteUsesStableRouteContractForEveryRoute() {
+        val runtime = AppRouteNavigationRuntime()
+
+        AppRoute.entries.forEach { route ->
+            assertEquals(route.routeString, runtime.buildNavigationRoute(route))
+        }
+    }
+
     @Test
     fun openTopLevelRoute_walletOpensCurrentAccountBeforeRouting() {
         val runtime = AppRouteNavigationRuntime()
@@ -201,9 +230,9 @@ class AppRouteNavigationRuntimeTest {
         val missingRoutes = AppRoute.entries
             .filterNot { route ->
                 when (route) {
-                    AppRoute.AuthEntry -> authGraphSource.contains("Login(\"${route.name}\")")
-                    AppRoute.RegisterEntry -> authGraphSource.contains("Register(\"${route.name}\")")
-                    else -> mainGraphSources.getValue(route).contains("\"${route.name}\"")
+                    AppRoute.AuthEntry -> authGraphSource.contains("Login(\"${route.routeString}\")")
+                    AppRoute.RegisterEntry -> authGraphSource.contains("Register(\"${route.routeString}\")")
+                    else -> mainGraphSources.getValue(route).contains("\"${route.routeString}\"")
                 }
             }
 

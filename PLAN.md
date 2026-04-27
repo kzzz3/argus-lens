@@ -23,6 +23,7 @@ Argus Lens provides the Android runtime for Argus by delivering a reliable local
 - [x] P0 auth state-holder slice: move login/register form state and reducer/submission orchestration out of `ArgusLensAppUiState` and the app-owned entry runtime into a ViewModel-owned feature `AuthStateHolder`, while app code retains route/session-success callbacks.
 - [x] P0 inbox state-holder slice: move inbox UI-state derivation and route-agnostic inbox action dispatch into a ViewModel-owned feature `InboxStateHolder`, while app code retains conversation-open sequencing, route changes, sign-out, realtime, persistence, and chat ownership.
 - [x] P0 chat state-holder slice: move selected-conversation chat state/UI derivation into a ViewModel-owned feature `ChatStateHolder`, while app code retains chat action effects, call routing, dispatch, recall/download, selected conversation, and shared thread ownership.
+- [x] P1 typed-navigation compatibility slice: introduce an app-owned stable route contract around `AppRoute` so host navigation no longer depends on enum names, while deferring AndroidX `composable<T>` registration and route args until selected-conversation/process-death policy is explicit.
 - [x] P3 first core-module sync slice: move shared model/UI modules into `:core:model` and `:core:ui` while preserving package names and aggregate `:data` / `:feature` ownership.
 - [x] P1 navigation graph split slice: normalize root navigation into `ArgusNavHost`, separate auth/main child graphs, and move feature leaf registrations into feature-owned navigation files while preserving `AppRoute` compatibility.
 - [x] Long-term Android architecture target documented with `:app`, `:core:*`, `:feature:*`, typed navigation, session, data, test, and cleanup roadmaps.
@@ -78,6 +79,7 @@ Long-term target topology is documented in `docs/android-architecture-target.md`
 - [x] Move auth/register form state and submit orchestration into a feature-owned state holder while keeping session application and route transitions app-owned.
 - [x] Move inbox UI derivation and simple action dispatch into a feature-owned state holder while keeping conversation-open sequencing and shared thread mutation in app-owned runtime boundaries.
 - [x] Move selected chat state/UI derivation into a feature-owned state holder while keeping chat action effects and shared thread mutation in app-owned runtime boundaries.
+- [x] Replace app-side route enum-name navigation with a stable app-owned route contract helper while keeping feature leaf `composable("...")` registrations unchanged.
 - [ ] RTC signaling integration.
 - [ ] Stronger process-death restoration rules.
 - [ ] Background reconciliation strategy for sync.
@@ -90,7 +92,8 @@ Long-term target topology is documented in `docs/android-architecture-target.md`
 ### Architecture Roadmap — Target Android Organization
 - [x] Document the durable target architecture and P0-P4 migration roadmap in `docs/android-architecture-target.md`.
 - [ ] P0: continue app-shell slimming and feature ViewModel extraction without changing route semantics; wallet, auth, inbox, and chat now have feature-owned state holders, and future AndroidX/Hilt feature ViewModel wrappers can land once lifecycle/module dependencies are explicit.
-- [ ] P1: build on the verified auth/main nested graph baseline with typed route contracts and process-death restoration rules one feature at a time.
+- [x] P1: establish the first typed route compatibility contract around existing `AppRoute` leaf strings without route args or Kotlin serialization.
+- [ ] P1: build on the verified auth/main nested graph baseline with AndroidX typed route registrations, route args, and process-death restoration rules one feature at a time.
 - [ ] P2: split session/token/crypto responsibilities and make repository/data-source/use-case boundaries explicit before Gradle extraction.
 - [ ] P3: continue `:core:*` and `:feature:*` extraction after the verified `:core:model` / `:core:ui` baseline, keeping ownership and package boundaries stable.
 - [ ] P4: enforce dependency direction, expand test fixtures, and remove transitional shims after each migration slice.
@@ -151,3 +154,4 @@ Run Gradle tasks serially.
 | 2026-04-28 | P0 auth state-holder TDD | Red/green `AuthStateHolderTest`; red/green `ArgusLensAppViewModelTest.appViewModelOwnsAuthStateHolderLifetime` and `appUiStateDoesNotOwnAuthOrRegisterFormState`; removed obsolete app `EntryRouteRuntime`; `:app:testDebugUnitTest`; `testDebugUnitTest`; `lint`; `assembleDebug`; Kotlin LSP unavailable because `kotlin-lsp` is not installed; Markdown LSP unavailable | PASS |
 | 2026-04-28 | P0 inbox state-holder TDD | Red/green `InboxStateHolderTest`; red/green `ArgusLensAppViewModelTest.appViewModelOwnsInboxStateHolderLifetime`; removed obsolete app `InboxActionRouteRuntime` while keeping app `InboxRouteRuntime`; `:app:testDebugUnitTest`; `testDebugUnitTest`; `lint`; `assembleDebug`; Kotlin LSP unavailable because `kotlin-lsp` is not installed; Markdown LSP unavailable | PASS |
 | 2026-04-28 | P0 chat state-holder TDD | Red/green `ChatStateHolderTest`; red/green `ArgusLensAppViewModelTest.appViewModelOwnsChatStateHolderLifetime`; moved selected-conversation chat state/UI derivation out of `AppRouteUiState` while keeping app `ChatRouteRuntime`; `:app:testDebugUnitTest`; `testDebugUnitTest`; `lint`; `assembleDebug`; Kotlin LSP unavailable because `kotlin-lsp` is not installed; Markdown LSP unavailable | PASS |
+| 2026-04-28 | P1 typed-navigation compatibility TDD | Red/green `AppRouteNavigationRuntimeTest` route contract checks; red/green `NavigationGraphBoundaryTest` host/start-destination source checks; introduced stable app-owned `AppRouteDescriptor` / `routeString` contract and replaced app-side enum-name navigation; `:app:testDebugUnitTest`; `testDebugUnitTest`; `lint`; `assembleDebug`; Kotlin LSP unavailable because `kotlin-lsp` is not installed | PASS |

@@ -161,9 +161,10 @@ internal fun AppRouteHostEffects(
         ?.firstOrNull { destination -> destination.route == AuthGraphRoute || destination.route == MainGraphRoute }
         ?.route
     val targetGraphRoute = graphRouteForAppRoute(currentRoute)
-    LaunchedEffect(currentRoute, currentDestinationRoute, previousGraphRoute) {
-        if (currentDestinationRoute != currentRoute.name) {
-            navController.navigate(currentRoute.name) {
+    val targetNavigationRoute = routeRuntimes.appRouteNavigationRuntime.buildNavigationRoute(currentRoute)
+    LaunchedEffect(currentRoute, targetNavigationRoute, currentDestinationRoute, previousGraphRoute) {
+        if (currentDestinationRoute != targetNavigationRoute) {
+            navController.navigate(targetNavigationRoute) {
                 launchSingleTop = true
                 if (previousGraphRoute != null && previousGraphRoute != targetGraphRoute) {
                     popUpTo(previousGraphRoute) {

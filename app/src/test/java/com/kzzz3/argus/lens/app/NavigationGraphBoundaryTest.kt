@@ -91,6 +91,23 @@ class NavigationGraphBoundaryTest {
         assertTrue(effectsSource.contains("popUpTo(previousGraphRoute)"))
     }
 
+    @Test
+    fun hostEffectsNavigateWithRouteContractInsteadOfBareEnumName() {
+        val effectsSource = appSource("AppRouteHostEffects.kt").readText()
+
+        assertTrue(effectsSource.contains("buildNavigationRoute(currentRoute)"))
+        assertFalse(effectsSource.contains("currentDestinationRoute != currentRoute.name"))
+        assertFalse(effectsSource.contains("navController.navigate(currentRoute.name)"))
+    }
+
+    @Test
+    fun mainGraphStartDestinationUsesStableRouteContract() {
+        val mainNavigationSource = navigationSource("MainNavigation.kt").readText()
+
+        assertTrue(mainNavigationSource.contains("AppRoute.Inbox.routeString"))
+        assertFalse(mainNavigationSource.contains("AppRoute.Inbox.name"))
+    }
+
     private fun appSource(fileName: String): File = File("src/main/java/com/kzzz3/argus/lens/app/$fileName")
 
     private fun navigationSource(fileName: String): File = File("src/main/java/com/kzzz3/argus/lens/navigation/$fileName")

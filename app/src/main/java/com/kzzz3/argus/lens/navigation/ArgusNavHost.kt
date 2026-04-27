@@ -6,8 +6,8 @@ import androidx.navigation.compose.NavHost
 import com.kzzz3.argus.lens.app.AppRouteNavigationRuntime
 import com.kzzz3.argus.lens.app.AppRouteUiState
 import com.kzzz3.argus.lens.app.navigation.AppRoute
+import com.kzzz3.argus.lens.app.navigation.graphRoute
 import com.kzzz3.argus.lens.feature.auth.AuthEntryAction
-import com.kzzz3.argus.lens.feature.auth.navigation.AuthGraphRoute
 import com.kzzz3.argus.lens.feature.auth.navigation.authGraph
 import com.kzzz3.argus.lens.feature.call.CallSessionAction
 import com.kzzz3.argus.lens.feature.contacts.ContactsAction
@@ -66,17 +66,5 @@ internal fun ArgusNavHost(
 }
 
 internal fun graphRouteForAppRoute(route: AppRoute): String {
-    return when (route) {
-        AppRoute.AuthEntry,
-        AppRoute.RegisterEntry,
-        -> AuthGraphRoute
-        AppRoute.Inbox,
-        AppRoute.Contacts,
-        AppRoute.NewFriends,
-        AppRoute.Wallet,
-        AppRoute.Me,
-        AppRoute.CallSession,
-        AppRoute.Chat,
-        -> MainGraphRoute
-    }
+    return route.graphRoute
 }
