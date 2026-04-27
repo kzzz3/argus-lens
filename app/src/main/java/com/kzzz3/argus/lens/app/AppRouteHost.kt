@@ -664,25 +664,25 @@ internal fun AppRouteHost(
         }
 
         composable(AppRoute.Inbox.name) {
-            AuthenticatedShell(
+            AuthenticatedRouteShell(
                 currentDestination = appRouteNavigationRuntime.toShellDestination(currentRoute),
                 onTabSelected = ::openShellDestination,
-            ) { innerPadding ->
+            ) { contentModifier ->
                 InboxScreen(
                     state = inboxState,
                     onAction = { action ->
                         inboxActionRouteRuntime.handleAction(action, inboxActionRouteCallbacks())
                     },
-                    modifier = Modifier.padding(innerPadding),
+                    modifier = contentModifier,
                 )
             }
         }
 
         composable(AppRoute.Contacts.name) {
-            AuthenticatedShell(
+            AuthenticatedRouteShell(
                 currentDestination = appRouteNavigationRuntime.toShellDestination(currentRoute),
                 onTabSelected = ::openShellDestination,
-            ) { innerPadding ->
+            ) { contentModifier ->
                 ContactsScreen(
                     state = contactsUiState,
                     onAction = { action ->
@@ -694,16 +694,16 @@ internal fun AppRouteHost(
                             ),
                         )
                     },
-                    modifier = Modifier.padding(innerPadding),
+                    modifier = contentModifier,
                 )
             }
         }
 
         composable(AppRoute.NewFriends.name) {
-            AuthenticatedShell(
+            AuthenticatedRouteShell(
                 currentDestination = ShellDestination.Contacts,
                 onTabSelected = ::openShellDestination,
-            ) { innerPadding ->
+            ) { contentModifier ->
                 NewFriendsScreen(
                     state = newFriendsUiState,
                     onAction = { action ->
@@ -713,16 +713,16 @@ internal fun AppRouteHost(
                             callbacks = contactsRouteCallbacks(),
                         )
                     },
-                    modifier = Modifier.padding(innerPadding),
+                    modifier = contentModifier,
                 )
             }
         }
 
         composable(AppRoute.CallSession.name) {
-            AuthenticatedShell(
+            AuthenticatedRouteShell(
                 currentDestination = appRouteNavigationRuntime.toShellDestination(currentRoute),
                 onTabSelected = ::openShellDestination,
-            ) { innerPadding ->
+            ) { contentModifier ->
                 CallSessionScreen(
                     state = callSessionUiState,
                     onAction = { action ->
@@ -735,16 +735,16 @@ internal fun AppRouteHost(
                             ),
                         )
                     },
-                    modifier = Modifier.padding(innerPadding),
+                    modifier = contentModifier,
                 )
             }
         }
 
         composable(AppRoute.Wallet.name) {
-            AuthenticatedShell(
+            AuthenticatedRouteShell(
                 currentDestination = appRouteNavigationRuntime.toShellDestination(currentRoute),
                 onTabSelected = ::openShellDestination,
-            ) { innerPadding ->
+            ) { contentModifier ->
                 WalletScreen(
                     state = walletUiState,
                     permissionRequestPending = walletStateModel.shouldRequestCameraPermission,
@@ -757,20 +757,20 @@ internal fun AppRouteHost(
                             ),
                         )
                     },
-                    modifier = Modifier.padding(innerPadding),
+                    modifier = contentModifier,
                 )
             }
         }
 
         composable(AppRoute.Me.name) {
-            AuthenticatedShell(
+            AuthenticatedRouteShell(
                 currentDestination = appRouteNavigationRuntime.toShellDestination(currentRoute),
                 onTabSelected = ::openShellDestination,
-            ) { innerPadding ->
+            ) { contentModifier ->
                 MeScreen(
                     state = meUiState,
                     onSignOut = ::signOutToEntry,
-                    modifier = Modifier.padding(innerPadding),
+                    modifier = contentModifier,
                 )
             }
         }
@@ -780,23 +780,23 @@ internal fun AppRouteHost(
             val resolvedChatState = chatState
 
             if (resolvedChatUiState == null || resolvedChatState == null) {
-                AuthenticatedShell(
+                AuthenticatedRouteShell(
                     currentDestination = ShellDestination.Inbox,
                     onTabSelected = ::openShellDestination,
-                ) { innerPadding ->
+                ) { contentModifier ->
                     InboxScreen(
                         state = inboxState,
                         onAction = { action ->
                             inboxActionRouteRuntime.handleAction(action, inboxActionRouteCallbacks())
                         },
-                        modifier = Modifier.padding(innerPadding),
+                        modifier = contentModifier,
                     )
                 }
             } else {
-                AuthenticatedShell(
+                AuthenticatedRouteShell(
                     currentDestination = appRouteNavigationRuntime.toShellDestination(currentRoute),
                     onTabSelected = ::openShellDestination,
-                ) { innerPadding ->
+                ) { contentModifier ->
                     ChatScreen(
                         state = resolvedChatUiState,
                         onAction = { action ->
@@ -815,10 +815,24 @@ internal fun AppRouteHost(
                                 ),
                             )
                         },
-                        modifier = Modifier.padding(innerPadding),
+                        modifier = contentModifier,
                     )
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun AuthenticatedRouteShell(
+    currentDestination: ShellDestination,
+    onTabSelected: (ShellDestination) -> Unit,
+    content: @Composable (Modifier) -> Unit,
+) {
+    AuthenticatedShell(
+        currentDestination = currentDestination,
+        onTabSelected = onTabSelected,
+    ) { innerPadding ->
+        content(Modifier.padding(innerPadding))
     }
 }
