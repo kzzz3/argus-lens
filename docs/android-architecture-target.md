@@ -42,6 +42,7 @@ The app shell has already moved past a single monolithic route host milestone:
 - `ChatStateHolder` owns selected-conversation chat state and UI derivation in the feature package; `ArgusLensAppViewModel` owns its lifetime while app code still owns chat action side effects, call routing, selected conversation, shared thread mutation, realtime, and persistence.
 - `AppRouteContract` owns stable app route descriptors and route strings, so app navigation no longer depends on enum names. AndroidX `composable<T>` typed route registration, Kotlin serialization setup, and route args remain future slices after process-death restoration and selected-conversation ownership are explicit.
 - `AppRouteHostEffectDependencies` narrows host lifecycle/effects inputs so the effects layer no longer receives the full Hilt-backed `AppDependencies` aggregate.
+- `LocalSessionStore` remains the concrete `SessionRepository` facade, with safe identity persistence and encrypted credential persistence split behind package-internal stores while storage semantics remain unchanged.
 - `:core:model` and `:core:ui` own the former shared `model` and `ui` modules without package renames, keeping the first physical core migration low risk.
 - `ArgusLensAppState` owns root UI state and pure session transition helpers.
 
@@ -210,6 +211,7 @@ Migration rule: keep the current nested `AppRoute` compatibility graph covered w
 ## Session and Token Boundary Target
 
 Current state: UI identity state and credential persistence are separated enough to keep access/refresh tokens out of saveable UI state.
+`LocalSessionStore` now reflects that boundary internally by delegating safe session identity persistence separately from encrypted credential persistence while preserving the existing public `SessionRepository` contract.
 
 Target state:
 

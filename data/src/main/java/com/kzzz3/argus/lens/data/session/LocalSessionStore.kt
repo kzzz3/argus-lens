@@ -25,16 +25,62 @@ private const val SecureSessionFileName = "argus-lens-secure-session"
 private const val KeyStoreAlias = "argus-lens-session-key"
 private const val AndroidKeyStoreName = "AndroidKeyStore"
 private const val CipherTransformation = "AES/GCM/NoPadding"
+private const val SessionDataStoreFileName = "argus-lens-session.preferences_pb"
+private const val IsAuthenticatedKeyName = "is_authenticated"
+private const val AccountIdKeyName = "account_id"
+private const val DisplayNameKeyName = "display_name"
 private const val AccessTokenKeyName = "access_token"
 private const val RefreshTokenKeyName = "refresh_token"
 
-class LocalSessionStore(
-    private val context: Context,
+internal interface LocalSessionStateStore {
+    suspend fun loadSession(): AppSessionState
+    suspend fun saveSession(state: AppSessionState)
+    suspend fun clearSession()
+}
+
+internal interface LocalSessionCredentialsStore {
+    fun loadCredentials(): SessionCredentials
+    fun saveCredentials(credentials: SessionCredentials)
+    fun clearCredentials()
+}
+
+class LocalSessionStore internal constructor(
+    private val sessionStateStore: LocalSessionStateStore,
+    private val sessionCredentialsStore: LocalSessionCredentialsStore,
 ) : SessionRepository {
+    constructor(context: Context) : this(
+        sessionStateStore = DataStoreLocalSessionStateStore(context.applicationContext),
+        sessionCredentialsStore = EncryptedLocalSessionCredentialsStore(context.applicationContext),
+    )
+
+    override suspend fun loadSession(): AppSessionState {
+        return sessionStateStore.loadSession()
+    }
+
+    override suspend fun loadCredentials(): SessionCredentials {
+        return sessionCredentialsStore.loadCredentials()
+    }
+
+    override suspend fun saveSession(
+        state: AppSessionState,
+        credentials: SessionCredentials,
+    ) {
+        sessionStateStore.saveSession(state)
+        sessionCredentialsStore.saveCredentials(credentials)
+    }
+
+    override suspend fun clearSession() {
+        sessionStateStore.clearSession()
+        sessionCredentialsStore.clearCredentials()
+    }
+}
+
+private class DataStoreLocalSessionStateStore(
+    context: Context,
+) : LocalSessionStateStore {
     private val sessionSnapshotPreferences = context.getSharedPreferences(SessionSnapshotFileName, Context.MODE_PRIVATE)
-    private val secureTokenPreferences = context.getSharedPreferences(SecureSessionFileName, Context.MODE_PRIVATE)
     private val dataStore = PreferenceDataStoreFactory.create(
-        produceFile = { context.preferencesDataStoreFile("argus-lens-session.preferences_pb") }
+        produceFile = { context.preferencesDataStoreFile(SessionDataStoreFileName) }
     )
 
     override suspend fun loadSession(): AppSessionState {
@@ -47,21 +93,13 @@ class LocalSessionStore(
         }.first()
     }
 
-    override suspend fun loadCredentials(): SessionCredentials {
-        return loadSecureCredentials(context, secureTokenPreferences)
-    }
-
-    override suspend fun saveSession(
-        state: AppSessionState,
-        credentials: SessionCredentials,
-    ) {
+    override suspend fun saveSession(state: AppSessionState) {
         dataStore.edit { preferences ->
             preferences[IsAuthenticatedKey] = state.isAuthenticated
             preferences[AccountIdKey] = state.accountId
             preferences[DisplayNameKey] = state.displayName
         }
         saveSessionSnapshot(state)
-        saveSecureTokens(credentials)
     }
 
     override suspend fun clearSession() {
@@ -69,45 +107,50 @@ class LocalSessionStore(
             preferences.clear()
         }
         saveSessionSnapshot(AppSessionState())
-        clearSecureTokens()
     }
 
     private fun saveSessionSnapshot(state: AppSessionState) {
         sessionSnapshotPreferences.edit()
-            .putBoolean(IS_AUTHENTICATED_KEY_NAME, state.isAuthenticated)
-            .putString(ACCOUNT_ID_KEY_NAME, state.accountId)
-            .putString(DISPLAY_NAME_KEY_NAME, state.displayName)
+            .putBoolean(IsAuthenticatedKeyName, state.isAuthenticated)
+            .putString(AccountIdKeyName, state.accountId)
+            .putString(DisplayNameKeyName, state.displayName)
             .apply()
     }
 
-    private fun saveSecureTokens(credentials: SessionCredentials) {
+    private companion object {
+        val IsAuthenticatedKey = booleanPreferencesKey(IsAuthenticatedKeyName)
+        val AccountIdKey = stringPreferencesKey(AccountIdKeyName)
+        val DisplayNameKey = stringPreferencesKey(DisplayNameKeyName)
+    }
+}
+
+private class EncryptedLocalSessionCredentialsStore(
+    private val context: Context,
+) : LocalSessionCredentialsStore {
+    private val secureTokenPreferences = context.getSharedPreferences(SecureSessionFileName, Context.MODE_PRIVATE)
+
+    override fun loadCredentials(): SessionCredentials {
+        return loadSecureCredentials(context, secureTokenPreferences)
+    }
+
+    override fun saveCredentials(credentials: SessionCredentials) {
         secureTokenPreferences.edit()
             .putString(AccessTokenKeyName, encryptToken(context, credentials.accessToken))
             .putString(RefreshTokenKeyName, encryptToken(context, credentials.refreshToken))
             .apply()
     }
 
-    private fun clearSecureTokens() {
+    override fun clearCredentials() {
         secureTokenPreferences.edit()
             .remove(AccessTokenKeyName)
             .remove(RefreshTokenKeyName)
             .apply()
     }
-
-    private companion object {
-        const val SESSION_SNAPSHOT_FILE_NAME = "argus-lens-session-snapshot"
-        const val IS_AUTHENTICATED_KEY_NAME = "is_authenticated"
-        const val ACCOUNT_ID_KEY_NAME = "account_id"
-        const val DISPLAY_NAME_KEY_NAME = "display_name"
-        val IsAuthenticatedKey = booleanPreferencesKey("is_authenticated")
-        val AccountIdKey = stringPreferencesKey("account_id")
-        val DisplayNameKey = stringPreferencesKey("display_name")
-    }
 }
 
 fun createLocalSessionStore(
     context: Context,
-) : SessionRepository {
+): SessionRepository {
     return LocalSessionStore(context.applicationContext)
 }
 
@@ -116,17 +159,16 @@ fun createLocalSessionSnapshot(
 ): AppSessionState {
     val preferences = context.applicationContext.getSharedPreferences(SessionSnapshotFileName, Context.MODE_PRIVATE)
     return AppSessionState(
-        isAuthenticated = preferences.getBoolean("is_authenticated", false),
-        accountId = preferences.getString("account_id", "").orEmpty(),
-        displayName = preferences.getString("display_name", "").orEmpty(),
+        isAuthenticated = preferences.getBoolean(IsAuthenticatedKeyName, false),
+        accountId = preferences.getString(AccountIdKeyName, "").orEmpty(),
+        displayName = preferences.getString(DisplayNameKeyName, "").orEmpty(),
     )
 }
 
 fun createLocalSessionCredentialsSnapshot(
     context: Context,
 ): SessionCredentials {
-    val secureTokenPreferences = context.applicationContext.getSharedPreferences(SecureSessionFileName, Context.MODE_PRIVATE)
-    return loadSecureCredentials(context.applicationContext, secureTokenPreferences)
+    return EncryptedLocalSessionCredentialsStore(context.applicationContext).loadCredentials()
 }
 
 private fun loadSecureCredentials(

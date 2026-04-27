@@ -7,6 +7,7 @@ This document tracks the Android modernization backlog by priority. Update it wh
 Status: complete for the access/refresh token UI-state boundary.
 
 - `accessToken` and `refreshToken` are owned by `data/session/SessionCredentials` and persisted through `SessionRepository` implementations.
+- `LocalSessionStore` remains the concrete `SessionRepository` facade, but now delegates safe identity persistence to `LocalSessionStateStore` and encrypted token persistence to `LocalSessionCredentialsStore` so identity and credential responsibilities can evolve independently.
 - `AppSessionState` remains a Parcelable UI identity snapshot with only authentication status, account id, and display name.
 - `rememberSaveable` is guarded by regression tests so access/refresh tokens cannot be reintroduced into saveable Compose state.
 - Parcelable UI state in `:feature` and `:core:model` is guarded by regression tests so access/refresh tokens cannot be added there.
@@ -15,6 +16,7 @@ Status: complete for the access/refresh token UI-state boundary.
 Verification gate:
 
 - `:app:testDebugUnitTest` must pass after changes to session state, token storage, manifest backup settings, or saveable UI state.
+- `:data:testDebugUnitTest --tests "com.kzzz3.argus.lens.data.session.LocalSessionStoreDelegationTest"` must pass after local session store responsibility split changes.
 
 Remaining security review items are release-hardening work, not blockers for this P0 boundary: evaluate token rotation, device-lock policy, and whether to replace the custom Android Keystore AES/GCM wrapper with Jetpack Security.
 
