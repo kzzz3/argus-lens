@@ -55,10 +55,6 @@ class ArgusLensAppViewModel @Inject constructor(
         }
     }
 
-    fun clearSelectedConversation() {
-        _uiState.update { state -> state.copy(selectedConversationId = "") }
-    }
-
     fun updateChatStatus(message: String?, isError: Boolean) {
         _uiState.update { state ->
             state.copy(
@@ -179,13 +175,6 @@ class ArgusLensAppViewModel @Inject constructor(
     fun incrementRealtimeReconnectGeneration() {
         _uiState.update { state ->
             state.copy(realtimeReconnectGeneration = state.realtimeReconnectGeneration + 1)
-        }
-    }
-
-    fun incrementRealtimeReconnectGenerationBy(amount: Int) {
-        if (amount == 0) return
-        _uiState.update { state ->
-            state.copy(realtimeReconnectGeneration = state.realtimeReconnectGeneration + amount)
         }
     }
 }

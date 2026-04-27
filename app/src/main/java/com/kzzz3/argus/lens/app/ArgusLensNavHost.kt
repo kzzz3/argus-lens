@@ -52,7 +52,6 @@ fun ArgusLensNavHost(
     onWalletStateChanged: (WalletState) -> Unit,
     onFriendsChanged: (List<FriendEntry>) -> Unit,
     onConversationOpened: (String) -> Unit,
-    onConversationSelectionCleared: () -> Unit,
     onChatStatusChanged: (String?, Boolean) -> Unit,
     onChatStatusCleared: () -> Unit,
     onFriendRequestStatusChanged: (FriendRequestStatusState) -> Unit,
@@ -68,7 +67,6 @@ fun ArgusLensNavHost(
     onRealtimeEventIdRecorded: (String) -> Unit,
     onRealtimeLastEventIdReset: () -> Unit,
     onRealtimeReconnectIncremented: () -> Unit,
-    onRealtimeReconnectIncrementedBy: (Int) -> Unit,
 ) {
     val navController = rememberNavController()
     NavHost(
@@ -105,7 +103,6 @@ fun ArgusLensNavHost(
                 onWalletStateChanged = onWalletStateChanged,
                 onFriendsChanged = onFriendsChanged,
                 onConversationOpened = onConversationOpened,
-                onConversationSelectionCleared = onConversationSelectionCleared,
                 onChatStatusChanged = onChatStatusChanged,
                 onChatStatusCleared = onChatStatusCleared,
                 onFriendRequestStatusChanged = onFriendRequestStatusChanged,
@@ -121,7 +118,6 @@ fun ArgusLensNavHost(
                 onRealtimeEventIdRecorded = onRealtimeEventIdRecorded,
                 onRealtimeLastEventIdReset = onRealtimeLastEventIdReset,
                 onRealtimeReconnectIncremented = onRealtimeReconnectIncremented,
-                onRealtimeReconnectIncrementedBy = onRealtimeReconnectIncrementedBy,
             )
         }
     }

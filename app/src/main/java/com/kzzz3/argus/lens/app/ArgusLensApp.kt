@@ -39,7 +39,6 @@ fun ArgusLensApp(
         onWalletStateChanged = viewModel::updateWalletState,
         onFriendsChanged = viewModel::updateFriends,
         onConversationOpened = viewModel::openConversation,
-        onConversationSelectionCleared = viewModel::clearSelectedConversation,
         onChatStatusChanged = viewModel::updateChatStatus,
         onChatStatusCleared = viewModel::clearChatStatus,
         onFriendRequestStatusChanged = viewModel::updateFriendRequestStatus,
@@ -55,6 +54,5 @@ fun ArgusLensApp(
         onRealtimeEventIdRecorded = viewModel::recordRealtimeEventId,
         onRealtimeLastEventIdReset = viewModel::resetRealtimeLastEventId,
         onRealtimeReconnectIncremented = viewModel::incrementRealtimeReconnectGeneration,
-        onRealtimeReconnectIncrementedBy = viewModel::incrementRealtimeReconnectGenerationBy,
     )
 }

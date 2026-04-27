@@ -90,7 +90,6 @@ internal fun AppRouteHost(
     onWalletStateChanged: (WalletState) -> Unit,
     onFriendsChanged: (List<FriendEntry>) -> Unit,
     onConversationOpened: (String) -> Unit,
-    onConversationSelectionCleared: () -> Unit,
     onChatStatusChanged: (String?, Boolean) -> Unit,
     onChatStatusCleared: () -> Unit,
     onFriendRequestStatusChanged: (FriendRequestStatusState) -> Unit,
@@ -106,7 +105,6 @@ internal fun AppRouteHost(
     onRealtimeEventIdRecorded: (String) -> Unit,
     onRealtimeLastEventIdReset: () -> Unit,
     onRealtimeReconnectIncremented: () -> Unit,
-    onRealtimeReconnectIncrementedBy: (Int) -> Unit,
 ) {
     val coroutineScope = rememberCoroutineScope()
     val navController = rememberNavController()
