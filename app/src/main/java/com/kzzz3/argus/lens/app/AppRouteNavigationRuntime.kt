@@ -1,6 +1,7 @@
 package com.kzzz3.argus.lens.app
 
 import com.kzzz3.argus.lens.app.navigation.AppRoute
+import com.kzzz3.argus.lens.navigation.TopLevelDestination
 import com.kzzz3.argus.lens.ui.shell.ShellDestination
 
 internal data class AppRouteNavigationRequest(
@@ -29,28 +30,13 @@ internal class AppRouteNavigationRuntime {
         request: AppRouteNavigationRequest,
         callbacks: AppRouteNavigationCallbacks,
     ) {
-        when (destination) {
-            ShellDestination.Inbox -> openTopLevelRoute(AppRoute.Inbox, request, callbacks)
-            ShellDestination.Contacts -> openTopLevelRoute(AppRoute.Contacts, request, callbacks)
-            ShellDestination.Wallet -> openTopLevelRoute(AppRoute.Wallet, request, callbacks)
-            ShellDestination.Me -> openTopLevelRoute(AppRoute.Me, request, callbacks)
-            ShellDestination.Secondary -> Unit
+        TopLevelDestination.fromShellDestination(destination)?.let { topLevelDestination ->
+            openTopLevelRoute(topLevelDestination.route, request, callbacks)
         }
     }
 
     fun toShellDestination(route: AppRoute): ShellDestination {
-        return when (route) {
-            AppRoute.Inbox -> ShellDestination.Inbox
-            AppRoute.Contacts -> ShellDestination.Contacts
-            AppRoute.Wallet -> ShellDestination.Wallet
-            AppRoute.Me -> ShellDestination.Me
-            AppRoute.AuthEntry,
-            AppRoute.RegisterEntry,
-            AppRoute.NewFriends,
-            AppRoute.CallSession,
-            AppRoute.Chat,
-            -> ShellDestination.Secondary
-        }
+        return TopLevelDestination.fromRoute(route)?.shellDestination ?: ShellDestination.Secondary
     }
 
     fun resolveRouteShellDestination(

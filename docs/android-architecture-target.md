@@ -27,9 +27,11 @@ The app shell has already moved past a single monolithic route host milestone:
 - `AppRouteHostState` and `AppRouteHostCallbacks` narrow the host API.
 - `AppRouteUiState` builds route-facing UI state outside `AppRouteHost`.
 - `AppRouteRuntimes` centralizes route runtime construction with ViewModel-owned coroutine scope.
-- `AppRouteNavGraph` centralizes enum-backed Navigation Compose registration.
+- `ArgusNavHost` centralizes root Navigation Compose registration with auth/main child graphs.
 - `AppRouteActionBindings` centralizes route request/callback/action adapters outside the Compose host.
 - `AppRouteHostEffects` centralizes host lifecycle effects outside the Compose host body.
+- `ArgusNavHost` is now the root Navigation Compose host. It separates auth and main child graphs while preserving `AppRoute` as the app-state compatibility contract.
+- `feature/auth/navigation/AuthNavigation.kt` owns login/register route registration, and feature-owned navigation files register main child destinations under the app-owned main graph container.
 - `WalletActionHandler` keeps wallet action reduction/effect dispatch in the wallet feature package.
 - `WalletRequestRunner` keeps wallet async request freshness and invalidation in the wallet feature package.
 - `WalletEffectHandler` keeps wallet effect dispatch and request launch policy in the wallet feature package.
@@ -175,7 +177,7 @@ State and events:
 
 ## Navigation Target
 
-Current state: `AppRouteNavGraph` centralizes enum-backed Navigation Compose registration.
+Current state: `ArgusNavHost` centralizes the root graph, with `AuthGraphRoute` for login/register and `MainGraphRoute` for authenticated destinations. `AppRoute` remains the compatibility route contract while feature-owned navigation files register leaf destinations.
 
 Target state: type-safe Navigation Compose routes backed by Kotlin Serialization, nested feature graph registration, and route argument decoding in route/ViewModel boundaries.
 
@@ -198,7 +200,7 @@ fun NavGraphBuilder.chatGraph(
 }
 ```
 
-Migration rule: keep the current enum graph covered while introducing typed route contracts one feature at a time. Do not remove the existing graph until every declared `AppRoute` has a typed equivalent and regression coverage.
+Migration rule: keep the current nested `AppRoute` compatibility graph covered while introducing typed route contracts one feature at a time. Do not remove the compatibility routes until every declared `AppRoute` has a typed equivalent and regression coverage.
 
 ## Session and Token Boundary Target
 
@@ -322,6 +324,7 @@ Goal: move from centralized enum registration to typed route contracts without l
 
 - Introduce typed route contracts in a small navigation boundary.
 - Convert one feature route at a time to typed arguments.
+- Preserve the auth/main nested graph split and feature-owned leaf registration while typed routes are introduced.
 - Replace Composable-owned long-running scopes with ViewModel/repository/worker ownership.
 - Decide and document process-death restoration for selected conversation and session entry context.
 

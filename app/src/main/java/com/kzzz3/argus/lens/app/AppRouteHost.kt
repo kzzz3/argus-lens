@@ -7,6 +7,8 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.rememberNavController
 import com.kzzz3.argus.lens.feature.wallet.WalletStateHolder
+import com.kzzz3.argus.lens.navigation.ArgusNavHost
+import com.kzzz3.argus.lens.navigation.graphRouteForAppRoute
 import kotlinx.coroutines.CoroutineScope
 
 @Composable
@@ -57,7 +59,7 @@ internal fun AppRouteHost(
             currentUserDisplayName = DEFAULT_PREVIEW_DISPLAY_NAME,
         )
     }
-    val startDestination = remember { currentRoute.name }
+    val startDestination = remember { graphRouteForAppRoute(currentRoute) }
     val routeUiState = rememberAppRouteUiState(
         appSessionState = appSessionState,
         conversationThreadsState = conversationThreadsState,
@@ -144,7 +146,7 @@ internal fun AppRouteHost(
         isRealtimeEnabled = { latestRealtimeEnabled },
     )
 
-    AppRouteNavGraph(
+    ArgusNavHost(
         navController = navController,
         startDestination = startDestination,
         currentRoute = currentRoute,

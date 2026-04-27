@@ -24,7 +24,9 @@ Status: complete for the first God Composable split milestone and the host API b
 
 - `AppRouteHost.kt` no longer owns route UI-state derivation; `AppRouteUiState.kt` builds the per-screen state bundle.
 - `AppRouteHost.kt` no longer constructs every route/runtime inline; `AppRouteRuntimes.kt` centralizes runtime creation with Compose `remember` boundaries.
-- `AppRouteHost.kt` no longer embeds the full `NavHost` route-to-screen graph; `AppRouteNavGraph.kt` owns route registration and screen binding.
+- `AppRouteHost.kt` no longer embeds the full `NavHost` route-to-screen graph; `navigation/ArgusNavHost.kt` owns the root graph and delegates leaf registration to auth/main child graph helpers.
+- Root navigation now lives in `navigation/ArgusNavHost.kt`; `AuthGraphRoute` and `MainGraphRoute` separate login/register from the authenticated shell, and `TopLevelDestination.kt` models only main shell tabs.
+- Login/register route registration lives in `feature/auth/navigation/AuthNavigation.kt`; main leaf registrations live in feature-owned navigation files for inbox/chat, contacts, call, wallet, and me.
 - `AppRouteHost.kt` no longer declares route lifecycle side effects inline; `AppRouteHostEffects.kt` owns hydration, persistence, session boundary, realtime connection, route loading, disposal, and navigation-sync effects.
 - Host-only shell policy for `NewFriends` and missing-chat fallback moved into `AppRouteNavigationRuntime.resolveRouteShellDestination` with JVM regression coverage.
 - `ArgusLensApp.kt` now passes app-shell state and callbacks through `AppRouteHostState` / `AppRouteHostCallbacks`, keeping route behavior unchanged while narrowing the `AppRouteHost` API.
@@ -41,6 +43,7 @@ Verification gate:
 
 - `:app:compileDebugKotlin` must pass after route host decomposition changes.
 - `:app:testDebugUnitTest --tests "com.kzzz3.argus.lens.app.AppRouteNavigationRuntimeTest"` must pass after shell routing policy changes.
+- `NavigationGraphBoundaryTest` must pass after auth/main graph or feature-owned navigation registration changes.
 - `:app:testDebugUnitTest --tests "com.kzzz3.argus.lens.app.ArgusLensAppViewModelTest"` must pass after app-shell state boundary changes.
 - `ArgusLensAppViewModelTest.appRouteHost_delegatesLifecycleEffects` must pass after moving host lifecycle/effect orchestration.
 - Route action binding changes must also keep `EntryRouteRuntimeTest`, `ContactsRouteRuntimeTest`, `WalletActionHandlerTest`, `WalletRequestRunnerTest`, `WalletRequestGuardTest`, `WalletEffectHandlerTest`, `WalletFeatureControllerTest`, `WalletStateHolderTest`, and `RealtimeConnectionRuntimeTest` green.
@@ -64,11 +67,11 @@ Verification gate:
 
 Status: complete for the current app graph baseline.
 
-- `AppRouteNavGraph.kt` owns the Navigation Compose `NavHost` and all `composable(AppRoute.*.name)` registrations.
+- `navigation/ArgusNavHost.kt` owns the root Navigation Compose `NavHost`, with auth and main nested graphs beneath it.
 - `AppRouteNavigationRuntime` owns shell tab mapping and special shell policy for `NewFriends` and missing-chat fallback.
-- JVM regression coverage verifies shell policy and that every declared `AppRoute` is registered in `AppRouteNavGraph`.
+- JVM regression coverage verifies shell policy and that every declared `AppRoute` is registered in either the auth graph or a feature-owned main child navigation file.
 
-Typed route arguments and nested graphs remain future refinements; the current enum-backed graph is now centralized and covered for the app's declared route set. The target route-contract migration sequence is documented in `docs/android-architecture-target.md`.
+Typed route arguments remain a future refinement; the current `AppRoute` compatibility graph is split into auth/main nested graphs and covered for the app's declared route set. The target route-contract migration sequence is documented in `docs/android-architecture-target.md`.
 
 ## P2 Hilt Dependency Injection
 

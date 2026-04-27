@@ -39,6 +39,7 @@ argus-lens/
 | Data/network/persistence build config | `data/build.gradle.kts` | Room/KSP, Retrofit/OkHttp, DataStore, backend BuildConfig values |
 | Launcher/entry | `app/src/main/AndroidManifest.xml`, `app/src/main/java/com/kzzz3/argus/lens/MainActivity.kt` | Manifest + activity startup |
 | App shell code | `app/src/main/java/com/kzzz3/argus/lens/app/` | Navigation host, dependency assembly, Hilt wiring |
+| Root navigation | `app/src/main/java/com/kzzz3/argus/lens/navigation/` | Root `ArgusNavHost`, main graph container, top-level shell destinations |
 | Feature code | `feature/src/main/java/com/kzzz3/argus/lens/feature/` | Auth, inbox, contacts, wallet, call, realtime UI/business flows |
 | Data code | `data/src/main/java/com/kzzz3/argus/lens/data/` | Repositories, Room, network clients, session persistence |
 | Shared models | `core/model/src/main/java/com/kzzz3/argus/lens/model/` | Parcelable/domain models shared across data/feature/app |

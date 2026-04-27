@@ -4,11 +4,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.kzzz3.argus.lens.app.navigation.AppRoute
+import com.kzzz3.argus.lens.feature.auth.navigation.AuthGraphRoute
 import com.kzzz3.argus.lens.feature.inbox.ConversationThreadsState
 import com.kzzz3.argus.lens.model.session.AppSessionState
+import com.kzzz3.argus.lens.navigation.MainGraphRoute
+import com.kzzz3.argus.lens.navigation.graphRouteForAppRoute
 
 @Composable
 internal fun AppRouteHostEffects(
@@ -117,10 +121,22 @@ internal fun AppRouteHostEffects(
     }
 
     val currentBackStackEntry by navController.currentBackStackEntryAsState()
-    LaunchedEffect(currentRoute, currentBackStackEntry?.destination?.route) {
-        if (currentBackStackEntry?.destination?.route != currentRoute.name) {
+    val currentDestinationRoute = currentBackStackEntry?.destination?.route
+    val previousGraphRoute = currentBackStackEntry
+        ?.destination
+        ?.hierarchy
+        ?.firstOrNull { destination -> destination.route == AuthGraphRoute || destination.route == MainGraphRoute }
+        ?.route
+    val targetGraphRoute = graphRouteForAppRoute(currentRoute)
+    LaunchedEffect(currentRoute, currentDestinationRoute, previousGraphRoute) {
+        if (currentDestinationRoute != currentRoute.name) {
             navController.navigate(currentRoute.name) {
                 launchSingleTop = true
+                if (previousGraphRoute != null && previousGraphRoute != targetGraphRoute) {
+                    popUpTo(previousGraphRoute) {
+                        inclusive = true
+                    }
+                }
             }
         }
     }

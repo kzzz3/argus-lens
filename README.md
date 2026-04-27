@@ -63,6 +63,7 @@ Instrumentation APK build:
 | Wallet/payment UX | `docs/wallet-payment-flow.md` |
 | Entry activity | `app/src/main/java/com/kzzz3/argus/lens/MainActivity.kt` |
 | App composition root | `app/src/main/java/com/kzzz3/argus/lens/app/` |
+| Root navigation | `app/src/main/java/com/kzzz3/argus/lens/navigation/` |
 | Network/data layer | `data/src/main/java/com/kzzz3/argus/lens/data/` |
 | Shared models | `core/model/src/main/java/com/kzzz3/argus/lens/model/` |
 | Shared UI | `core/ui/src/main/java/com/kzzz3/argus/lens/ui/` |

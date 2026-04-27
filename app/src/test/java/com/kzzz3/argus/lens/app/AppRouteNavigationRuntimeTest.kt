@@ -187,11 +187,26 @@ class AppRouteNavigationRuntimeTest {
     }
 
     @Test
-    fun appRouteNavGraph_registersEveryDeclaredAppRoute() {
-        val graphSource = File("src/main/java/com/kzzz3/argus/lens/app/AppRouteNavGraph.kt").readText()
+    fun argusNavHostGraphs_registerEveryDeclaredAppRoute() {
+        val authGraphSource = File("../feature/src/main/java/com/kzzz3/argus/lens/feature/auth/navigation/AuthNavigation.kt").readText()
+        val mainGraphSources = mapOf(
+            AppRoute.Inbox to File("../feature/src/main/java/com/kzzz3/argus/lens/feature/inbox/navigation/InboxNavigation.kt").readText(),
+            AppRoute.Chat to File("../feature/src/main/java/com/kzzz3/argus/lens/feature/inbox/navigation/InboxNavigation.kt").readText(),
+            AppRoute.Contacts to File("../feature/src/main/java/com/kzzz3/argus/lens/feature/contacts/navigation/ContactsNavigation.kt").readText(),
+            AppRoute.NewFriends to File("../feature/src/main/java/com/kzzz3/argus/lens/feature/contacts/navigation/ContactsNavigation.kt").readText(),
+            AppRoute.CallSession to File("../feature/src/main/java/com/kzzz3/argus/lens/feature/call/navigation/CallNavigation.kt").readText(),
+            AppRoute.Wallet to File("../feature/src/main/java/com/kzzz3/argus/lens/feature/wallet/navigation/WalletNavigation.kt").readText(),
+            AppRoute.Me to File("../feature/src/main/java/com/kzzz3/argus/lens/feature/me/navigation/MeNavigation.kt").readText(),
+        )
         val missingRoutes = AppRoute.entries
-            .filterNot { route -> graphSource.contains("composable(AppRoute.${route.name}.name)") }
+            .filterNot { route ->
+                when (route) {
+                    AppRoute.AuthEntry -> authGraphSource.contains("Login(\"${route.name}\")")
+                    AppRoute.RegisterEntry -> authGraphSource.contains("Register(\"${route.name}\")")
+                    else -> mainGraphSources.getValue(route).contains("\"${route.name}\"")
+                }
+            }
 
-        assertTrue("AppRouteNavGraph must register every AppRoute: $missingRoutes", missingRoutes.isEmpty())
+        assertTrue("ArgusNavHost child graphs must register every AppRoute: $missingRoutes", missingRoutes.isEmpty())
     }
 }
