@@ -6,13 +6,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
-import androidx.compose.foundation.layout.padding
-import androidx.compose.ui.Modifier
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.kzzz3.argus.lens.app.navigation.AppRoute
@@ -21,48 +16,25 @@ import com.kzzz3.argus.lens.data.friend.FriendEntry
 import com.kzzz3.argus.lens.data.friend.FriendRequestsSnapshot
 import com.kzzz3.argus.lens.data.realtime.ConversationRealtimeConnectionState
 import com.kzzz3.argus.lens.data.session.SessionCredentials
-import com.kzzz3.argus.lens.feature.auth.AuthEntryScreen
 import com.kzzz3.argus.lens.feature.auth.AuthFormState
-import com.kzzz3.argus.lens.feature.auth.createAuthEntryUiState
-import com.kzzz3.argus.lens.feature.auth.reduceAuthFormState
 import com.kzzz3.argus.lens.feature.call.CallSessionMode
-import com.kzzz3.argus.lens.feature.call.CallSessionScreen
 import com.kzzz3.argus.lens.feature.call.CallSessionState
-import com.kzzz3.argus.lens.feature.call.CallSessionRuntime
-import com.kzzz3.argus.lens.feature.call.createCallSessionUiState
-import com.kzzz3.argus.lens.feature.call.reduceCallSessionState
-import com.kzzz3.argus.lens.feature.contacts.ContactsScreen
 import com.kzzz3.argus.lens.feature.contacts.ContactsState
-import com.kzzz3.argus.lens.feature.contacts.NewFriendsScreen
-import com.kzzz3.argus.lens.feature.contacts.NewFriendsUiState
 import com.kzzz3.argus.lens.feature.contacts.FriendRequestStatusState
-import com.kzzz3.argus.lens.feature.contacts.createContactsUiState
 import com.kzzz3.argus.lens.feature.contacts.reduceContactsState
 import com.kzzz3.argus.lens.feature.inbox.ChatCallMode
-import com.kzzz3.argus.lens.feature.inbox.ChatScreen
-import com.kzzz3.argus.lens.feature.inbox.ChatState
 import com.kzzz3.argus.lens.feature.inbox.ConversationThreadsState
-import com.kzzz3.argus.lens.feature.inbox.InboxScreen
-import com.kzzz3.argus.lens.feature.inbox.createChatUiState
-import com.kzzz3.argus.lens.feature.inbox.createInboxUiState
-import com.kzzz3.argus.lens.feature.me.MeScreen
-import com.kzzz3.argus.lens.feature.me.createMeUiState
 import com.kzzz3.argus.lens.feature.register.RegisterFormState
-import com.kzzz3.argus.lens.feature.register.RegisterScreen
-import com.kzzz3.argus.lens.feature.register.createRegisterUiState
-import com.kzzz3.argus.lens.feature.register.reduceRegisterFormState
-import com.kzzz3.argus.lens.feature.realtime.buildRealtimeStatusLabel
-import com.kzzz3.argus.lens.feature.wallet.WalletScreen
 import com.kzzz3.argus.lens.feature.wallet.WalletState
-import com.kzzz3.argus.lens.feature.wallet.createWalletUiState
 import com.kzzz3.argus.lens.feature.wallet.reduceWalletState
 import com.kzzz3.argus.lens.model.session.AppSessionState
-import com.kzzz3.argus.lens.ui.shell.AuthenticatedShell
 import com.kzzz3.argus.lens.ui.shell.ShellDestination
+import kotlinx.coroutines.CoroutineScope
 
 @Composable
 internal fun AppRouteHost(
     dependencies: AppDependencies,
+    runtimeScope: CoroutineScope,
     appSessionState: AppSessionState,
     conversationThreadsState: ConversationThreadsState,
     currentRoute: AppRoute,
@@ -106,173 +78,50 @@ internal fun AppRouteHost(
     onRealtimeLastEventIdReset: () -> Unit,
     onRealtimeReconnectIncremented: () -> Unit,
 ) {
-    val coroutineScope = rememberCoroutineScope()
     val navController = rememberNavController()
-    val realtimeClient = dependencies.realtimeClient
+    val routeRuntimes = rememberAppRouteRuntimes(dependencies, runtimeScope)
     val appShellCoordinator = dependencies.appShellCoordinator
-    val appSessionCoordinator = dependencies.appSessionCoordinator
-    val authCoordinator = dependencies.authCoordinator
-    val newFriendsCoordinator = dependencies.newFriendsCoordinator
-    val contactsCoordinator = dependencies.contactsCoordinator
-    val walletRequestCoordinator = dependencies.walletRequestCoordinator
-    val chatCoordinator = dependencies.chatCoordinator
-    val realtimeCoordinator = dependencies.realtimeCoordinator
     val sessionCredentialsStore = dependencies.sessionCredentialsStore
+    val realtimeClient = dependencies.realtimeClient
+    val callSessionRuntime = routeRuntimes.callSessionRuntime
+    val callSessionRouteRuntime = routeRuntimes.callSessionRouteRuntime
+    val sessionRefreshRuntime = routeRuntimes.sessionRefreshRuntime
+    val walletRequestRuntime = routeRuntimes.walletRequestRuntime
+    val contactsRouteRuntime = routeRuntimes.contactsRouteRuntime
+    val chatRouteRuntime = routeRuntimes.chatRouteRuntime
+    val inboxRouteRuntime = routeRuntimes.inboxRouteRuntime
+    val inboxActionRouteRuntime = routeRuntimes.inboxActionRouteRuntime
+    val entryRouteRuntime = routeRuntimes.entryRouteRuntime
+    val walletRouteRuntime = routeRuntimes.walletRouteRuntime
+    val realtimeConnectionRuntime = routeRuntimes.realtimeConnectionRuntime
+    val appPersistenceRuntime = routeRuntimes.appPersistenceRuntime
+    val appInitialHydrationRuntime = routeRuntimes.appInitialHydrationRuntime
+    val appRouteLoadRuntime = routeRuntimes.appRouteLoadRuntime
+    val appRouteNavigationRuntime = routeRuntimes.appRouteNavigationRuntime
     val previewThreadsState = remember {
         appShellCoordinator.createPreviewConversationThreads(
             currentUserDisplayName = DEFAULT_PREVIEW_DISPLAY_NAME,
         )
     }
     val initialSessionSnapshot = dependencies.initialSessionSnapshot
-    val callSessionRuntime = remember(coroutineScope) { CallSessionRuntime(coroutineScope) }
-    val callSessionRouteRuntime = remember(callSessionRuntime) {
-        CallSessionRouteRuntime(
-            reduceAction = ::reduceCallSessionState,
-            endCall = callSessionRuntime::endCall,
-        )
-    }
-    val realtimeReconnectRuntime = remember(coroutineScope) { RealtimeReconnectRuntime(coroutineScope) }
-    val sessionRefreshRuntime = remember(coroutineScope, appSessionCoordinator, sessionCredentialsStore) {
-        SessionRefreshRuntime(
-            scope = coroutineScope,
-            appSessionCoordinator = appSessionCoordinator,
-            credentialsStore = sessionCredentialsStore,
-        )
-    }
-    val walletRequestRuntime = remember(coroutineScope) { WalletRequestRuntime(coroutineScope) }
-    val contactsRouteRuntime = remember(coroutineScope, contactsCoordinator, newFriendsCoordinator) {
-        ContactsRouteRuntime(
-            scope = coroutineScope,
-            openConversation = { request, conversationId ->
-                val result = contactsCoordinator.openConversation(
-                    session = request.session,
-                    requestedConversationId = conversationId,
-                    friends = request.friends,
-                    state = request.conversationThreadsState,
-                )
-                ContactsOpenConversationResult(
-                    conversationThreadsState = result.conversationThreadsState,
-                    conversationId = result.conversationId,
-                )
-            },
-            addFriend = contactsCoordinator::addFriend,
-            acceptFriendRequest = newFriendsCoordinator::accept,
-            rejectFriendRequest = newFriendsCoordinator::reject,
-            ignoreFriendRequest = newFriendsCoordinator::ignore,
-        )
-    }
-    val chatRouteRuntime = remember(coroutineScope, chatCoordinator, callSessionRuntime) {
-        ChatRouteRuntime(
-            scope = coroutineScope,
-            reduceAction = chatCoordinator::reduceAction,
-            startCall = callSessionRuntime::startCall,
-            dispatchOutgoingMessages = chatCoordinator::dispatchOutgoingMessages,
-            downloadAttachment = chatCoordinator::downloadAttachment,
-            recallMessage = chatCoordinator::recallMessage,
-        )
-    }
-    val inboxRouteRuntime = remember(coroutineScope, chatCoordinator) {
-        InboxRouteRuntime(
-            scope = coroutineScope,
-            openConversation = chatCoordinator::openConversation,
-            synchronizeConversation = chatCoordinator::synchronizeConversation,
-        )
-    }
-    val inboxActionRouteRuntime = remember { InboxActionRouteRuntime() }
-    val entryRouteRuntime = remember(coroutineScope, authCoordinator) {
-        EntryRouteRuntime(
-            scope = coroutineScope,
-            reduceAuthAction = ::reduceAuthFormState,
-            reduceRegisterAction = ::reduceRegisterFormState,
-            login = authCoordinator::login,
-            register = authCoordinator::register,
-        )
-    }
-    val walletRouteRuntime = remember(walletRequestRuntime, walletRequestCoordinator) {
-        WalletRouteRuntime(
-            requestRuntime = walletRequestRuntime,
-            loadWalletSummary = walletRequestCoordinator::loadWalletSummary,
-            resolvePayload = walletRequestCoordinator::resolvePayload,
-            confirmPayment = walletRequestCoordinator::confirmPayment,
-            loadPaymentHistory = walletRequestCoordinator::loadPaymentHistory,
-            loadPaymentReceipt = walletRequestCoordinator::loadPaymentReceipt,
-        )
-    }
-    val realtimeConnectionRuntime = remember(coroutineScope, realtimeClient, realtimeCoordinator, realtimeReconnectRuntime) {
-        RealtimeConnectionRuntime(
-            scope = coroutineScope,
-            realtimeClient = realtimeClient,
-            realtimeCoordinator = realtimeCoordinator,
-            reconnectRuntime = realtimeReconnectRuntime,
-        )
-    }
-    val appPersistenceRuntime = remember(appShellCoordinator) {
-        AppPersistenceRuntime(appShellCoordinator)
-    }
-    val appInitialHydrationRuntime = remember(appShellCoordinator) {
-        AppInitialHydrationRuntime(
-            loadInitialAuthenticatedConversations = appShellCoordinator::loadInitialAuthenticatedConversations,
-            hydrateAppState = appShellCoordinator::hydrateAppState,
-        )
-    }
-    val appRouteLoadRuntime = remember(contactsCoordinator, newFriendsCoordinator) {
-        AppRouteLoadRuntime(
-            loadFriends = contactsCoordinator::loadFriends,
-            loadRequests = newFriendsCoordinator::loadRequests,
-        )
-    }
-    val appRouteNavigationRuntime = remember { AppRouteNavigationRuntime() }
     val startDestination = remember { currentRoute.name }
-    val conversationThreads = conversationThreadsState.threads
-
-    val authState = remember(authFormState) {
-        createAuthEntryUiState(
-            formState = authFormState,
-        )
-    }
-    val registerState = remember(registerFormState) {
-        createRegisterUiState(registerFormState)
-    }
-    val sessionDisplayName = remember(appSessionState.displayName) {
-        resolvePreviewDisplayName(appSessionState.displayName)
-    }
-    val shellStatusLabel = remember(appSessionState.isAuthenticated, realtimeConnectionState) {
-        when {
-            !appSessionState.isAuthenticated -> "Signed out"
-            realtimeConnectionState == ConversationRealtimeConnectionState.LIVE -> "Online"
-            realtimeConnectionState == ConversationRealtimeConnectionState.RECOVERING -> "Reconnecting"
-            realtimeConnectionState == ConversationRealtimeConnectionState.CONNECTING -> "Connecting"
-            else -> "Offline"
-        }
-    }
-    val shellStatusSummary = remember(appSessionState.isAuthenticated, realtimeConnectionState) {
-        when {
-            !appSessionState.isAuthenticated -> "Sign in to enter the Argus IM shell."
-            realtimeConnectionState == ConversationRealtimeConnectionState.LIVE -> "Realtime channel connected and syncing now."
-            realtimeConnectionState == ConversationRealtimeConnectionState.RECOVERING -> "Network unavailable or connection interrupted. Reconnecting now."
-            realtimeConnectionState == ConversationRealtimeConnectionState.CONNECTING -> "Connecting secure realtime channel..."
-            else -> "Cached shell is available offline. Sign in again if your session was revoked or wait for the network to recover."
-        }
-    }
-    val inboxState = remember(appSessionState, conversationThreads, realtimeConnectionState, shellStatusLabel) {
-        createInboxUiState(
-            sessionState = appSessionState,
-            threads = conversationThreads,
-            realtimeStatusLabel = buildRealtimeStatusLabel(realtimeConnectionState),
-            shellStatusLabel = shellStatusLabel,
-        )
-    }
-    val contactsUiState = remember(contactsState, friends, conversationThreads, appSessionState.accountId) {
-        createContactsUiState(
-            state = contactsState,
-            friends = friends,
-            threads = conversationThreads,
-            currentAccountId = appSessionState.accountId,
-        )
-    }
-    val selectedConversation = remember(selectedConversationId, conversationThreads) {
-        conversationThreads.firstOrNull { it.id == selectedConversationId }
-    }
+    val routeUiState = rememberAppRouteUiState(
+        appSessionState = appSessionState,
+        conversationThreadsState = conversationThreadsState,
+        realtimeConnectionState = realtimeConnectionState,
+        authFormState = authFormState,
+        registerFormState = registerFormState,
+        callSessionState = callSessionState,
+        contactsState = contactsState,
+        walletStateModel = walletStateModel,
+        friends = friends,
+        selectedConversationId = selectedConversationId,
+        chatStatusMessage = chatStatusMessage,
+        chatStatusError = chatStatusError,
+        friendRequestsSnapshot = friendRequestsSnapshot,
+        friendRequestsStatusMessage = friendRequestsStatusMessage,
+        friendRequestsStatusError = friendRequestsStatusError,
+    )
     val latestConversationThreadsState by rememberUpdatedState(conversationThreadsState)
     val latestSelectedConversationId by rememberUpdatedState(selectedConversationId)
     val latestAppSessionState by rememberUpdatedState(appSessionState)
@@ -314,65 +163,6 @@ internal fun AppRouteHost(
         onFriendsChanged = onFriendsChanged,
         onFriendRequestStatusReset = onFriendRequestStatusReset,
     )
-    val chatState = remember(selectedConversation, sessionDisplayName) {
-        selectedConversation?.let { conversation ->
-            ChatState(
-                conversationId = conversation.id,
-                conversationTitle = conversation.title,
-                conversationSubtitle = conversation.subtitle,
-                currentUserDisplayName = sessionDisplayName,
-                messages = conversation.messages,
-                draftMessage = conversation.draftMessage,
-                draftAttachments = conversation.draftAttachments,
-                isVoiceRecording = conversation.isVoiceRecording,
-                voiceRecordingSeconds = conversation.voiceRecordingSeconds,
-            )
-        }
-    }
-    val chatUiState = remember(chatState, chatStatusMessage, chatStatusError) {
-        chatState?.let {
-            createChatUiState(
-                state = it,
-                statusMessage = chatStatusMessage,
-                isStatusError = chatStatusError,
-            )
-        }
-    }
-    val callSessionUiState = remember(callSessionState) {
-        createCallSessionUiState(callSessionState)
-    }
-    val walletUiState = remember(walletStateModel) {
-        createWalletUiState(walletStateModel)
-    }
-    val meUiState = remember(
-        appSessionState,
-        walletStateModel.summary,
-        friends,
-        conversationThreads,
-        shellStatusLabel,
-        shellStatusSummary,
-    ) {
-        createMeUiState(
-            sessionState = appSessionState,
-            walletState = walletStateModel,
-            friends = friends,
-            conversationThreads = conversationThreads,
-            shellStatusLabel = shellStatusLabel,
-            shellStatusSummary = shellStatusSummary,
-        )
-    }
-    val newFriendsUiState = remember(friendRequestsSnapshot, friendRequestsStatusMessage, friendRequestsStatusError) {
-        NewFriendsUiState(
-            title = "New Friends",
-            subtitle = "Review incoming requests and track the status of requests you have sent.",
-            isLoading = false,
-            statusMessage = friendRequestsStatusMessage,
-            isStatusError = friendRequestsStatusError,
-            incoming = friendRequestsSnapshot.incoming,
-            outgoing = friendRequestsSnapshot.outgoing,
-        )
-    }
-
     LaunchedEffect(initialSessionSnapshot.isAuthenticated, initialSessionSnapshot.accountId) {
         appInitialHydrationRuntime.hydrate(
             request = AppInitialHydrationRequest(
@@ -625,206 +415,84 @@ internal fun AppRouteHost(
         }
     }
 
-    NavHost(
+    AppRouteNavGraph(
         navController = navController,
         startDestination = startDestination,
-    ) {
-        composable(AppRoute.AuthEntry.name) {
-            AuthEntryScreen(
-                state = authState,
-                onAction = { action ->
-                    entryRouteRuntime.handleAuthAction(
-                        action = action,
-                        request = entryRouteRequest(),
-                        callbacks = entryRouteCallbacks(),
-                    )
-                },
+        currentRoute = currentRoute,
+        routeUiState = routeUiState,
+        walletStateModel = walletStateModel,
+        appRouteNavigationRuntime = appRouteNavigationRuntime,
+        onShellDestinationSelected = ::openShellDestination,
+        onAuthAction = { action ->
+            entryRouteRuntime.handleAuthAction(
+                action = action,
+                request = entryRouteRequest(),
+                callbacks = entryRouteCallbacks(),
             )
-        }
-
-        composable(AppRoute.RegisterEntry.name) {
-            RegisterScreen(
-                state = registerState,
-                onAction = { action ->
-                    entryRouteRuntime.handleRegisterAction(
-                        action = action,
-                        request = entryRouteRequest(),
-                        callbacks = entryRouteCallbacks(),
-                    )
-                },
+        },
+        onRegisterAction = { action ->
+            entryRouteRuntime.handleRegisterAction(
+                action = action,
+                request = entryRouteRequest(),
+                callbacks = entryRouteCallbacks(),
             )
-        }
-
-        composable(AppRoute.Inbox.name) {
-            AuthenticatedRouteShell(
-                currentDestination = appRouteNavigationRuntime.toShellDestination(currentRoute),
-                onTabSelected = ::openShellDestination,
-            ) { contentModifier ->
-                InboxScreen(
-                    state = inboxState,
-                    onAction = { action ->
-                        inboxActionRouteRuntime.handleAction(action, inboxActionRouteCallbacks())
-                    },
-                    modifier = contentModifier,
+        },
+        onInboxAction = { action ->
+            inboxActionRouteRuntime.handleAction(action, inboxActionRouteCallbacks())
+        },
+        onContactsAction = { action ->
+            contactsActionRouteRuntime.handleAction(
+                action = action,
+                request = ContactsActionRouteRequest(currentState = contactsState),
+                callbacks = ContactsActionRouteCallbacks(
+                    onContactsStateChanged = onContactsStateChanged,
+                ),
+            )
+        },
+        onNewFriendsAction = { action ->
+            contactsRouteRuntime.handleNewFriendsAction(
+                action = action,
+                request = contactsRouteRequest(),
+                callbacks = contactsRouteCallbacks(),
+            )
+        },
+        onCallSessionAction = { action ->
+            callSessionRouteRuntime.handleAction(
+                action = action,
+                request = CallSessionRouteRequest(currentState = callSessionState),
+                callbacks = CallSessionRouteCallbacks(
+                    onCallSessionStateChanged = onCallSessionStateChanged,
+                    onRouteChanged = onRouteChanged,
+                ),
+            )
+        },
+        onWalletAction = { action ->
+            walletActionRouteRuntime.handleAction(
+                action = action,
+                request = WalletActionRouteRequest(currentState = walletStateModel),
+                callbacks = WalletActionRouteCallbacks(
+                    onWalletStateChanged = onWalletStateChanged,
+                ),
+            )
+        },
+        onSignOut = { signOutToEntry() },
+        onChatAction = { action ->
+            routeUiState.chatState?.let { resolvedChatState ->
+                chatRouteRuntime.handleAction(
+                    action = action,
+                    request = ChatRouteRequest(
+                        threadsState = conversationThreadsState,
+                        chatState = resolvedChatState,
+                    ),
+                    callbacks = ChatRouteCallbacks(
+                        onRouteChanged = ::openTopLevelRoute,
+                        onConversationThreadsChanged = onConversationThreadsChanged,
+                        onChatStatusChanged = onChatStatusChanged,
+                        onCallSessionStateChanged = onCallSessionStateChanged,
+                        getCurrentRoute = { latestCurrentRoute },
+                    ),
                 )
             }
-        }
-
-        composable(AppRoute.Contacts.name) {
-            AuthenticatedRouteShell(
-                currentDestination = appRouteNavigationRuntime.toShellDestination(currentRoute),
-                onTabSelected = ::openShellDestination,
-            ) { contentModifier ->
-                ContactsScreen(
-                    state = contactsUiState,
-                    onAction = { action ->
-                        contactsActionRouteRuntime.handleAction(
-                            action = action,
-                            request = ContactsActionRouteRequest(currentState = contactsState),
-                            callbacks = ContactsActionRouteCallbacks(
-                                onContactsStateChanged = onContactsStateChanged,
-                            ),
-                        )
-                    },
-                    modifier = contentModifier,
-                )
-            }
-        }
-
-        composable(AppRoute.NewFriends.name) {
-            AuthenticatedRouteShell(
-                currentDestination = ShellDestination.Contacts,
-                onTabSelected = ::openShellDestination,
-            ) { contentModifier ->
-                NewFriendsScreen(
-                    state = newFriendsUiState,
-                    onAction = { action ->
-                        contactsRouteRuntime.handleNewFriendsAction(
-                            action = action,
-                            request = contactsRouteRequest(),
-                            callbacks = contactsRouteCallbacks(),
-                        )
-                    },
-                    modifier = contentModifier,
-                )
-            }
-        }
-
-        composable(AppRoute.CallSession.name) {
-            AuthenticatedRouteShell(
-                currentDestination = appRouteNavigationRuntime.toShellDestination(currentRoute),
-                onTabSelected = ::openShellDestination,
-            ) { contentModifier ->
-                CallSessionScreen(
-                    state = callSessionUiState,
-                    onAction = { action ->
-                        callSessionRouteRuntime.handleAction(
-                            action = action,
-                            request = CallSessionRouteRequest(currentState = callSessionState),
-                            callbacks = CallSessionRouteCallbacks(
-                                onCallSessionStateChanged = onCallSessionStateChanged,
-                                onRouteChanged = onRouteChanged,
-                            ),
-                        )
-                    },
-                    modifier = contentModifier,
-                )
-            }
-        }
-
-        composable(AppRoute.Wallet.name) {
-            AuthenticatedRouteShell(
-                currentDestination = appRouteNavigationRuntime.toShellDestination(currentRoute),
-                onTabSelected = ::openShellDestination,
-            ) { contentModifier ->
-                WalletScreen(
-                    state = walletUiState,
-                    permissionRequestPending = walletStateModel.shouldRequestCameraPermission,
-                    onAction = { action ->
-                        walletActionRouteRuntime.handleAction(
-                            action = action,
-                            request = WalletActionRouteRequest(currentState = walletStateModel),
-                            callbacks = WalletActionRouteCallbacks(
-                                onWalletStateChanged = onWalletStateChanged,
-                            ),
-                        )
-                    },
-                    modifier = contentModifier,
-                )
-            }
-        }
-
-        composable(AppRoute.Me.name) {
-            AuthenticatedRouteShell(
-                currentDestination = appRouteNavigationRuntime.toShellDestination(currentRoute),
-                onTabSelected = ::openShellDestination,
-            ) { contentModifier ->
-                MeScreen(
-                    state = meUiState,
-                    onSignOut = ::signOutToEntry,
-                    modifier = contentModifier,
-                )
-            }
-        }
-
-        composable(AppRoute.Chat.name) {
-            val resolvedChatUiState = chatUiState
-            val resolvedChatState = chatState
-
-            if (resolvedChatUiState == null || resolvedChatState == null) {
-                AuthenticatedRouteShell(
-                    currentDestination = ShellDestination.Inbox,
-                    onTabSelected = ::openShellDestination,
-                ) { contentModifier ->
-                    InboxScreen(
-                        state = inboxState,
-                        onAction = { action ->
-                            inboxActionRouteRuntime.handleAction(action, inboxActionRouteCallbacks())
-                        },
-                        modifier = contentModifier,
-                    )
-                }
-            } else {
-                AuthenticatedRouteShell(
-                    currentDestination = appRouteNavigationRuntime.toShellDestination(currentRoute),
-                    onTabSelected = ::openShellDestination,
-                ) { contentModifier ->
-                    ChatScreen(
-                        state = resolvedChatUiState,
-                        onAction = { action ->
-                            chatRouteRuntime.handleAction(
-                                action = action,
-                                request = ChatRouteRequest(
-                                    threadsState = conversationThreadsState,
-                                    chatState = resolvedChatState,
-                                ),
-                                callbacks = ChatRouteCallbacks(
-                                    onRouteChanged = ::openTopLevelRoute,
-                                    onConversationThreadsChanged = onConversationThreadsChanged,
-                                    onChatStatusChanged = onChatStatusChanged,
-                                    onCallSessionStateChanged = onCallSessionStateChanged,
-                                    getCurrentRoute = { latestCurrentRoute },
-                                ),
-                            )
-                        },
-                        modifier = contentModifier,
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun AuthenticatedRouteShell(
-    currentDestination: ShellDestination,
-    onTabSelected: (ShellDestination) -> Unit,
-    content: @Composable (Modifier) -> Unit,
-) {
-    AuthenticatedShell(
-        currentDestination = currentDestination,
-        onTabSelected = onTabSelected,
-    ) { innerPadding ->
-        content(Modifier.padding(innerPadding))
-    }
+        },
+    )
 }

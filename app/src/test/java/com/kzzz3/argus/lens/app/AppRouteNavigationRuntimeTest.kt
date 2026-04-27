@@ -3,8 +3,10 @@ package com.kzzz3.argus.lens.app
 import com.kzzz3.argus.lens.app.navigation.AppRoute
 import com.kzzz3.argus.lens.feature.wallet.WalletState
 import com.kzzz3.argus.lens.ui.shell.ShellDestination
+import java.io.File
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class AppRouteNavigationRuntimeTest {
@@ -156,5 +158,47 @@ class AppRouteNavigationRuntimeTest {
         assertEquals(ShellDestination.Secondary, runtime.toShellDestination(AppRoute.NewFriends))
         assertEquals(ShellDestination.Secondary, runtime.toShellDestination(AppRoute.CallSession))
         assertEquals(ShellDestination.Secondary, runtime.toShellDestination(AppRoute.Chat))
+    }
+
+    @Test
+    fun resolveRouteShellDestination_keepsNewFriendsUnderContactsTab() {
+        val runtime = AppRouteNavigationRuntime()
+
+        assertEquals(ShellDestination.Contacts, runtime.resolveRouteShellDestination(AppRoute.NewFriends))
+    }
+
+    @Test
+    fun resolveRouteShellDestination_usesInboxTabWhenChatConversationIsMissing() {
+        val runtime = AppRouteNavigationRuntime()
+
+        assertEquals(
+            ShellDestination.Inbox,
+            runtime.resolveRouteShellDestination(
+                route = AppRoute.Chat,
+                hasSelectedConversation = false,
+            ),
+        )
+    }
+
+    @Test
+    fun resolveRouteShellDestination_usesSecondaryTabWhenChatConversationExists() {
+        val runtime = AppRouteNavigationRuntime()
+
+        assertEquals(
+            ShellDestination.Secondary,
+            runtime.resolveRouteShellDestination(
+                route = AppRoute.Chat,
+                hasSelectedConversation = true,
+            ),
+        )
+    }
+
+    @Test
+    fun appRouteNavGraph_registersEveryDeclaredAppRoute() {
+        val graphSource = File("src/main/java/com/kzzz3/argus/lens/app/AppRouteNavGraph.kt").readText()
+        val missingRoutes = AppRoute.entries
+            .filterNot { route -> graphSource.contains("composable(AppRoute.${route.name}.name)") }
+
+        assertTrue("AppRouteNavGraph must register every AppRoute: $missingRoutes", missingRoutes.isEmpty())
     }
 }

@@ -17,11 +17,11 @@ class BackgroundSyncWorkTest {
     }
 
     @Test
-    fun enqueueSpecUsesSingleReplaceableBackgroundSyncWork() {
+    fun enqueueSpecKeepsExistingBackgroundSyncWork() {
         val spec = BackgroundSyncWork.enqueueSpec()
 
         assertEquals("argus-lens-background-sync", spec.uniqueWorkName)
-        assertEquals(ExistingWorkPolicy.REPLACE, spec.existingWorkPolicy)
+        assertEquals(ExistingWorkPolicy.KEEP, spec.existingWorkPolicy)
         assertEquals(BackgroundSyncWork.createRequest().workSpec.workerClassName, spec.request.workSpec.workerClassName)
     }
 

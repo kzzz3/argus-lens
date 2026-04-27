@@ -12,6 +12,7 @@ fun ArgusLensApp(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     AppRouteHost(
         dependencies = viewModel.dependencies,
+        runtimeScope = viewModel.runtimeScope,
         appSessionState = uiState.appSessionState,
         conversationThreadsState = uiState.conversationThreadsState,
         currentRoute = uiState.currentRoute,

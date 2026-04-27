@@ -1,6 +1,7 @@
 package com.kzzz3.argus.lens.app
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.kzzz3.argus.lens.app.navigation.AppRoute
 import com.kzzz3.argus.lens.data.friend.FriendEntry
 import com.kzzz3.argus.lens.data.friend.FriendRequestsSnapshot
@@ -19,12 +20,15 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.CoroutineScope
 import javax.inject.Inject
 
 @HiltViewModel
 class ArgusLensAppViewModel @Inject constructor(
     val dependencies: AppDependencies,
 ) : ViewModel() {
+    val runtimeScope: CoroutineScope = viewModelScope
+
     private val _uiState = MutableStateFlow(
         ArgusLensAppUiState(
             appSessionState = dependencies.initialSessionSnapshot,

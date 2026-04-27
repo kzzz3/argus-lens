@@ -29,7 +29,7 @@ object BackgroundSyncWork {
     fun enqueueSpec(): BackgroundSyncEnqueueSpec {
         return BackgroundSyncEnqueueSpec(
             uniqueWorkName = UniqueWorkName,
-            existingWorkPolicy = ExistingWorkPolicy.REPLACE,
+            existingWorkPolicy = ExistingWorkPolicy.KEEP,
             request = createRequest(),
         )
     }

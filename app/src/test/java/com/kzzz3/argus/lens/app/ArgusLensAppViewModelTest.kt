@@ -5,13 +5,31 @@ import com.kzzz3.argus.lens.app.navigation.AppRoute
 import com.kzzz3.argus.lens.data.realtime.ConversationRealtimeConnectionState
 import com.kzzz3.argus.lens.data.session.SessionCredentials
 import com.kzzz3.argus.lens.model.session.AppSessionState
+import java.io.File
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ArgusLensAppViewModelTest {
     @Test
     fun appViewModelUsesInjectedDependenciesWithoutApplicationSuperclass() {
         assertEquals(ViewModel::class.java, ArgusLensAppViewModel::class.java.superclass)
+    }
+
+    @Test
+    fun appRouteHost_doesNotOwnLongLivedCoroutineScope() {
+        val routeHostSource = File("src/main/java/com/kzzz3/argus/lens/app/AppRouteHost.kt").readText()
+
+        assertFalse(routeHostSource.contains("rememberCoroutineScope"))
+    }
+
+    @Test
+    fun appViewModel_exposesRuntimeScopeBackedByViewModelScope() {
+        val viewModelSource = File("src/main/java/com/kzzz3/argus/lens/app/ArgusLensAppViewModel.kt").readText()
+
+        assertTrue(viewModelSource.contains("viewModelScope"))
+        assertTrue(viewModelSource.contains("val runtimeScope"))
     }
 
     @Test

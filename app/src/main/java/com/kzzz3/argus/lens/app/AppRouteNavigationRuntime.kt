@@ -55,4 +55,15 @@ internal class AppRouteNavigationRuntime {
             -> ShellDestination.Secondary
         }
     }
+
+    fun resolveRouteShellDestination(
+        route: AppRoute,
+        hasSelectedConversation: Boolean = true,
+    ): ShellDestination {
+        return when {
+            route == AppRoute.NewFriends -> ShellDestination.Contacts
+            route == AppRoute.Chat && !hasSelectedConversation -> ShellDestination.Inbox
+            else -> toShellDestination(route)
+        }
+    }
 }

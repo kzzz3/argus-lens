@@ -6,10 +6,14 @@ plugins {
 }
 
 val debugAuthBaseUrl = "http://10.0.2.2:8080/"
-val isReleaseBuildRequested = gradle.startParameter.taskNames.any { taskName ->
+fun isReleaseBuildTask(taskName: String): Boolean {
     val normalizedName = taskName.substringAfterLast(':').lowercase()
-    normalizedName.contains("release") || normalizedName in setOf("assemble", "bundle", "build")
+    val releaseTaskPrefixes = listOf("assemble", "bundle", "package", "lintvital")
+    return normalizedName in setOf("assemble", "bundle", "build") ||
+        releaseTaskPrefixes.any { prefix -> normalizedName.startsWith(prefix) && normalizedName.contains("release") }
 }
+
+val isReleaseBuildRequested = gradle.startParameter.taskNames.any(::isReleaseBuildTask)
 fun validateReleaseBaseUrl(rawUrl: String): String {
     val uri = URI(rawUrl.trim())
     val host = uri.host?.lowercase()
