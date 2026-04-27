@@ -1,13 +1,10 @@
-package com.kzzz3.argus.lens.app
+package com.kzzz3.argus.lens.feature.wallet
 
-import com.kzzz3.argus.lens.feature.wallet.WalletAction
-import com.kzzz3.argus.lens.feature.wallet.WalletEffect
-import com.kzzz3.argus.lens.feature.wallet.WalletReducerResult
-import com.kzzz3.argus.lens.feature.wallet.WalletState
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Test
 
-class WalletActionRouteRuntimeTest {
+class WalletActionHandlerTest {
     @Test
     fun handleAction_publishesReducedStateBeforeHandlingEffect() {
         val currentState = WalletState(currentAccountId = "account-1")
@@ -17,7 +14,7 @@ class WalletActionRouteRuntimeTest {
         var reducerInputState: WalletState? = null
         var reducerInputAction: WalletAction? = null
         var effectInput: WalletEffect? = null
-        val runtime = WalletActionRouteRuntime(
+        val handler = WalletActionHandler(
             reduceAction = { state, action ->
                 reducerInputState = state
                 reducerInputAction = action
@@ -30,10 +27,10 @@ class WalletActionRouteRuntimeTest {
             },
         )
 
-        runtime.handleAction(
+        handler.handleAction(
             action = WalletAction.RefreshWalletSummary,
-            request = WalletActionRouteRequest(currentState = currentState),
-            callbacks = WalletActionRouteCallbacks(
+            request = WalletActionRequest(currentState = currentState),
+            callbacks = WalletActionCallbacks(
                 onWalletStateChanged = {
                     events += "state"
                     assertEquals(reducedState, it)
@@ -53,7 +50,7 @@ class WalletActionRouteRuntimeTest {
         val reducedState = currentState.copy(manualPayload = "new")
         val events = mutableListOf<String>()
         var effectWasPresent = true
-        val runtime = WalletActionRouteRuntime(
+        val handler = WalletActionHandler(
             reduceAction = { _, _ -> WalletReducerResult(reducedState, null) },
             handleEffect = { effect, state ->
                 events += "effect"
@@ -62,10 +59,10 @@ class WalletActionRouteRuntimeTest {
             },
         )
 
-        runtime.handleAction(
+        handler.handleAction(
             action = WalletAction.UpdateManualPayload("new"),
-            request = WalletActionRouteRequest(currentState = currentState),
-            callbacks = WalletActionRouteCallbacks(
+            request = WalletActionRequest(currentState = currentState),
+            callbacks = WalletActionCallbacks(
                 onWalletStateChanged = {
                     events += "state"
                     assertEquals(reducedState, it)
@@ -73,7 +70,7 @@ class WalletActionRouteRuntimeTest {
             ),
         )
 
-        assertEquals(false, effectWasPresent)
+        assertFalse(effectWasPresent)
         assertEquals(listOf("state", "effect"), events)
     }
 }

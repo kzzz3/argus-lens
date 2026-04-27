@@ -6,6 +6,9 @@ import com.kzzz3.argus.lens.feature.contacts.ContactsState
 import com.kzzz3.argus.lens.feature.contacts.FriendRequestStatusState
 import com.kzzz3.argus.lens.feature.contacts.reduceContactsState
 import com.kzzz3.argus.lens.feature.inbox.ConversationThreadsState
+import com.kzzz3.argus.lens.feature.wallet.WalletActionCallbacks
+import com.kzzz3.argus.lens.feature.wallet.WalletActionHandler
+import com.kzzz3.argus.lens.feature.wallet.WalletActionRequest
 import com.kzzz3.argus.lens.feature.wallet.reduceWalletState
 import com.kzzz3.argus.lens.ui.shell.ShellDestination
 
@@ -30,7 +33,7 @@ internal class AppRouteActionBindings(
         },
     )
 
-    private val walletActionRouteRuntime = WalletActionRouteRuntime(
+    private val walletActionHandler = WalletActionHandler(
         reduceAction = ::reduceWalletState,
         handleEffect = { effect, currentState ->
             routeRuntimes.walletRouteRuntime.handleEffect(
@@ -235,10 +238,10 @@ internal class AppRouteActionBindings(
     }
 
     fun handleWalletAction(action: com.kzzz3.argus.lens.feature.wallet.WalletAction) {
-        walletActionRouteRuntime.handleAction(
+        walletActionHandler.handleAction(
             action = action,
-            request = WalletActionRouteRequest(currentState = state.walletStateModel),
-            callbacks = WalletActionRouteCallbacks(
+            request = WalletActionRequest(currentState = state.walletStateModel),
+            callbacks = WalletActionCallbacks(
                 onWalletStateChanged = callbacks.onWalletStateChanged,
             ),
         )
