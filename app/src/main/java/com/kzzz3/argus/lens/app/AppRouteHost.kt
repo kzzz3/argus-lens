@@ -4,31 +4,11 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.setValue
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.kzzz3.argus.lens.app.navigation.AppRoute
-import com.kzzz3.argus.lens.data.auth.AuthRepositoryResult
-import com.kzzz3.argus.lens.data.friend.FriendEntry
-import com.kzzz3.argus.lens.data.friend.FriendRequestsSnapshot
-import com.kzzz3.argus.lens.data.realtime.ConversationRealtimeConnectionState
-import com.kzzz3.argus.lens.data.session.SessionCredentials
-import com.kzzz3.argus.lens.feature.auth.AuthFormState
-import com.kzzz3.argus.lens.feature.call.CallSessionMode
-import com.kzzz3.argus.lens.feature.call.CallSessionState
-import com.kzzz3.argus.lens.feature.contacts.ContactsState
-import com.kzzz3.argus.lens.feature.contacts.FriendRequestStatusState
-import com.kzzz3.argus.lens.feature.contacts.reduceContactsState
-import com.kzzz3.argus.lens.feature.inbox.ChatCallMode
-import com.kzzz3.argus.lens.feature.inbox.ConversationThreadsState
-import com.kzzz3.argus.lens.feature.register.RegisterFormState
-import com.kzzz3.argus.lens.feature.wallet.WalletState
-import com.kzzz3.argus.lens.feature.wallet.reduceWalletState
-import com.kzzz3.argus.lens.model.session.AppSessionState
-import com.kzzz3.argus.lens.ui.shell.ShellDestination
 import kotlinx.coroutines.CoroutineScope
 
 @Composable
@@ -64,11 +44,7 @@ internal fun AppRouteHost(
     val onContactsStateChanged = callbacks.onContactsStateChanged
     val onWalletStateChanged = callbacks.onWalletStateChanged
     val onFriendsChanged = callbacks.onFriendsChanged
-    val onConversationOpened = callbacks.onConversationOpened
-    val onChatStatusChanged = callbacks.onChatStatusChanged
     val onChatStatusCleared = callbacks.onChatStatusCleared
-    val onFriendRequestStatusChanged = callbacks.onFriendRequestStatusChanged
-    val onFriendRequestsSnapshotChanged = callbacks.onFriendRequestsSnapshotChanged
     val onFriendRequestStatusReset = callbacks.onFriendRequestStatusReset
     val onHydratedSessionApplied = callbacks.onHydratedSessionApplied
     val onAuthenticatedSessionApplied = callbacks.onAuthenticatedSessionApplied
@@ -76,25 +52,14 @@ internal fun AppRouteHost(
     val onSessionCleared = callbacks.onSessionCleared
     val onConversationThreadsChanged = callbacks.onConversationThreadsChanged
     val onHydratedConversationAccountChanged = callbacks.onHydratedConversationAccountChanged
-    val onRealtimeConnectionStateChanged = callbacks.onRealtimeConnectionStateChanged
-    val onRealtimeEventIdRecorded = callbacks.onRealtimeEventIdRecorded
-    val onRealtimeLastEventIdReset = callbacks.onRealtimeLastEventIdReset
-    val onRealtimeReconnectIncremented = callbacks.onRealtimeReconnectIncremented
     val navController = rememberNavController()
     val routeRuntimes = rememberAppRouteRuntimes(dependencies, runtimeScope)
     val appShellCoordinator = dependencies.appShellCoordinator
     val sessionCredentialsStore = dependencies.sessionCredentialsStore
     val realtimeClient = dependencies.realtimeClient
     val callSessionRuntime = routeRuntimes.callSessionRuntime
-    val callSessionRouteRuntime = routeRuntimes.callSessionRouteRuntime
     val sessionRefreshRuntime = routeRuntimes.sessionRefreshRuntime
     val walletRequestRuntime = routeRuntimes.walletRequestRuntime
-    val contactsRouteRuntime = routeRuntimes.contactsRouteRuntime
-    val chatRouteRuntime = routeRuntimes.chatRouteRuntime
-    val inboxRouteRuntime = routeRuntimes.inboxRouteRuntime
-    val inboxActionRouteRuntime = routeRuntimes.inboxActionRouteRuntime
-    val entryRouteRuntime = routeRuntimes.entryRouteRuntime
-    val walletRouteRuntime = routeRuntimes.walletRouteRuntime
     val realtimeConnectionRuntime = routeRuntimes.realtimeConnectionRuntime
     val appPersistenceRuntime = routeRuntimes.appPersistenceRuntime
     val appInitialHydrationRuntime = routeRuntimes.appInitialHydrationRuntime
@@ -165,6 +130,16 @@ internal fun AppRouteHost(
         onFriendsChanged = onFriendsChanged,
         onFriendRequestStatusReset = onFriendRequestStatusReset,
     )
+    val routeActionBindings = AppRouteActionBindings(
+        state = state,
+        callbacks = callbacks,
+        routeUiState = routeUiState,
+        routeRuntimes = routeRuntimes,
+        previewThreadsState = previewThreadsState,
+        sessionBoundaryRuntime = sessionBoundaryRuntime,
+        sessionBoundaryCallbacks = sessionBoundaryCallbacks,
+        getLatestCurrentRoute = { latestCurrentRoute },
+    )
     LaunchedEffect(initialSessionSnapshot.isAuthenticated, initialSessionSnapshot.accountId) {
         appInitialHydrationRuntime.hydrate(
             request = AppInitialHydrationRequest(
@@ -189,172 +164,6 @@ internal fun AppRouteHost(
         onChatStatusCleared()
     }
 
-    fun openTopLevelRoute(route: AppRoute) {
-        appRouteNavigationRuntime.openTopLevelRoute(
-            route = route,
-            request = AppRouteNavigationRequest(
-                accountId = appSessionState.accountId,
-                walletState = walletStateModel,
-            ),
-            callbacks = AppRouteNavigationCallbacks(
-                onWalletStateChanged = onWalletStateChanged,
-                onRouteChanged = onRouteChanged,
-            ),
-        )
-    }
-
-    fun openShellDestination(destination: ShellDestination) {
-        appRouteNavigationRuntime.openShellDestination(
-            destination = destination,
-            request = AppRouteNavigationRequest(
-                accountId = appSessionState.accountId,
-                walletState = walletStateModel,
-            ),
-            callbacks = AppRouteNavigationCallbacks(
-                onWalletStateChanged = onWalletStateChanged,
-                onRouteChanged = onRouteChanged,
-            ),
-        )
-    }
-
-    fun openInboxConversation(conversationId: String) {
-        inboxRouteRuntime.openConversation(
-            conversationId = conversationId,
-            request = InboxRouteRequest(threadsState = conversationThreadsState),
-            callbacks = InboxRouteCallbacks(
-                onConversationThreadsChanged = onConversationThreadsChanged,
-                onConversationOpened = onConversationOpened,
-            ),
-        )
-    }
-
-    suspend fun applySuccessfulAuthResult(
-        authResult: AuthRepositoryResult.Success,
-        keepSubmitMessageOnAuthForm: Boolean,
-    ) {
-        sessionBoundaryRuntime.applySuccessfulAuthResult(
-            authResult = authResult,
-            keepSubmitMessageOnAuthForm = keepSubmitMessageOnAuthForm,
-            callbacks = sessionBoundaryCallbacks,
-        )
-    }
-
-    fun applyFriendRequestStatus(statusState: FriendRequestStatusState) {
-        onFriendRequestStatusChanged(statusState)
-    }
-
-    fun entryRouteRequest(): EntryRouteRequest {
-        return EntryRouteRequest(
-            authFormState = authFormState,
-            registerFormState = registerFormState,
-        )
-    }
-
-    fun entryRouteCallbacks(): EntryRouteCallbacks {
-        return EntryRouteCallbacks(
-            onRouteChanged = onRouteChanged,
-            onAuthFormStateChanged = onAuthFormStateChanged,
-            onRegisterFormStateChanged = onRegisterFormStateChanged,
-            applySuccessfulAuthResult = ::applySuccessfulAuthResult,
-        )
-    }
-
-    fun contactsRouteRequest(contactsStateSnapshot: ContactsState = contactsState): ContactsRouteRequest {
-        return ContactsRouteRequest(
-            session = appSessionState,
-            contactsState = contactsStateSnapshot,
-            friends = friends,
-            conversationThreadsState = conversationThreadsState,
-            friendRequestsSnapshot = friendRequestsSnapshot,
-        )
-    }
-
-    fun contactsRouteCallbacks(): ContactsRouteCallbacks {
-        return ContactsRouteCallbacks(
-            onRouteChanged = onRouteChanged,
-            onContactsStateChanged = onContactsStateChanged,
-            onFriendRequestsSnapshotChanged = onFriendRequestsSnapshotChanged,
-            onConversationThreadsChanged = onConversationThreadsChanged,
-            onConversationOpened = onConversationOpened,
-            onFriendRequestStatusChanged = ::applyFriendRequestStatus,
-            onFriendsChanged = onFriendsChanged,
-        )
-    }
-
-    val contactsActionRouteRuntime = ContactsActionRouteRuntime(
-        reduceAction = ::reduceContactsState,
-        handleEffect = { effect ->
-            contactsRouteRuntime.handleContactsEffect(
-                effect = effect,
-                request = contactsRouteRequest(),
-                callbacks = contactsRouteCallbacks(),
-            )
-        },
-    )
-
-    val walletActionRouteRuntime = WalletActionRouteRuntime(
-        reduceAction = ::reduceWalletState,
-        handleEffect = { effect, currentState ->
-            walletRouteRuntime.handleEffect(
-                effect = effect,
-                request = WalletRouteRequest(
-                    session = appSessionState,
-                    currentState = currentState,
-                ),
-                callbacks = WalletRouteCallbacks(
-                    getCurrentSession = { appSessionState },
-                    getCurrentState = { walletStateModel },
-                    onRouteChanged = ::openTopLevelRoute,
-                    onStateChanged = onWalletStateChanged,
-                ),
-            )
-        },
-    )
-
-    fun signOutToEntry(message: String? = null) {
-        sessionBoundaryRuntime.signOutToEntry(
-            currentSession = appSessionState,
-            previewThreadsState = previewThreadsState,
-            message = message,
-            callbacks = sessionBoundaryCallbacks,
-        )
-    }
-
-    fun inboxActionRouteCallbacks(): InboxActionRouteCallbacks {
-        return InboxActionRouteCallbacks(
-            openConversation = ::openInboxConversation,
-            openTopLevelRoute = ::openTopLevelRoute,
-            signOutToEntry = { signOutToEntry() },
-        )
-    }
-
-    suspend fun refreshSessionTokens(): AuthRepositoryResult {
-        return sessionBoundaryRuntime.refreshSessionTokens(
-            session = appSessionState,
-            setSession = onSessionRefreshed,
-        )
-    }
-
-    fun scheduleSessionRefreshLoop() {
-        sessionBoundaryRuntime.scheduleSessionRefreshLoop(
-            onUnauthorized = { signOutToEntry("Session expired or was revoked. Please sign in again.") },
-        )
-    }
-
-    fun realtimeConnectionCallbacks(): RealtimeConnectionCallbacks {
-        return RealtimeConnectionCallbacks(
-            onConnectionStateChanged = onRealtimeConnectionStateChanged,
-            onEventIdRecorded = onRealtimeEventIdRecorded,
-            onLastEventIdReset = onRealtimeLastEventIdReset,
-            onConversationThreadsChanged = onConversationThreadsChanged,
-            onReconnectGenerationIncremented = onRealtimeReconnectIncremented,
-            onScheduleSessionRefreshLoop = { scheduleSessionRefreshLoop() },
-            onCancelSessionRefreshLoop = sessionRefreshRuntime::cancel,
-            refreshSessionTokens = { refreshSessionTokens() },
-            signOutToEntry = { message -> signOutToEntry(message) },
-        )
-    }
-
     LaunchedEffect(appSessionState.isAuthenticated, appSessionState.accountId, appSessionState.displayName) {
         sessionBoundaryRuntime.applySessionBoundary(
             session = appSessionState,
@@ -376,13 +185,13 @@ internal fun AppRouteHost(
                 getSelectedConversationId = { latestSelectedConversationId },
                 getCurrentRoute = { latestCurrentRoute },
             ),
-            callbacks = realtimeConnectionCallbacks(),
+            callbacks = routeActionBindings.realtimeConnectionCallbacks(),
         )
     }
 
     DisposableEffect(realtimeClient) {
         onDispose {
-            realtimeConnectionRuntime.dispose(realtimeConnectionCallbacks())
+            realtimeConnectionRuntime.dispose(routeActionBindings.realtimeConnectionCallbacks())
         }
     }
 
@@ -403,7 +212,7 @@ internal fun AppRouteHost(
             ),
             callbacks = AppRouteLoadCallbacks(
                 onFriendsChanged = onFriendsChanged,
-                onFriendRequestStatusChanged = ::applyFriendRequestStatus,
+                onFriendRequestStatusChanged = routeActionBindings::applyFriendRequestStatus,
             ),
         )
     }
@@ -424,77 +233,15 @@ internal fun AppRouteHost(
         routeUiState = routeUiState,
         walletStateModel = walletStateModel,
         appRouteNavigationRuntime = appRouteNavigationRuntime,
-        onShellDestinationSelected = ::openShellDestination,
-        onAuthAction = { action ->
-            entryRouteRuntime.handleAuthAction(
-                action = action,
-                request = entryRouteRequest(),
-                callbacks = entryRouteCallbacks(),
-            )
-        },
-        onRegisterAction = { action ->
-            entryRouteRuntime.handleRegisterAction(
-                action = action,
-                request = entryRouteRequest(),
-                callbacks = entryRouteCallbacks(),
-            )
-        },
-        onInboxAction = { action ->
-            inboxActionRouteRuntime.handleAction(action, inboxActionRouteCallbacks())
-        },
-        onContactsAction = { action ->
-            contactsActionRouteRuntime.handleAction(
-                action = action,
-                request = ContactsActionRouteRequest(currentState = contactsState),
-                callbacks = ContactsActionRouteCallbacks(
-                    onContactsStateChanged = onContactsStateChanged,
-                ),
-            )
-        },
-        onNewFriendsAction = { action ->
-            contactsRouteRuntime.handleNewFriendsAction(
-                action = action,
-                request = contactsRouteRequest(),
-                callbacks = contactsRouteCallbacks(),
-            )
-        },
-        onCallSessionAction = { action ->
-            callSessionRouteRuntime.handleAction(
-                action = action,
-                request = CallSessionRouteRequest(currentState = callSessionState),
-                callbacks = CallSessionRouteCallbacks(
-                    onCallSessionStateChanged = onCallSessionStateChanged,
-                    onRouteChanged = onRouteChanged,
-                ),
-            )
-        },
-        onWalletAction = { action ->
-            walletActionRouteRuntime.handleAction(
-                action = action,
-                request = WalletActionRouteRequest(currentState = walletStateModel),
-                callbacks = WalletActionRouteCallbacks(
-                    onWalletStateChanged = onWalletStateChanged,
-                ),
-            )
-        },
-        onSignOut = { signOutToEntry() },
-        onChatAction = { action ->
-            routeUiState.chatState?.let { resolvedChatState ->
-                chatRouteRuntime.handleAction(
-                    action = action,
-                    request = ChatRouteRequest(
-                        threadsState = conversationThreadsState,
-                        chatState = resolvedChatState,
-                    ),
-                    callbacks = ChatRouteCallbacks(
-                        onRouteChanged = ::openTopLevelRoute,
-                        onConversationThreadsChanged = onConversationThreadsChanged,
-                        onChatStatusChanged = onChatStatusChanged,
-                        onCallSessionStateChanged = onCallSessionStateChanged,
-                        getCurrentRoute = { latestCurrentRoute },
-                    ),
-                )
-            }
-        },
+        onShellDestinationSelected = routeActionBindings::openShellDestination,
+        onAuthAction = routeActionBindings::handleAuthAction,
+        onRegisterAction = routeActionBindings::handleRegisterAction,
+        onInboxAction = routeActionBindings::handleInboxAction,
+        onContactsAction = routeActionBindings::handleContactsAction,
+        onNewFriendsAction = routeActionBindings::handleNewFriendsAction,
+        onCallSessionAction = routeActionBindings::handleCallSessionAction,
+        onWalletAction = routeActionBindings::handleWalletAction,
+        onSignOut = { routeActionBindings.signOutToEntry() },
+        onChatAction = routeActionBindings::handleChatAction,
     )
 }

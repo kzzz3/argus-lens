@@ -13,6 +13,7 @@ Argus Lens provides the Android runtime for Argus by delivering a reliable local
 - [x] Remote auth, session restore, conversation/message sync, text send, recall, read receipts, SSE resume, and generic file upload/download.
 - [x] Instrumentation smoke coverage and modernization regression gates.
 - [x] P0 app shell state-boundary slice: introduce `AppRouteHostState` and `AppRouteHostCallbacks` to slim `AppRouteHost` / `ArgusLensApp` without changing navigation semantics.
+- [x] P0 app shell action-binding slice: move route request/callback adapters into `AppRouteActionBindings` while preserving existing runtime and navigation behavior.
 - [x] Long-term Android architecture target documented with `:app`, `:core:*`, `:feature:*`, typed navigation, session, data, test, and cleanup roadmaps.
 - [ ] Process-death restoration decision for selected conversation/session entry context.
 - [ ] Richer first-class remote media send paths beyond the generic-file baseline.
@@ -59,6 +60,7 @@ Long-term target topology is documented in `docs/android-architecture-target.md`
 
 ### Phase 3 — Stage 1 Runtime Maturity
 - [x] Slim `AppRouteHost` by replacing scattered state/callback parameters with explicit host boundary objects.
+- [x] Extract `AppRouteActionBindings` so `AppRouteHost` no longer declares route action/request/callback factories inline.
 - [ ] RTC signaling integration.
 - [ ] Stronger process-death restoration rules.
 - [ ] Background reconciliation strategy for sync.
@@ -70,7 +72,7 @@ Long-term target topology is documented in `docs/android-architecture-target.md`
 
 ### Architecture Roadmap — Target Android Organization
 - [x] Document the durable target architecture and P0-P4 migration roadmap in `docs/android-architecture-target.md`.
-- [ ] P0: continue app-shell slimming and feature ViewModel extraction without changing route semantics.
+- [ ] P0: continue app-shell slimming and feature ViewModel extraction without changing route semantics; next candidate is wallet-owned state/action extraction.
 - [ ] P1: introduce typed route contracts and process-death restoration rules one feature at a time.
 - [ ] P2: split session/token/crypto responsibilities and make repository/data-source/use-case boundaries explicit before Gradle extraction.
 - [ ] P3: extract `:core:*` and `:feature:*` modules only after ownership and package boundaries are stable.
@@ -120,3 +122,4 @@ Run Gradle tasks serially.
 | 2026-04-27 | P0 app shell state-boundary planning | Explored `AppRouteHost`, `ArgusLensAppViewModel`, session store, official Android guidance, and Oracle sequencing advice | Planned first slice: state/callback boundary only; typed navigation, feature module split, LocalSessionStore split, and UseCase layer deferred |
 | 2026-04-27 | P0 app shell state-boundary TDD | Red/green source-boundary tests for `AppRouteHostState` / `AppRouteHostCallbacks` and dedicated `ArgusLensAppState.kt` | Targeted tests passed; broader verification follows |
 | 2026-04-27 | Android target architecture documentation | Read current Lens README, PLAN, project-plan, modernization progress, code-structure audit, official Android architecture/modularization guidance, and Oracle review findings | Target roadmap documented; Oracle-required wording fixes applied; docs verification follows before commit |
+| 2026-04-27 | P0 app shell action-binding TDD | Red `ArgusLensAppViewModelTest`; green `ArgusLensAppViewModelTest`; related route runtime tests; `:app:testDebugUnitTest`; `testDebugUnitTest`; `lint`; `assembleDebug`; Kotlin LSP unavailable because `kotlin-lsp` is not installed | PASS |

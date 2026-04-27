@@ -27,6 +27,7 @@ The app shell has already moved past a single monolithic route host milestone:
 - `AppRouteUiState` builds route-facing UI state outside `AppRouteHost`.
 - `AppRouteRuntimes` centralizes route runtime construction with ViewModel-owned coroutine scope.
 - `AppRouteNavGraph` centralizes enum-backed Navigation Compose registration.
+- `AppRouteActionBindings` centralizes route request/callback/action adapters outside the Compose host.
 - `ArgusLensAppState` owns root UI state and pure session transition helpers.
 
 That baseline is intentionally preserved while the project migrates toward the target shape below.

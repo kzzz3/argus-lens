@@ -43,6 +43,42 @@ class ArgusLensAppViewModelTest {
     }
 
     @Test
+    fun appRouteHost_delegatesActionBindingFactories() {
+        val actionBindingsFile = File("src/main/java/com/kzzz3/argus/lens/app/AppRouteActionBindings.kt")
+        val routeHostSource = File("src/main/java/com/kzzz3/argus/lens/app/AppRouteHost.kt").readText()
+
+        assertTrue("AppRouteActionBindings.kt should own route request/callback adapters", actionBindingsFile.exists())
+        val actionBindingsSource = actionBindingsFile.readText()
+        listOf(
+            "class AppRouteActionBindings",
+            "fun openTopLevelRoute",
+            "fun openShellDestination",
+            "fun openInboxConversation",
+            "fun entryRouteRequest",
+            "fun entryRouteCallbacks",
+            "fun contactsRouteRequest",
+            "fun contactsRouteCallbacks",
+            "fun inboxActionRouteCallbacks",
+            "fun realtimeConnectionCallbacks",
+        ).forEach { expectedSource ->
+            assertTrue("Expected AppRouteActionBindings.kt to contain $expectedSource", actionBindingsSource.contains(expectedSource))
+        }
+        listOf(
+            "fun openTopLevelRoute(",
+            "fun openShellDestination(",
+            "fun openInboxConversation(",
+            "fun entryRouteRequest(",
+            "fun entryRouteCallbacks(",
+            "fun contactsRouteRequest(",
+            "fun contactsRouteCallbacks(",
+            "fun inboxActionRouteCallbacks(",
+            "fun realtimeConnectionCallbacks(",
+        ).forEach { forbiddenSource ->
+            assertFalse("AppRouteHost.kt should not declare $forbiddenSource", routeHostSource.contains(forbiddenSource))
+        }
+    }
+
+    @Test
     fun appViewModel_exposesRuntimeScopeBackedByViewModelScope() {
         val viewModelSource = File("src/main/java/com/kzzz3/argus/lens/app/ArgusLensAppViewModel.kt").readText()
 
