@@ -7,12 +7,13 @@ Argus Lens provides the Android runtime for Argus by delivering a reliable local
 ## Core Feature Breakdown
 
 - [x] Compose host app baseline and Android Studio-compatible module layout.
-- [x] Local-first auth/session shell with DataStore-backed credentials.
+- [x] Local-first auth/session shell with safe DataStore-backed session identity and encrypted token persistence behind the session store.
 - [x] Inbox, contacts, chat, call, wallet, and media composer shells.
 - [x] Room-backed conversation/message/draft persistence.
 - [x] Remote auth, session restore, conversation/message sync, text send, recall, read receipts, SSE resume, and generic file upload/download.
 - [x] Instrumentation smoke coverage and modernization regression gates.
 - [x] P0 app shell state-boundary slice: introduce `AppRouteHostState` and `AppRouteHostCallbacks` to slim `AppRouteHost` / `ArgusLensApp` without changing navigation semantics.
+- [x] Long-term Android architecture target documented with `:app`, `:core:*`, `:feature:*`, typed navigation, session, data, test, and cleanup roadmaps.
 - [ ] Process-death restoration decision for selected conversation/session entry context.
 - [ ] Richer first-class remote media send paths beyond the generic-file baseline.
 - [ ] Real RTC signaling integration and call lifecycle events.
@@ -22,7 +23,7 @@ Argus Lens provides the Android runtime for Argus by delivering a reliable local
 ## Technology Stack and Architecture Decisions
 
 - **Kotlin + Jetpack Compose**: concise, state-driven Android UI with a path toward HUD-style surfaces.
-- **Room + DataStore**: local-first durable state and credential/session persistence.
+- **Room + DataStore**: local-first durable app state and safe session identity persistence; token persistence stays behind the session boundary.
 - **WorkManager**: constrained retry and background sync semantics.
 - **Retrofit/OkHttp**: conventional Cortex HTTP/SSE integration.
 - **Hilt**: dependency wiring through Android-supported lifecycle scopes.
@@ -39,6 +40,8 @@ argus-lens/
 ├── ui/       reusable theme and UI primitives
 └── docs/     architecture background and modernization progress
 ```
+
+Long-term target topology is documented in `docs/android-architecture-target.md`: `:app` remains the composition shell, shared infrastructure converges into `:core:*`, and independently owned flows converge into `:feature:*` modules after package-level boundaries are stable.
 
 ## Development Phases and Milestones
 
@@ -64,6 +67,14 @@ argus-lens/
 - [ ] Camera/microphone/sensor capture orchestration.
 - [ ] HUD-style confirmation surfaces.
 - [ ] Retina JNI service boundary and capability probing.
+
+### Architecture Roadmap — Target Android Organization
+- [x] Document the durable target architecture and P0-P4 migration roadmap in `docs/android-architecture-target.md`.
+- [ ] P0: continue app-shell slimming and feature ViewModel extraction without changing route semantics.
+- [ ] P1: introduce typed route contracts and process-death restoration rules one feature at a time.
+- [ ] P2: split session/token/crypto responsibilities and make repository/data-source/use-case boundaries explicit before Gradle extraction.
+- [ ] P3: extract `:core:*` and `:feature:*` modules only after ownership and package boundaries are stable.
+- [ ] P4: enforce dependency direction, expand test fixtures, and remove transitional shims after each migration slice.
 
 ## Mandatory M-R-E-A Cycle
 
@@ -97,6 +108,7 @@ Run Gradle tasks serially.
 
 - `README.md` explains how to onboard and run Lens.
 - `PLAN.md` tracks active Lens work and verification gates.
+- `docs/android-architecture-target.md` owns the long-term Android architecture target and migration roadmap.
 - `docs/project-plan.md` remains the long-form product/architecture blueprint.
 - `docs/android-modernization-progress.md` remains the detailed modernization evidence ledger.
 
@@ -107,3 +119,4 @@ Run Gradle tasks serially.
 | 2026-04-27 | Documentation workflow refresh | Read `AGENTS.md`, `docs/project-plan.md`, `docs/android-modernization-progress.md`, and verified referenced paths exist | PASS for this documentation pass |
 | 2026-04-27 | P0 app shell state-boundary planning | Explored `AppRouteHost`, `ArgusLensAppViewModel`, session store, official Android guidance, and Oracle sequencing advice | Planned first slice: state/callback boundary only; typed navigation, feature module split, LocalSessionStore split, and UseCase layer deferred |
 | 2026-04-27 | P0 app shell state-boundary TDD | Red/green source-boundary tests for `AppRouteHostState` / `AppRouteHostCallbacks` and dedicated `ArgusLensAppState.kt` | Targeted tests passed; broader verification follows |
+| 2026-04-27 | Android target architecture documentation | Read current Lens README, PLAN, project-plan, modernization progress, code-structure audit, official Android architecture/modularization guidance, and Oracle review findings | Target roadmap documented; Oracle-required wording fixes applied; docs verification follows before commit |

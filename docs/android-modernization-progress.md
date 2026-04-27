@@ -1,6 +1,6 @@
 # Android Modernization Progress
 
-This document tracks the Android modernization backlog by priority. Update it whenever a slice reaches a verified checkpoint.
+This document tracks the Android modernization backlog by priority. Update it whenever a slice reaches a verified checkpoint. The long-term `:app` / `:core:*` / `:feature:*` Android architecture target and migration roadmap live in `docs/android-architecture-target.md`; this file remains the evidence ledger for completed or deliberately deferred checkpoints.
 
 ## P0 Token Boundary
 
@@ -28,6 +28,7 @@ Status: complete for the first God Composable split milestone and the host API b
 - Host-only shell policy for `NewFriends` and missing-chat fallback moved into `AppRouteNavigationRuntime.resolveRouteShellDestination` with JVM regression coverage.
 - `ArgusLensApp.kt` now passes app-shell state and callbacks through `AppRouteHostState` / `AppRouteHostCallbacks`, keeping route behavior unchanged while narrowing the `AppRouteHost` API.
 - `ArgusLensAppState.kt` owns the root UI state model and pure session transition helpers so `ArgusLensAppViewModel.kt` can focus on state mutation and runtime scope ownership.
+- This boundary is the baseline for the future typed-navigation and feature ViewModel extraction roadmap in `docs/android-architecture-target.md`.
 
 Verification gate:
 
@@ -58,7 +59,7 @@ Status: complete for the current app graph baseline.
 - `AppRouteNavigationRuntime` owns shell tab mapping and special shell policy for `NewFriends` and missing-chat fallback.
 - JVM regression coverage verifies shell policy and that every declared `AppRoute` is registered in `AppRouteNavGraph`.
 
-Typed route arguments and nested graphs remain future refinements; the current enum-backed graph is now centralized and covered for the app's declared route set.
+Typed route arguments and nested graphs remain future refinements; the current enum-backed graph is now centralized and covered for the app's declared route set. The target route-contract migration sequence is documented in `docs/android-architecture-target.md`.
 
 ## P2 Hilt Dependency Injection
 
@@ -103,7 +104,7 @@ Remaining future expansion: a durable outbound queue for media/message uploads s
 
 Status: complete for repository-enforced release baseline.
 
-- Release builds require `ARGUS_RELEASE_BASE_URL` and reject localhost, emulator, placeholder, non-HTTPS, or credential-bearing URLs.
+- Release builds require `ARGUS_RELEASE_BASE_URL` and reject localhost, emulator, debug-only fallback, non-HTTPS, or credential-bearing URLs.
 - Release builds enable R8 minification, resource shrinking, and the optimized default ProGuard file.
 - Backup and data extraction rules exclude session persistence areas.
 - Source-level regression tests guard release shrink/base URL requirements.
@@ -114,7 +115,8 @@ Status: complete for current product scale.
 
 - The Android project is split into `:app`, `:data`, `:feature`, `:model`, and `:ui`.
 - `:app` depends on lower modules; `:data`, `:model`, and `:ui` remain explicit modules instead of hidden source sets.
-- Further feature granularity such as `feature:chat` or `core:network` should be driven by future ownership pressure, not premature splitting.
+- Further feature granularity such as `:feature:chat` or `:core:network` should be driven by future ownership pressure, not premature splitting.
+- The durable extraction roadmap for `:core:*` and `:feature:*` modules lives in `docs/android-architecture-target.md`.
 
 ## P3 Event Model
 

@@ -87,6 +87,14 @@ Lens becomes the Android simulator of smart glasses:
 - local pre-check and throttling before cloud upload
 - HUD state machine for low-friction confirmation
 
+## 4.3 Long-Term Android Code Organization
+
+The current Lens implementation is a five-module Android Studio-centered baseline: `:app`, `:feature`, `:data`, `:model`, and `:ui`. The durable target is an `:app` composition shell supported by shared `:core:*` modules and independently owned `:feature:*` modules.
+
+The target feature slice is `Route -> Screen -> ViewModel -> UseCase -> Repository -> DataSource`. Routes own navigation arguments and ViewModel lookup, screens stay stateless, ViewModels own screen-level state, use cases are added only for meaningful business composition, repositories expose data-layer APIs, and data sources isolate Room, Retrofit/OkHttp, DataStore, session, media, or native boundaries.
+
+Detailed module topology, typed Navigation Compose migration, session/token separation, data-source boundaries, test pyramid, and P0-P4 migration rules live in `docs/android-architecture-target.md`. This project plan intentionally keeps only the durable product architecture summary.
+
 ## 5. Key Boundaries
 
 ### 5.1 Lens owns
@@ -217,6 +225,6 @@ Lens becomes the Android simulator of smart glasses:
 
 ## 12. Planning and Progress Source of Truth
 
-This document is the long-form Lens product and architecture blueprint. Active checklist state, immediate tasks, verification gates, and the current risk register live in the repository-level `PLAN.md`.
+This document is the long-form Lens product and architecture blueprint. Active checklist state, immediate tasks, verification gates, and the current risk register live in the repository-level `PLAN.md`. The long-term Android code organization target lives in `docs/android-architecture-target.md`.
 
 When architecture changes, update this blueprint. When implementation status changes, update `PLAN.md` and only mirror durable architectural conclusions here.

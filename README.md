@@ -8,7 +8,7 @@ Argus Lens is the Android host app for Argus. It owns user-visible runtime behav
 
 ## Architecture at a Glance
 
-Lens is local-first and Android Studio-centered. UI state flows through Compose screens and app coordinators, persisted state lives behind repository boundaries, and cloud behavior enters through Cortex-facing network clients.
+Lens is local-first and Android Studio-centered. UI state flows through Compose screens and app coordinators, persisted state lives behind repository boundaries, and cloud behavior enters through Cortex-facing network clients. The current implementation is the five-module baseline below; the long-term `:core:*` / `:feature:*` target lives in `docs/android-architecture-target.md`.
 
 ```text
 argus-lens/
@@ -58,6 +58,7 @@ Instrumentation APK build:
 | Local agent rules | `AGENTS.md` |
 | Product/architecture plan | `docs/project-plan.md` |
 | Modernization gates | `docs/android-modernization-progress.md` |
+| Long-term Android architecture target | `docs/android-architecture-target.md` |
 | Wallet/payment UX | `docs/wallet-payment-flow.md` |
 | Entry activity | `app/src/main/java/com/kzzz3/argus/lens/MainActivity.kt` |
 | App composition root | `app/src/main/java/com/kzzz3/argus/lens/app/` |
