@@ -215,6 +215,12 @@ internal fun AppRouteHost(
             hydrateAppState = appShellCoordinator::hydrateAppState,
         )
     }
+    val appRouteLoadRuntime = remember(contactsCoordinator, newFriendsCoordinator) {
+        AppRouteLoadRuntime(
+            loadFriends = contactsCoordinator::loadFriends,
+            loadRequests = newFriendsCoordinator::loadRequests,
+        )
+    }
     val startDestination = remember { currentRoute.name }
     val conversationThreads = conversationThreadsState.threads
 
@@ -559,12 +565,17 @@ internal fun AppRouteHost(
     }
 
     LaunchedEffect(currentRoute, appSessionState.isAuthenticated) {
-        if (currentRoute == AppRoute.Contacts && appSessionState.isAuthenticated) {
-            contactsCoordinator.loadFriends()?.let(onFriendsChanged)
-        }
-        if (currentRoute == AppRoute.NewFriends && appSessionState.isAuthenticated) {
-            applyFriendRequestStatus(newFriendsCoordinator.loadRequests(friendRequestsSnapshot))
-        }
+        appRouteLoadRuntime.loadForRoute(
+            request = AppRouteLoadRequest(
+                route = currentRoute,
+                isAuthenticated = appSessionState.isAuthenticated,
+                friendRequestsSnapshot = friendRequestsSnapshot,
+            ),
+            callbacks = AppRouteLoadCallbacks(
+                onFriendsChanged = onFriendsChanged,
+                onFriendRequestStatusChanged = ::applyFriendRequestStatus,
+            ),
+        )
     }
 
     val currentBackStackEntry by navController.currentBackStackEntryAsState()
