@@ -141,7 +141,12 @@ internal fun AppRouteHost(
     )
     AppRouteHostEffects(
         navController = navController,
-        dependencies = dependencies,
+        effectDependencies = AppRouteHostEffectDependencies(
+            initialSessionSnapshot = dependencies.initialSessionSnapshot,
+            initialSessionCredentials = dependencies.initialSessionCredentials,
+            sessionCredentialsStore = dependencies.sessionCredentialsStore,
+            realtimeClient = dependencies.realtimeClient,
+        ),
         state = state,
         callbacks = callbacks,
         routeRuntimes = routeRuntimes,

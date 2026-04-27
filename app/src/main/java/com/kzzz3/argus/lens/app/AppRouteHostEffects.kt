@@ -8,6 +8,8 @@ import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.kzzz3.argus.lens.app.navigation.AppRoute
+import com.kzzz3.argus.lens.data.realtime.ConversationRealtimeClient
+import com.kzzz3.argus.lens.data.session.SessionCredentials
 import com.kzzz3.argus.lens.feature.auth.navigation.AuthGraphRoute
 import com.kzzz3.argus.lens.feature.inbox.ChatStateHolder
 import com.kzzz3.argus.lens.feature.inbox.ConversationThreadsState
@@ -17,10 +19,17 @@ import com.kzzz3.argus.lens.model.session.AppSessionState
 import com.kzzz3.argus.lens.navigation.MainGraphRoute
 import com.kzzz3.argus.lens.navigation.graphRouteForAppRoute
 
+internal data class AppRouteHostEffectDependencies(
+    val initialSessionSnapshot: AppSessionState,
+    val initialSessionCredentials: SessionCredentials,
+    val sessionCredentialsStore: SessionCredentialsStore,
+    val realtimeClient: ConversationRealtimeClient,
+)
+
 @Composable
 internal fun AppRouteHostEffects(
     navController: NavHostController,
-    dependencies: AppDependencies,
+    effectDependencies: AppRouteHostEffectDependencies,
     state: AppRouteHostState,
     callbacks: AppRouteHostCallbacks,
     routeRuntimes: AppRouteRuntimes,
@@ -47,15 +56,15 @@ internal fun AppRouteHostEffects(
     val hydratedConversationAccountId = state.hydratedConversationAccountId
     val realtimeLastEventId = state.realtimeLastEventId
     val realtimeReconnectGeneration = state.realtimeReconnectGeneration
-    val initialSessionSnapshot = dependencies.initialSessionSnapshot
-    val sessionCredentialsStore = dependencies.sessionCredentialsStore
-    val realtimeClient = dependencies.realtimeClient
+    val initialSessionSnapshot = effectDependencies.initialSessionSnapshot
+    val sessionCredentialsStore = effectDependencies.sessionCredentialsStore
+    val realtimeClient = effectDependencies.realtimeClient
 
     LaunchedEffect(initialSessionSnapshot.isAuthenticated, initialSessionSnapshot.accountId) {
         routeRuntimes.appInitialHydrationRuntime.hydrate(
             request = AppInitialHydrationRequest(
                 initialSession = initialSessionSnapshot,
-                initialCredentials = dependencies.initialSessionCredentials,
+                initialCredentials = effectDependencies.initialSessionCredentials,
                 previewThreadsState = previewThreadsState,
             ),
             callbacks = AppInitialHydrationCallbacks(

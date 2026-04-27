@@ -41,6 +41,7 @@ The app shell has already moved past a single monolithic route host milestone:
 - `InboxStateHolder` owns derived inbox UI state and route-agnostic inbox action dispatch in the feature package; `ArgusLensAppViewModel` owns its lifetime while app code still owns shared thread mutation, conversation-open sequencing, app routes, sign-out/session effects, realtime, persistence, and chat behavior.
 - `ChatStateHolder` owns selected-conversation chat state and UI derivation in the feature package; `ArgusLensAppViewModel` owns its lifetime while app code still owns chat action side effects, call routing, selected conversation, shared thread mutation, realtime, and persistence.
 - `AppRouteContract` owns stable app route descriptors and route strings, so app navigation no longer depends on enum names. AndroidX `composable<T>` typed route registration, Kotlin serialization setup, and route args remain future slices after process-death restoration and selected-conversation ownership are explicit.
+- `AppRouteHostEffectDependencies` narrows host lifecycle/effects inputs so the effects layer no longer receives the full Hilt-backed `AppDependencies` aggregate.
 - `:core:model` and `:core:ui` own the former shared `model` and `ui` modules without package renames, keeping the first physical core migration low risk.
 - `ArgusLensAppState` owns root UI state and pure session transition helpers.
 

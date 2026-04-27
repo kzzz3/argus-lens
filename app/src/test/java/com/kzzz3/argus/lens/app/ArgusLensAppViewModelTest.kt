@@ -92,6 +92,25 @@ class ArgusLensAppViewModelTest {
     }
 
     @Test
+    fun appRouteHostEffectsUseNarrowDependencyBoundary() {
+        val effectsSource = File("src/main/java/com/kzzz3/argus/lens/app/AppRouteHostEffects.kt").readText()
+        val routeHostSource = File("src/main/java/com/kzzz3/argus/lens/app/AppRouteHost.kt").readText()
+
+        assertTrue(effectsSource.contains("data class AppRouteHostEffectDependencies"))
+        assertTrue(effectsSource.contains("effectDependencies: AppRouteHostEffectDependencies"))
+        assertTrue(effectsSource.contains("val initialSessionSnapshot: AppSessionState"))
+        assertTrue(effectsSource.contains("val initialSessionCredentials: SessionCredentials"))
+        assertTrue(effectsSource.contains("val sessionCredentialsStore: SessionCredentialsStore"))
+        assertTrue(effectsSource.contains("val realtimeClient: ConversationRealtimeClient"))
+        assertTrue(routeHostSource.contains("AppRouteHostEffectDependencies("))
+        assertFalse(effectsSource.contains("dependencies: AppDependencies"))
+        assertFalse(effectsSource.contains("dependencies.initialSessionSnapshot"))
+        assertFalse(effectsSource.contains("dependencies.initialSessionCredentials"))
+        assertFalse(effectsSource.contains("dependencies.sessionCredentialsStore"))
+        assertFalse(effectsSource.contains("dependencies.realtimeClient"))
+    }
+
+    @Test
     fun appViewModel_exposesRuntimeScopeBackedByViewModelScope() {
         val viewModelSource = File("src/main/java/com/kzzz3/argus/lens/app/ArgusLensAppViewModel.kt").readText()
 
