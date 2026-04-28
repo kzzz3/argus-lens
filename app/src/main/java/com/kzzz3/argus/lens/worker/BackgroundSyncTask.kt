@@ -1,7 +1,7 @@
 package com.kzzz3.argus.lens.worker
 
-import com.kzzz3.argus.lens.data.conversation.ConversationRepository
-import com.kzzz3.argus.lens.data.session.SessionRepository
+import com.kzzz3.argus.lens.core.data.conversation.ConversationRepository
+import com.kzzz3.argus.lens.session.SessionRepository
 import kotlin.coroutines.cancellation.CancellationException
 import javax.inject.Inject
 

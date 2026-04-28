@@ -1,33 +1,33 @@
 package com.kzzz3.argus.lens.app.di
 
 import android.content.Context
-import com.kzzz3.argus.lens.app.AppDependencies
-import com.kzzz3.argus.lens.app.AppSessionCoordinator
-import com.kzzz3.argus.lens.app.AppShellCoordinator
-import com.kzzz3.argus.lens.app.SessionCredentialsStore
-import com.kzzz3.argus.lens.data.auth.AuthRepository
-import com.kzzz3.argus.lens.data.auth.createAuthRepository
-import com.kzzz3.argus.lens.data.conversation.ConversationRepository
-import com.kzzz3.argus.lens.data.conversation.createConversationRepository
-import com.kzzz3.argus.lens.data.friend.FriendRepository
-import com.kzzz3.argus.lens.data.friend.createFriendRepository
-import com.kzzz3.argus.lens.data.media.MediaRepository
-import com.kzzz3.argus.lens.data.media.createMediaRepository
-import com.kzzz3.argus.lens.data.payment.PaymentRepository
-import com.kzzz3.argus.lens.data.payment.createPaymentRepository
-import com.kzzz3.argus.lens.data.realtime.ConversationRealtimeClient
-import com.kzzz3.argus.lens.data.realtime.createConversationRealtimeClient
-import com.kzzz3.argus.lens.data.session.SessionCredentials
-import com.kzzz3.argus.lens.data.session.SessionRepository
-import com.kzzz3.argus.lens.data.session.createLocalSessionCredentialsSnapshot
-import com.kzzz3.argus.lens.data.session.createLocalSessionSnapshot
-import com.kzzz3.argus.lens.data.session.createLocalSessionStore
-import com.kzzz3.argus.lens.feature.auth.AuthCoordinator
-import com.kzzz3.argus.lens.feature.contacts.ContactsCoordinator
-import com.kzzz3.argus.lens.feature.contacts.NewFriendsCoordinator
-import com.kzzz3.argus.lens.feature.inbox.ChatCoordinator
-import com.kzzz3.argus.lens.feature.realtime.RealtimeCoordinator
-import com.kzzz3.argus.lens.feature.wallet.WalletRequestCoordinator
+import com.kzzz3.argus.lens.app.AppSessionRefresher
+import com.kzzz3.argus.lens.app.AppShellUseCases
+import com.kzzz3.argus.lens.app.composition.AppDependencies
+import com.kzzz3.argus.lens.core.data.auth.AuthRepository
+import com.kzzz3.argus.lens.core.data.auth.createAuthRepository
+import com.kzzz3.argus.lens.core.data.conversation.ConversationRepository
+import com.kzzz3.argus.lens.core.data.conversation.createConversationRepository
+import com.kzzz3.argus.lens.core.data.friend.FriendRepository
+import com.kzzz3.argus.lens.core.data.friend.createFriendRepository
+import com.kzzz3.argus.lens.core.data.media.MediaRepository
+import com.kzzz3.argus.lens.core.data.media.createMediaRepository
+import com.kzzz3.argus.lens.core.data.payment.PaymentRepository
+import com.kzzz3.argus.lens.core.data.payment.createPaymentRepository
+import com.kzzz3.argus.lens.core.data.realtime.createConversationRealtimeClient
+import com.kzzz3.argus.lens.core.data.session.createInitialSessionCredentials
+import com.kzzz3.argus.lens.core.data.session.createInitialSessionSnapshot
+import com.kzzz3.argus.lens.core.data.session.createSessionRepository
+import com.kzzz3.argus.lens.model.realtime.ConversationRealtimeClient
+import com.kzzz3.argus.lens.session.SessionCredentials
+import com.kzzz3.argus.lens.session.SessionCredentialsStore
+import com.kzzz3.argus.lens.session.SessionRepository
+import com.kzzz3.argus.lens.feature.auth.AuthUseCases
+import com.kzzz3.argus.lens.feature.contacts.ContactsUseCases
+import com.kzzz3.argus.lens.feature.contacts.FriendRequestUseCases
+import com.kzzz3.argus.lens.feature.inbox.ChatUseCases
+import com.kzzz3.argus.lens.feature.realtime.ApplyRealtimeConversationEventUseCase
+import com.kzzz3.argus.lens.feature.wallet.WalletUseCases
 import com.kzzz3.argus.lens.worker.BackgroundSyncScheduler
 import com.kzzz3.argus.lens.worker.WorkManagerBackgroundSyncScheduler
 import dagger.Module
@@ -48,7 +48,7 @@ object ArgusLensAppModule {
     @Singleton
     fun provideSessionRepository(
         @ApplicationContext context: Context,
-    ): SessionRepository = createLocalSessionStore(context)
+    ): SessionRepository = createSessionRepository(context)
 
     @Provides
     @Singleton
@@ -91,7 +91,7 @@ object ArgusLensAppModule {
     @Singleton
     fun provideInitialSessionCredentials(
         @ApplicationContext context: Context,
-    ): SessionCredentials = createLocalSessionCredentialsSnapshot(context)
+    ): SessionCredentials = createInitialSessionCredentials(context)
 
     @Provides
     @Singleton
@@ -101,12 +101,12 @@ object ArgusLensAppModule {
 
     @Provides
     @Singleton
-    fun provideAppShellCoordinator(
+    fun provideAppShellUseCases(
         sessionRepository: SessionRepository,
         conversationRepository: ConversationRepository,
         paymentRepository: PaymentRepository,
         backgroundSyncScheduler: BackgroundSyncScheduler,
-    ): AppShellCoordinator = AppShellCoordinator(
+    ): AppShellUseCases = AppShellUseCases(
         sessionRepository,
         conversationRepository,
         paymentRepository,
@@ -115,45 +115,46 @@ object ArgusLensAppModule {
 
     @Provides
     @Singleton
-    fun provideAppSessionCoordinator(
+    fun provideAppSessionRefresher(
         authRepository: AuthRepository,
         sessionRepository: SessionRepository,
-    ): AppSessionCoordinator = AppSessionCoordinator(authRepository, sessionRepository)
+    ): AppSessionRefresher = AppSessionRefresher(authRepository, sessionRepository)
 
     @Provides
     @Singleton
-    fun provideAuthCoordinator(authRepository: AuthRepository): AuthCoordinator = AuthCoordinator(authRepository)
+    fun provideAuthUseCases(authRepository: AuthRepository): AuthUseCases = AuthUseCases(authRepository)
 
     @Provides
     @Singleton
-    fun provideContactsCoordinator(
+    fun provideContactsUseCases(
         conversationRepository: ConversationRepository,
         friendRepository: FriendRepository,
-    ): ContactsCoordinator = ContactsCoordinator(conversationRepository, friendRepository)
+    ): ContactsUseCases = ContactsUseCases(conversationRepository, friendRepository)
 
     @Provides
     @Singleton
-    fun provideNewFriendsCoordinator(
+    fun provideFriendRequestUseCases(
         friendRepository: FriendRepository,
         conversationRepository: ConversationRepository,
-    ): NewFriendsCoordinator = NewFriendsCoordinator(friendRepository, conversationRepository)
+    ): FriendRequestUseCases = FriendRequestUseCases(friendRepository, conversationRepository)
 
     @Provides
     @Singleton
-    fun provideChatCoordinator(
+    fun provideChatUseCases(
         conversationRepository: ConversationRepository,
         mediaRepository: MediaRepository,
-    ): ChatCoordinator = ChatCoordinator(conversationRepository, mediaRepository)
+    ): ChatUseCases = ChatUseCases(conversationRepository, mediaRepository)
 
     @Provides
     @Singleton
-    fun provideWalletRequestCoordinator(paymentRepository: PaymentRepository): WalletRequestCoordinator =
-        WalletRequestCoordinator(paymentRepository)
+    fun provideWalletUseCases(paymentRepository: PaymentRepository): WalletUseCases =
+        WalletUseCases(paymentRepository)
 
     @Provides
     @Singleton
-    fun provideRealtimeCoordinator(conversationRepository: ConversationRepository): RealtimeCoordinator =
-        RealtimeCoordinator(conversationRepository)
+    fun provideApplyRealtimeConversationEventUseCase(
+        conversationRepository: ConversationRepository,
+    ): ApplyRealtimeConversationEventUseCase = ApplyRealtimeConversationEventUseCase(conversationRepository)
 
     @Provides
     @Singleton
@@ -165,14 +166,14 @@ object ArgusLensAppModule {
         mediaRepository: MediaRepository,
         paymentRepository: PaymentRepository,
         realtimeClient: ConversationRealtimeClient,
-        appShellCoordinator: AppShellCoordinator,
-        appSessionCoordinator: AppSessionCoordinator,
-        authCoordinator: AuthCoordinator,
-        contactsCoordinator: ContactsCoordinator,
-        newFriendsCoordinator: NewFriendsCoordinator,
-        chatCoordinator: ChatCoordinator,
-        walletRequestCoordinator: WalletRequestCoordinator,
-        realtimeCoordinator: RealtimeCoordinator,
+        appShellUseCases: AppShellUseCases,
+        appSessionRefresher: AppSessionRefresher,
+        authUseCases: AuthUseCases,
+        contactsUseCases: ContactsUseCases,
+        friendRequestUseCases: FriendRequestUseCases,
+        chatUseCases: ChatUseCases,
+        walletUseCases: WalletUseCases,
+        applyRealtimeConversationEventUseCase: ApplyRealtimeConversationEventUseCase,
         @ApplicationContext context: Context,
         initialCredentials: SessionCredentials,
         sessionCredentialsStore: SessionCredentialsStore,
@@ -185,15 +186,15 @@ object ArgusLensAppModule {
             mediaRepository = mediaRepository,
             paymentRepository = paymentRepository,
             realtimeClient = realtimeClient,
-            appShellCoordinator = appShellCoordinator,
-            appSessionCoordinator = appSessionCoordinator,
-            authCoordinator = authCoordinator,
-            contactsCoordinator = contactsCoordinator,
-            newFriendsCoordinator = newFriendsCoordinator,
-            chatCoordinator = chatCoordinator,
-            walletRequestCoordinator = walletRequestCoordinator,
-            realtimeCoordinator = realtimeCoordinator,
-            initialSessionSnapshot = createLocalSessionSnapshot(context),
+            appShellUseCases = appShellUseCases,
+            appSessionRefresher = appSessionRefresher,
+            authUseCases = authUseCases,
+            contactsUseCases = contactsUseCases,
+            friendRequestUseCases = friendRequestUseCases,
+            chatUseCases = chatUseCases,
+            walletUseCases = walletUseCases,
+            applyRealtimeConversationEventUseCase = applyRealtimeConversationEventUseCase,
+            initialSessionSnapshot = createInitialSessionSnapshot(context),
             initialSessionCredentials = initialCredentials,
             sessionCredentialsStore = sessionCredentialsStore,
         )

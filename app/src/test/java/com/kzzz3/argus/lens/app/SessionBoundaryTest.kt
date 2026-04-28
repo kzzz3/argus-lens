@@ -1,6 +1,9 @@
 package com.kzzz3.argus.lens.app
 
-import com.kzzz3.argus.lens.data.auth.AuthSession
+import com.kzzz3.argus.lens.core.data.auth.AuthSession
+import com.kzzz3.argus.lens.app.runtime.AppRestorableEntryContext
+import com.kzzz3.argus.lens.app.state.createSessionCredentialsFromAuthSession
+import com.kzzz3.argus.lens.app.state.createSessionFromAuthSession
 import com.kzzz3.argus.lens.model.session.AppSessionState
 import java.io.File
 import org.junit.Assert.assertEquals
@@ -79,7 +82,7 @@ class SessionBoundaryTest {
 
     @Test
     fun savedStateHandleState_doesNotPersistSessionTokens() {
-        val viewModelSource = File("src/main/java/com/kzzz3/argus/lens/app/ArgusLensAppViewModel.kt").readText()
+        val viewModelSource = File("src/main/java/com/kzzz3/argus/lens/app/state/ArgusLensAppViewModel.kt").readText()
         val savedStateSource = viewModelSource
             .lineSequence()
             .filter { line ->

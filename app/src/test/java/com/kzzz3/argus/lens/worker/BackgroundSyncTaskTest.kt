@@ -1,9 +1,9 @@
 package com.kzzz3.argus.lens.worker
 
 import com.kzzz3.argus.lens.model.session.AppSessionState
-import com.kzzz3.argus.lens.data.conversation.ConversationRepository
-import com.kzzz3.argus.lens.data.session.SessionCredentials
-import com.kzzz3.argus.lens.data.session.SessionRepository
+import com.kzzz3.argus.lens.core.data.conversation.ConversationRepository
+import com.kzzz3.argus.lens.session.SessionCredentials
+import com.kzzz3.argus.lens.session.SessionRepository
 import com.kzzz3.argus.lens.feature.inbox.ChatMessageAttachment
 import com.kzzz3.argus.lens.feature.inbox.ChatState
 import com.kzzz3.argus.lens.feature.inbox.ConversationThreadsState
