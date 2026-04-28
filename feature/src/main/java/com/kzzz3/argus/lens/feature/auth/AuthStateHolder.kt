@@ -1,6 +1,6 @@
 package com.kzzz3.argus.lens.feature.auth
 
-import com.kzzz3.argus.lens.data.auth.AuthRepositoryResult
+import com.kzzz3.argus.lens.core.data.auth.AuthRepositoryResult
 import com.kzzz3.argus.lens.feature.register.RegisterAction
 import com.kzzz3.argus.lens.feature.register.RegisterEffect
 import com.kzzz3.argus.lens.feature.register.RegisterFormState

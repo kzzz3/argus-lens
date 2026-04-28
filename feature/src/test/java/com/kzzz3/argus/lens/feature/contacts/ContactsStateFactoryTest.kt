@@ -1,6 +1,6 @@
 package com.kzzz3.argus.lens.feature.contacts
 
-import com.kzzz3.argus.lens.data.friend.FriendEntry
+import com.kzzz3.argus.lens.core.data.friend.FriendEntry
 import com.kzzz3.argus.lens.feature.inbox.ChatMessageItem
 import com.kzzz3.argus.lens.feature.inbox.InboxConversationThread
 import org.junit.Assert.assertEquals

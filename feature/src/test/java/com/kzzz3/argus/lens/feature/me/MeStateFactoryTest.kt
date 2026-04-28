@@ -1,6 +1,6 @@
 package com.kzzz3.argus.lens.feature.me
 
-import com.kzzz3.argus.lens.data.friend.FriendEntry
+import com.kzzz3.argus.lens.core.data.friend.FriendEntry
 import com.kzzz3.argus.lens.feature.inbox.InboxConversationThread
 import com.kzzz3.argus.lens.feature.wallet.WalletState
 import com.kzzz3.argus.lens.feature.wallet.WalletSummaryUi

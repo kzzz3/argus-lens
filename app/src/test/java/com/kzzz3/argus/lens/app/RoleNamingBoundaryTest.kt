@@ -7,13 +7,14 @@ import org.junit.Test
 
 class RoleNamingBoundaryTest {
     @Test
-    fun roleNamingTaxonomyDocumentsEveryRuntimeLikeRole() {
+    fun roleNamingTaxonomyDocumentsEveryAppRole() {
         val architectureTarget = File("../docs/android-architecture-target.md").readText()
 
         listOf(
             "## Role Naming Boundary",
-            "Runtime",
-            "Coordinator",
+            "UseCase",
+            "Manager",
+            "Scheduler",
             "Handler",
             "Runner",
             "Store",
@@ -27,10 +28,12 @@ class RoleNamingBoundaryTest {
         }
 
         listOf(
-            "AppRouteNavigationRuntime",
-            "AppPersistenceRuntime",
-            "AppRouteRuntimes",
-            "CallSessionRuntime",
+            "AppRouteNavigator",
+            "PersistAppStateUseCase",
+            "AppRouteHandlers",
+            "CallSessionTimer",
+            "RealtimeConnectionManager",
+            "RealtimeReconnectScheduler",
             "SessionCredentialsStore",
             "LocalSessionStore",
         ).forEach { transitionalName ->
@@ -42,13 +45,13 @@ class RoleNamingBoundaryTest {
     }
 
     @Test
-    fun appRouteRuntimesDoNotConstructFeatureOwnedStateOrHandlers() {
-        val routeRuntimesSource = File("src/main/java/com/kzzz3/argus/lens/app/AppRouteRuntimes.kt").readText()
+    fun appRouteHandlersDoNotConstructFeatureOwnedStateHolders() {
+        val routeHandlersSource = File("src/main/java/com/kzzz3/argus/lens/app/host/AppRouteHandlers.kt").readText()
 
-        listOf("StateHolder(", "ActionHandler(", "EffectHandler(", "FeatureController(").forEach { forbiddenSource ->
+        listOf("StateHolder(", "ActionHandler(", "EffectHandler(").forEach { forbiddenSource ->
             assertFalse(
-                "AppRouteRuntimes.kt must not construct feature-owned role $forbiddenSource",
-                routeRuntimesSource.contains(forbiddenSource),
+                "AppRouteHandlers.kt must not construct feature-owned role $forbiddenSource",
+                routeHandlersSource.contains(forbiddenSource),
             )
         }
     }

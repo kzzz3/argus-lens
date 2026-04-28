@@ -1,10 +1,10 @@
 package com.kzzz3.argus.lens.feature.wallet
 
 import android.os.Parcelable
-import com.kzzz3.argus.lens.data.payment.PaymentHistoryEntry
-import com.kzzz3.argus.lens.data.payment.PaymentReceipt
-import com.kzzz3.argus.lens.data.payment.PaymentTransferResolution
-import com.kzzz3.argus.lens.data.payment.WalletSummary
+import com.kzzz3.argus.lens.model.payment.PaymentHistoryEntry
+import com.kzzz3.argus.lens.model.payment.PaymentReceipt
+import com.kzzz3.argus.lens.model.payment.PaymentTransferResolution
+import com.kzzz3.argus.lens.model.payment.WalletSummary
 import java.util.Locale
 import kotlinx.parcelize.Parcelize
 

@@ -1,6 +1,12 @@
 package com.kzzz3.argus.lens.app
 
 import com.kzzz3.argus.lens.feature.auth.AuthFormState
+import com.kzzz3.argus.lens.app.state.DEFAULT_PREVIEW_DISPLAY_NAME
+import com.kzzz3.argus.lens.app.state.completeRegistrationForm
+import com.kzzz3.argus.lens.app.state.createPostAuthUiState
+import com.kzzz3.argus.lens.app.state.createSessionCredentialsFromAuthSession
+import com.kzzz3.argus.lens.app.state.createSessionFromAuthSession
+import com.kzzz3.argus.lens.app.state.resolvePreviewDisplayName
 import com.kzzz3.argus.lens.feature.contacts.ContactsState
 import com.kzzz3.argus.lens.feature.contacts.createContactsStatusUpdate
 import com.kzzz3.argus.lens.feature.contacts.createFriendRequestStatusState
@@ -13,11 +19,11 @@ import com.kzzz3.argus.lens.feature.wallet.counterpartyDisplayName
 import com.kzzz3.argus.lens.feature.wallet.resolveWalletTransferMetadata
 import com.kzzz3.argus.lens.feature.wallet.toDirection
 import com.kzzz3.argus.lens.feature.register.RegisterFormState
-import com.kzzz3.argus.lens.data.auth.AuthSession
-import com.kzzz3.argus.lens.data.friend.FriendEntry
-import com.kzzz3.argus.lens.data.friend.FriendRequestsSnapshot
-import com.kzzz3.argus.lens.data.payment.PaymentHistoryEntry
-import com.kzzz3.argus.lens.data.payment.PaymentReceipt
+import com.kzzz3.argus.lens.core.data.auth.AuthSession
+import com.kzzz3.argus.lens.core.data.friend.FriendEntry
+import com.kzzz3.argus.lens.core.data.friend.FriendRequestsSnapshot
+import com.kzzz3.argus.lens.model.payment.PaymentHistoryEntry
+import com.kzzz3.argus.lens.model.payment.PaymentReceipt
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -87,7 +93,6 @@ class ArgusLensAppFunctionTest {
                 conversationThreadsState = sampleConversationThreadsState(),
                 hydratedConversationAccountId = "tester",
                 callSessionState = com.kzzz3.argus.lens.feature.call.CallSessionState(),
-                selectedConversationId = "",
             ),
             accountId = "tester",
         )

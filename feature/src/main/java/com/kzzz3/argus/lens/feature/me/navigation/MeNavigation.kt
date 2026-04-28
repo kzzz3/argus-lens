@@ -6,23 +6,33 @@ import com.kzzz3.argus.lens.feature.me.MeScreen
 import com.kzzz3.argus.lens.feature.me.MeUiState
 import com.kzzz3.argus.lens.feature.navigation.AuthenticatedFeatureRouteShell
 import com.kzzz3.argus.lens.ui.shell.ShellDestination
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
-const val MeRoute = "Me"
+const val MeRoutePattern = "Me"
+
+@Serializable
+@SerialName(MeRoutePattern)
+data object MeRoute
+
+data class MeRoutes(
+    val meShellDestination: ShellDestination,
+    val onTabSelected: (ShellDestination) -> Unit,
+    val meState: MeUiState,
+    val onSignOut: () -> Unit,
+)
 
 fun NavGraphBuilder.meNavigation(
-    meShellDestination: ShellDestination,
-    onTabSelected: (ShellDestination) -> Unit,
-    meState: MeUiState,
-    onSignOut: () -> Unit,
+    routes: MeRoutes,
 ) {
-    composable(MeRoute) {
+    composable<MeRoute> {
         AuthenticatedFeatureRouteShell(
-            currentDestination = meShellDestination,
-            onTabSelected = onTabSelected,
+            currentDestination = routes.meShellDestination,
+            onTabSelected = routes.onTabSelected,
         ) { contentModifier ->
             MeScreen(
-                state = meState,
-                onSignOut = onSignOut,
+                state = routes.meState,
+                onSignOut = routes.onSignOut,
                 modifier = contentModifier,
             )
         }

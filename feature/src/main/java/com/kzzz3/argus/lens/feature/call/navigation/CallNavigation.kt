@@ -7,23 +7,33 @@ import com.kzzz3.argus.lens.feature.call.CallSessionScreen
 import com.kzzz3.argus.lens.feature.call.CallSessionUiState
 import com.kzzz3.argus.lens.feature.navigation.AuthenticatedFeatureRouteShell
 import com.kzzz3.argus.lens.ui.shell.ShellDestination
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
-const val CallSessionRoute = "CallSession"
+const val CallSessionRoutePattern = "CallSession"
+
+@Serializable
+@SerialName(CallSessionRoutePattern)
+data object CallSessionRoute
+
+data class CallSessionRoutes(
+    val callShellDestination: ShellDestination,
+    val onTabSelected: (ShellDestination) -> Unit,
+    val callSessionState: CallSessionUiState,
+    val onCallSessionAction: (CallSessionAction) -> Unit,
+)
 
 fun NavGraphBuilder.callNavigation(
-    callShellDestination: ShellDestination,
-    onTabSelected: (ShellDestination) -> Unit,
-    callSessionState: CallSessionUiState,
-    onCallSessionAction: (CallSessionAction) -> Unit,
+    routes: CallSessionRoutes,
 ) {
-    composable(CallSessionRoute) {
+    composable<CallSessionRoute> {
         AuthenticatedFeatureRouteShell(
-            currentDestination = callShellDestination,
-            onTabSelected = onTabSelected,
+            currentDestination = routes.callShellDestination,
+            onTabSelected = routes.onTabSelected,
         ) { contentModifier ->
             CallSessionScreen(
-                state = callSessionState,
-                onAction = onCallSessionAction,
+                state = routes.callSessionState,
+                onAction = routes.onCallSessionAction,
                 modifier = contentModifier,
             )
         }

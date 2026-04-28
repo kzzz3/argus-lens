@@ -8,7 +8,7 @@ import org.junit.Test
 
 class ChatStateHolderTest {
     @Test
-    fun replaceInputs_recomputesChatStateAndUiStateFromSelectedConversationStatusAndSessionDisplayName() {
+    fun replaceInputs_recomputesChatStateAndUiStateFromActiveChatConversationStatusAndSessionDisplayName() {
         val holder = ChatStateHolder()
         val threads = ConversationThreadsState(
             threads = listOf(
@@ -29,7 +29,7 @@ class ChatStateHolderTest {
         holder.replaceInputs(
             currentUserDisplayName = "Argus Tester",
             threadsState = threads,
-            selectedConversationId = "conversation-1",
+            activeChatConversationId = "conversation-1",
             statusMessage = "Uploaded",
             isStatusError = false,
         )
@@ -45,7 +45,7 @@ class ChatStateHolderTest {
         holder.replaceInputs(
             currentUserDisplayName = "Argus Tester",
             threadsState = threads,
-            selectedConversationId = "conversation-2",
+            activeChatConversationId = "conversation-2",
             statusMessage = "Upload failed",
             isStatusError = true,
         )
@@ -57,14 +57,14 @@ class ChatStateHolderTest {
     }
 
     @Test
-    fun replaceInputs_missingSelectedConversationClearsChatStateAndUiState() {
+    fun replaceInputs_missingActiveChatConversationClearsChatStateAndUiState() {
         val holder = ChatStateHolder()
         holder.replaceInputs(
             currentUserDisplayName = "Argus Tester",
             threadsState = ConversationThreadsState(
                 threads = listOf(conversationThread(id = "conversation-1", title = "Alice")),
             ),
-            selectedConversationId = "conversation-1",
+            activeChatConversationId = "conversation-1",
             statusMessage = null,
             isStatusError = false,
         )
@@ -74,7 +74,7 @@ class ChatStateHolderTest {
             threadsState = ConversationThreadsState(
                 threads = listOf(conversationThread(id = "conversation-2", title = "Bob")),
             ),
-            selectedConversationId = "conversation-1",
+            activeChatConversationId = "conversation-1",
             statusMessage = "Stale status",
             isStatusError = true,
         )

@@ -1,10 +1,10 @@
 package com.kzzz3.argus.lens.feature.inbox
 
-import com.kzzz3.argus.lens.data.conversation.ConversationRepository
-import com.kzzz3.argus.lens.data.media.FinalizedAttachmentMetadata
-import com.kzzz3.argus.lens.data.media.MediaRepository
-import com.kzzz3.argus.lens.data.media.MediaRepositoryResult
-import com.kzzz3.argus.lens.data.media.MediaUploadSession
+import com.kzzz3.argus.lens.core.data.conversation.ConversationRepository
+import com.kzzz3.argus.lens.core.data.media.FinalizedAttachmentMetadata
+import com.kzzz3.argus.lens.core.data.media.MediaRepository
+import com.kzzz3.argus.lens.core.data.media.MediaRepositoryResult
+import com.kzzz3.argus.lens.core.data.media.MediaUploadSession
 import kotlin.text.Charsets
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals

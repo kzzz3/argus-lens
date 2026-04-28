@@ -1,6 +1,6 @@
 package com.kzzz3.argus.lens.feature.realtime
 
-import com.kzzz3.argus.lens.data.realtime.ConversationRealtimeConnectionState
+import com.kzzz3.argus.lens.model.realtime.ConversationRealtimeConnectionState
 
 fun buildRealtimeStatusLabel(state: ConversationRealtimeConnectionState): String {
     return when (state) {

@@ -24,7 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.kzzz3.argus.lens.data.friend.FriendRequestEntry
+import com.kzzz3.argus.lens.core.data.friend.FriendRequestEntry
 import com.kzzz3.argus.lens.ui.theme.ArguslensTheme
 import com.kzzz3.argus.lens.ui.theme.ImGreen
 import com.kzzz3.argus.lens.ui.theme.ImSurfaceElevated

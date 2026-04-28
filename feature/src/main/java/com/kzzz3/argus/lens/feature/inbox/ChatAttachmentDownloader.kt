@@ -1,7 +1,7 @@
 package com.kzzz3.argus.lens.feature.inbox
 
-import com.kzzz3.argus.lens.data.media.MediaRepository
-import com.kzzz3.argus.lens.data.media.MediaRepositoryResult
+import com.kzzz3.argus.lens.core.data.media.MediaRepository
+import com.kzzz3.argus.lens.core.data.media.MediaRepositoryResult
 
 data class ChatAttachmentDownloadResult(
     val message: String?,

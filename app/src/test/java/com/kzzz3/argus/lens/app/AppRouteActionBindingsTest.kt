@@ -1,43 +1,65 @@
 package com.kzzz3.argus.lens.app
 
 import com.kzzz3.argus.lens.app.navigation.AppRoute
-import com.kzzz3.argus.lens.data.auth.AuthFailureKind
-import com.kzzz3.argus.lens.data.auth.AuthRepository
-import com.kzzz3.argus.lens.data.auth.AuthRepositoryResult
-import com.kzzz3.argus.lens.data.conversation.ConversationRepository
-import com.kzzz3.argus.lens.data.friend.FriendRequestsSnapshot
-import com.kzzz3.argus.lens.data.payment.PaymentRepository
-import com.kzzz3.argus.lens.data.payment.PaymentRepositoryResult
-import com.kzzz3.argus.lens.data.realtime.ConversationRealtimeClient
-import com.kzzz3.argus.lens.data.realtime.ConversationRealtimeConnectionState
-import com.kzzz3.argus.lens.data.realtime.ConversationRealtimeEvent
-import com.kzzz3.argus.lens.data.realtime.ConversationRealtimeSubscription
-import com.kzzz3.argus.lens.data.session.SessionCredentials
-import com.kzzz3.argus.lens.data.session.SessionRepository
+import com.kzzz3.argus.lens.app.host.AppActionDispatcher
+import com.kzzz3.argus.lens.app.host.AppFeatureCallbacks
+import com.kzzz3.argus.lens.app.host.AppRouteHandlers
+import com.kzzz3.argus.lens.app.host.AppShellCallbacks
+import com.kzzz3.argus.lens.app.host.AppShellState
+import com.kzzz3.argus.lens.app.host.AppShellUiState
+import com.kzzz3.argus.lens.app.runtime.AppRouteNavigator
+import com.kzzz3.argus.lens.app.runtime.PersistAppStateUseCase
+import com.kzzz3.argus.lens.app.runtime.RestoreAppSessionUseCase
+import com.kzzz3.argus.lens.app.runtime.SessionBoundaryHandler
+import com.kzzz3.argus.lens.app.runtime.AppSessionBoundaryCallbacks
+import com.kzzz3.argus.lens.core.data.auth.AuthFailureKind
+import com.kzzz3.argus.lens.core.data.auth.AuthRepository
+import com.kzzz3.argus.lens.core.data.auth.AuthRepositoryResult
+import com.kzzz3.argus.lens.core.data.conversation.ConversationRepository
+import com.kzzz3.argus.lens.core.data.payment.PaymentRepository
+import com.kzzz3.argus.lens.core.data.payment.PaymentRepositoryResult
+import com.kzzz3.argus.lens.model.realtime.ConversationRealtimeClient
+import com.kzzz3.argus.lens.model.realtime.ConversationRealtimeConnectionState
+import com.kzzz3.argus.lens.model.realtime.ConversationRealtimeEvent
+import com.kzzz3.argus.lens.model.realtime.ConversationRealtimeSubscription
+import com.kzzz3.argus.lens.session.SessionCredentials
+import com.kzzz3.argus.lens.session.SessionRepository
 import com.kzzz3.argus.lens.feature.auth.AuthFormState
 import com.kzzz3.argus.lens.feature.auth.AuthReducerResult
 import com.kzzz3.argus.lens.feature.auth.AuthStateHolder
 import com.kzzz3.argus.lens.feature.auth.AuthSubmissionResult
 import com.kzzz3.argus.lens.feature.auth.createAuthEntryUiState
-import com.kzzz3.argus.lens.feature.call.CallSessionRuntime
+import com.kzzz3.argus.lens.feature.call.CallSessionTimer
 import com.kzzz3.argus.lens.feature.call.CallSessionState
 import com.kzzz3.argus.lens.feature.call.createCallSessionUiState
 import com.kzzz3.argus.lens.feature.contacts.AddFriendResult
+import com.kzzz3.argus.lens.feature.contacts.ContactsFeatureController
+import com.kzzz3.argus.lens.feature.contacts.ContactsFeatureState
+import com.kzzz3.argus.lens.feature.contacts.ContactsOpenConversationResult
+import com.kzzz3.argus.lens.feature.contacts.ContactsRouteHandler
+import com.kzzz3.argus.lens.feature.contacts.ContactsRouteLoadHandler
 import com.kzzz3.argus.lens.feature.contacts.ContactsState
 import com.kzzz3.argus.lens.feature.contacts.FriendRequestStatusState
 import com.kzzz3.argus.lens.feature.contacts.NewFriendsActionResult
 import com.kzzz3.argus.lens.feature.contacts.NewFriendsUiState
 import com.kzzz3.argus.lens.feature.contacts.createContactsUiState
 import com.kzzz3.argus.lens.feature.inbox.ChatActionResult
+import com.kzzz3.argus.lens.feature.inbox.ChatRouteHandler
 import com.kzzz3.argus.lens.feature.inbox.ChatMessageAttachment
 import com.kzzz3.argus.lens.feature.inbox.ChatState
 import com.kzzz3.argus.lens.feature.inbox.ChatStatusResult
 import com.kzzz3.argus.lens.feature.inbox.ConversationThreadsState
+import com.kzzz3.argus.lens.feature.inbox.InboxChatFeatureController
+import com.kzzz3.argus.lens.feature.inbox.InboxChatFeatureState
+import com.kzzz3.argus.lens.feature.inbox.InboxAction
+import com.kzzz3.argus.lens.feature.inbox.InboxRouteHandler
 import com.kzzz3.argus.lens.feature.inbox.InboxStateHolder
 import com.kzzz3.argus.lens.feature.inbox.OpenInboxConversationResult
 import com.kzzz3.argus.lens.feature.inbox.createInboxUiState
 import com.kzzz3.argus.lens.feature.me.createMeUiState
-import com.kzzz3.argus.lens.feature.realtime.RealtimeCoordinator
+import com.kzzz3.argus.lens.feature.realtime.ApplyRealtimeConversationEventUseCase
+import com.kzzz3.argus.lens.feature.realtime.RealtimeConnectionManager
+import com.kzzz3.argus.lens.feature.realtime.RealtimeReconnectScheduler
 import com.kzzz3.argus.lens.feature.register.RegisterFormState
 import com.kzzz3.argus.lens.feature.register.RegisterReducerResult
 import com.kzzz3.argus.lens.feature.register.createRegisterUiState
@@ -49,6 +71,9 @@ import com.kzzz3.argus.lens.feature.wallet.WalletState
 import com.kzzz3.argus.lens.feature.wallet.WalletStateHolder
 import com.kzzz3.argus.lens.feature.wallet.createWalletUiState
 import com.kzzz3.argus.lens.model.session.AppSessionState
+import com.kzzz3.argus.lens.session.SessionCredentialsStore
+import com.kzzz3.argus.lens.session.SessionRefreshOutcome
+import com.kzzz3.argus.lens.session.SessionRefreshScheduler
 import com.kzzz3.argus.lens.ui.shell.ShellDestination
 import com.kzzz3.argus.lens.worker.BackgroundSyncScheduler
 import kotlinx.coroutines.CoroutineScope
@@ -58,7 +83,7 @@ import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
-class AppRouteActionBindingsTest {
+class AppActionDispatcherTest {
     @Test
     fun authStateHolderCallbacksRouteEntryTransitionsThroughHostCallbacks() {
         val harness = createHarness()
@@ -72,7 +97,7 @@ class AppRouteActionBindingsTest {
     }
 
     @Test
-    fun openTopLevelAndShellDestinationRouteThroughNavigationRuntimeWithSessionAccount() {
+    fun openTopLevelAndShellDestinationRouteThroughNavigatorWithSessionAccount() {
         val harness = createHarness()
 
         harness.bindings.openTopLevelRoute(AppRoute.Wallet)
@@ -105,13 +130,13 @@ class AppRouteActionBindingsTest {
             },
         )
 
-        harness.bindings.openInboxConversation("conversation-1")
+        harness.bindings.handleInboxAction(InboxAction.OpenConversation("conversation-1"))
 
-        assertEquals(harness.hostState.conversationThreadsState, openInputThreads)
+        assertEquals(harness.conversationThreadsState, openInputThreads)
         assertEquals("conversation-1", openInputConversationId)
         assertEquals(openedThreads, synchronizeInputThreads)
         assertEquals("conversation-1", synchronizeInputConversationId)
-        assertEquals(listOf(openedThreads, synchronizedThreads), harness.hostCallbacks.conversationThreadsStates)
+        assertEquals(listOf(openedThreads, synchronizedThreads), harness.featureCallbacks.conversationThreadsStates)
         assertEquals(listOf("opened-conversation-1"), harness.hostCallbacks.openedConversations)
         harness.close()
     }
@@ -119,17 +144,15 @@ class AppRouteActionBindingsTest {
     @Test
     fun inboxStateHolderCallbacksRouteFeatureActionsThroughAppBindings() = runBlocking {
         val harness = createHarness()
-        val callbacks = harness.bindings.inboxStateHolderCallbacks()
-
-        callbacks.onOpenConversation("conversation-1")
-        callbacks.onOpenContacts()
-        callbacks.onOpenWallet()
+        harness.bindings.handleInboxAction(InboxAction.OpenConversation("conversation-1"))
+        harness.bindings.handleInboxAction(InboxAction.OpenContacts)
+        harness.bindings.handleInboxAction(InboxAction.OpenWallet)
 
         assertEquals(listOf("conversation-1"), harness.hostCallbacks.openedConversations)
         assertEquals(listOf(AppRoute.Contacts, AppRoute.Wallet), harness.hostCallbacks.routes)
         assertEquals("argus_tester", harness.walletStateHolder.state.value.currentAccountId)
 
-        callbacks.onSignOutToHud()
+        harness.bindings.handleInboxAction(InboxAction.SignOutToHud)
 
         assertEquals(1, harness.sessionCallbacks.sessionClearedCount)
         assertEquals("", harness.walletStateHolder.state.value.currentAccountId)
@@ -154,7 +177,7 @@ class AppRouteActionBindingsTest {
         assertEquals(listOf("event-1"), harness.hostCallbacks.realtimeEventIds)
         assertEquals(1, harness.hostCallbacks.realtimeLastEventResetCount)
         assertEquals(1, harness.hostCallbacks.realtimeReconnectIncrementCount)
-        assertEquals(listOf(updatedThreads), harness.hostCallbacks.conversationThreadsStates)
+        assertEquals(listOf(updatedThreads), harness.featureCallbacks.conversationThreadsStates)
         assertEquals(1, harness.sessionCallbacks.sessionClearedCount)
         assertEquals("Session expired.", harness.sessionCallbacks.authFormState?.submitResult)
         harness.close()
@@ -170,7 +193,7 @@ class AppRouteActionBindingsTest {
         val sessionRepository = FakeSessionRepository()
         val conversationRepository = FakeConversationRepository()
         val paymentRepository = FakePaymentRepository()
-        val appShellCoordinator = AppShellCoordinator(
+        val appShellUseCases = AppShellUseCases(
             sessionRepository = sessionRepository,
             conversationRepository = conversationRepository,
             paymentRepository = paymentRepository,
@@ -178,11 +201,13 @@ class AppRouteActionBindingsTest {
         )
         val walletStateHolder = createWalletStateHolder(scope)
         val hostState = createHostState()
+        val conversationThreadsState = ConversationThreadsState()
         val hostCallbacks = RecordingHostCallbacks()
+        val featureCallbacks = RecordingFeatureCallbacks()
         val sessionCallbacks = RecordingSessionBoundaryCallbacks(walletStateHolder)
-        val routeRuntimes = createRouteRuntimes(
+        val routeHandlers = createRouteHandlers(
             scope = scope,
-            appShellCoordinator = appShellCoordinator,
+            appShellUseCases = appShellUseCases,
             sessionRepository = sessionRepository,
             conversationRepository = conversationRepository,
             openInboxConversation = openInboxConversation,
@@ -191,25 +216,38 @@ class AppRouteActionBindingsTest {
         return Harness(
             scope = scope,
             hostState = hostState,
+            conversationThreadsState = conversationThreadsState,
             hostCallbacks = hostCallbacks,
+            featureCallbacks = featureCallbacks,
             sessionCallbacks = sessionCallbacks,
             walletStateHolder = walletStateHolder,
-            bindings = AppRouteActionBindings(
+            bindings = AppActionDispatcher(
                 state = hostState,
+                contactsFeatureState = ContactsFeatureState(),
+                callSessionState = CallSessionState(),
+                inboxChatFeatureState = InboxChatFeatureState(conversationThreadsState),
                 authStateHolder = createAuthStateHolder(scope),
-                inboxStateHolder = InboxStateHolder(),
+                inboxChatFeatureController = InboxChatFeatureController(
+                    inboxStateHolder = InboxStateHolder(),
+                    inboxRouteHandler = routeHandlers.inboxRouteHandler,
+                    chatRouteHandler = routeHandlers.chatRouteHandler,
+                ),
                 walletStateHolder = walletStateHolder,
                 callbacks = hostCallbacks.asHostCallbacks(),
-                routeUiState = createRouteUiState(hostState),
-                routeRuntimes = routeRuntimes,
+                featureCallbacks = featureCallbacks.asFeatureCallbacks(),
+                routeUiState = createRouteUiState(
+                    hostState = hostState,
+                    conversationThreadsState = conversationThreadsState,
+                ),
+                routeHandlers = routeHandlers,
                 previewThreadsState = ConversationThreadsState(),
-                sessionBoundaryRuntime = AppSessionBoundaryRuntime(
-                    appShellCoordinator = appShellCoordinator,
-                    refreshSessionOnce = { _, _ -> FakeAuthRepository.failure() },
+                sessionBoundaryHandler = SessionBoundaryHandler(
+                    appShellUseCases = appShellUseCases,
+                    refreshSessionOnce = { _, _ -> SessionRefreshOutcome.Failure(isUnauthorized = false) },
                     startSessionRefreshLoop = { _ -> },
                     cancelSessionRefreshLoop = {},
                     invalidateWalletRequests = walletStateHolder::invalidate,
-                    cancelCallSession = routeRuntimes.callSessionRuntime::cancel,
+                    cancelCallSession = routeHandlers.callSessionTimer::cancel,
                 ),
                 sessionBoundaryCallbacks = sessionCallbacks.asBoundaryCallbacks(),
                 getLatestCurrentRoute = { hostState.currentRoute },
@@ -219,11 +257,13 @@ class AppRouteActionBindingsTest {
 
     private data class Harness(
         val scope: CoroutineScope,
-        val hostState: AppRouteHostState,
+        val hostState: AppShellState,
+        val conversationThreadsState: ConversationThreadsState,
         val hostCallbacks: RecordingHostCallbacks,
+        val featureCallbacks: RecordingFeatureCallbacks,
         val sessionCallbacks: RecordingSessionBoundaryCallbacks,
         val walletStateHolder: WalletStateHolder,
-        val bindings: AppRouteActionBindings,
+        val bindings: AppActionDispatcher,
     ) {
         fun close() {
             scope.cancel()
@@ -232,37 +272,45 @@ class AppRouteActionBindingsTest {
 
     private class RecordingHostCallbacks {
         val routes = mutableListOf<AppRoute>()
-        val conversationThreadsStates = mutableListOf<ConversationThreadsState>()
         val openedConversations = mutableListOf<String>()
         val realtimeConnectionStates = mutableListOf<ConversationRealtimeConnectionState>()
         val realtimeEventIds = mutableListOf<String>()
         var realtimeLastEventResetCount: Int = 0
         var realtimeReconnectIncrementCount: Int = 0
 
-        fun asHostCallbacks(): AppRouteHostCallbacks {
-            return AppRouteHostCallbacks(
+        fun asHostCallbacks(): AppShellCallbacks {
+            return AppShellCallbacks(
                 onRouteChanged = routes::add,
-                onCallSessionStateChanged = {},
-                onContactsStateChanged = {},
-                onFriendsChanged = {},
                 onConversationOpened = openedConversations::add,
-                onSelectedConversationChanged = {},
-                onChatStatusChanged = { _, _ -> },
-                onChatStatusCleared = {},
-                onFriendRequestStatusChanged = {},
-                onFriendRequestsSnapshotChanged = {},
-                onFriendRequestStatusReset = {},
+                onActiveChatConversationChanged = {},
                 onHydratedSessionApplied = { _, _ -> },
                 onAuthenticatedSessionApplied = { _, _, _, _ -> },
                 onSessionRefreshed = {},
                 onSessionCleared = {},
-                onConversationThreadsChanged = conversationThreadsStates::add,
                 onHydratedConversationAccountChanged = {},
                 onRestorableEntryContextCleared = {},
                 onRealtimeConnectionStateChanged = realtimeConnectionStates::add,
                 onRealtimeEventIdRecorded = realtimeEventIds::add,
                 onRealtimeLastEventIdReset = { realtimeLastEventResetCount += 1 },
                 onRealtimeReconnectIncremented = { realtimeReconnectIncrementCount += 1 },
+            )
+        }
+    }
+
+    private class RecordingFeatureCallbacks {
+        val conversationThreadsStates = mutableListOf<ConversationThreadsState>()
+
+        fun asFeatureCallbacks(): AppFeatureCallbacks {
+            return AppFeatureCallbacks(
+                onCallSessionStateChanged = {},
+                onContactsStateChanged = {},
+                onFriendsChanged = {},
+                onChatStatusChanged = { _, _ -> },
+                onChatStatusCleared = {},
+                onFriendRequestStatusChanged = {},
+                onFriendRequestsSnapshotChanged = {},
+                onFriendRequestStatusReset = {},
+                onConversationThreadsChanged = conversationThreadsStates::add,
             )
         }
     }
@@ -290,26 +338,17 @@ class AppRouteActionBindingsTest {
         }
     }
 
-    private fun createHostState(): AppRouteHostState {
+    private fun createHostState(): AppShellState {
         val session = AppSessionState(
             isAuthenticated = true,
             accountId = "argus_tester",
             displayName = "Argus Tester",
         )
-        return AppRouteHostState(
+        return AppShellState(
             appSessionState = session,
-            conversationThreadsState = ConversationThreadsState(),
             currentRoute = AppRoute.Inbox,
-            callSessionState = CallSessionState(),
-            contactsState = ContactsState(),
-            friends = emptyList(),
-            selectedConversationId = "",
+            activeChatConversationId = "",
             restorableEntryContext = null,
-            chatStatusMessage = null,
-            chatStatusError = false,
-            friendRequestsSnapshot = FriendRequestsSnapshot(emptyList(), emptyList()),
-            friendRequestsStatusMessage = null,
-            friendRequestsStatusError = false,
             hydratedConversationAccountId = session.accountId,
             realtimeConnectionState = ConversationRealtimeConnectionState.DISABLED,
             realtimeLastEventId = "",
@@ -317,32 +356,35 @@ class AppRouteActionBindingsTest {
         )
     }
 
-    private fun createRouteUiState(hostState: AppRouteHostState): AppRouteUiState {
+    private fun createRouteUiState(
+        hostState: AppShellState,
+        conversationThreadsState: ConversationThreadsState,
+    ): AppShellUiState {
         val walletState = WalletState()
-        return AppRouteUiState(
+        return AppShellUiState(
             authState = createAuthEntryUiState(AuthFormState()),
             registerState = createRegisterUiState(RegisterFormState()),
             inboxState = createInboxUiState(
                 sessionState = hostState.appSessionState,
-                threads = hostState.conversationThreadsState.threads,
+                threads = conversationThreadsState.threads,
                 realtimeStatusLabel = "disabled",
                 shellStatusLabel = "Offline",
             ),
             contactsUiState = createContactsUiState(
-                state = hostState.contactsState,
-                friends = hostState.friends,
-                threads = hostState.conversationThreadsState.threads,
+                state = ContactsState(),
+                friends = emptyList(),
+                threads = conversationThreadsState.threads,
                 currentAccountId = hostState.appSessionState.accountId,
             ),
             chatState = null,
             chatUiState = null,
-            callSessionUiState = createCallSessionUiState(hostState.callSessionState),
+            callSessionUiState = createCallSessionUiState(CallSessionState()),
             walletUiState = createWalletUiState(walletState),
             meUiState = createMeUiState(
                 sessionState = hostState.appSessionState,
                 walletState = walletState,
-                friends = hostState.friends,
-                conversationThreads = hostState.conversationThreadsState.threads,
+                friends = emptyList(),
+                conversationThreads = conversationThreadsState.threads,
                 shellStatusLabel = "Offline",
                 shellStatusSummary = "Cached shell is available offline.",
             ),
@@ -352,8 +394,8 @@ class AppRouteActionBindingsTest {
                 isLoading = false,
                 statusMessage = null,
                 isStatusError = false,
-                incoming = hostState.friendRequestsSnapshot.incoming,
-                outgoing = hostState.friendRequestsSnapshot.outgoing,
+                incoming = emptyList(),
+                outgoing = emptyList(),
             ),
         )
     }
@@ -387,31 +429,31 @@ class AppRouteActionBindingsTest {
         )
     }
 
-    private fun createRouteRuntimes(
+    private fun createRouteHandlers(
         scope: CoroutineScope,
-        appShellCoordinator: AppShellCoordinator,
+        appShellUseCases: AppShellUseCases,
         sessionRepository: SessionRepository,
         conversationRepository: ConversationRepository,
         openInboxConversation: (ConversationThreadsState, String) -> OpenInboxConversationResult,
         synchronizeInboxConversation: suspend (ConversationThreadsState, String) -> ConversationThreadsState,
-    ): AppRouteRuntimes {
+    ): AppRouteHandlers {
         val authRepository = FakeAuthRepository
         val sessionCredentialsStore = SessionCredentialsStore()
-        val callSessionRuntime = CallSessionRuntime(scope)
-        val realtimeReconnectRuntime = RealtimeReconnectRuntime(scope, delayMillisForAttempt = { 0L })
-        return AppRouteRuntimes(
-            callSessionRuntime = callSessionRuntime,
-            callSessionRouteRuntime = CallSessionRouteRuntime(
+        val callSessionTimer = CallSessionTimer(scope)
+        val realtimeReconnectScheduler = RealtimeReconnectScheduler(scope, delayMillisForAttempt = { 0L })
+        return AppRouteHandlers(
+            callSessionTimer = callSessionTimer,
+            callSessionFeatureController = com.kzzz3.argus.lens.feature.call.CallSessionFeatureController(com.kzzz3.argus.lens.feature.call.CallSessionRouteHandler(
                 reduceAction = { state, _ -> state },
                 endCall = { _, _, _ -> },
-            ),
-            realtimeReconnectRuntime = realtimeReconnectRuntime,
-            sessionRefreshRuntime = SessionRefreshRuntime(
+            )),
+            realtimeReconnectScheduler = realtimeReconnectScheduler,
+            sessionRefreshScheduler = SessionRefreshScheduler(
                 scope = scope,
-                appSessionCoordinator = AppSessionCoordinator(authRepository, sessionRepository),
+                sessionRefresher = AppSessionRefresher(authRepository, sessionRepository),
                 credentialsStore = sessionCredentialsStore,
             ),
-            contactsRouteRuntime = ContactsRouteRuntime(
+            contactsFeatureController = ContactsFeatureController(ContactsRouteHandler(
                 scope = scope,
                 openConversation = { request, conversationId ->
                     ContactsOpenConversationResult(request.conversationThreadsState, conversationId)
@@ -420,8 +462,8 @@ class AppRouteActionBindingsTest {
                 acceptFriendRequest = { _, _, snapshot, _ -> NewFriendsActionResult(FriendRequestStatusState(snapshot, null)) },
                 rejectFriendRequest = { _, snapshot -> NewFriendsActionResult(FriendRequestStatusState(snapshot, null)) },
                 ignoreFriendRequest = { _, snapshot -> NewFriendsActionResult(FriendRequestStatusState(snapshot, null)) },
-            ),
-            chatRouteRuntime = ChatRouteRuntime(
+            )),
+            chatRouteHandler = ChatRouteHandler(
                 scope = scope,
                 reduceAction = { threads, chat, _ -> ChatActionResult(threads, chat, null) },
                 startCall = { _, _, _, _, openCallSession, _ -> openCallSession() },
@@ -429,27 +471,27 @@ class AppRouteActionBindingsTest {
                 downloadAttachment = { _, _ -> ChatStatusResult(null, false) },
                 recallMessage = { threads, _, _ -> threads },
             ),
-            inboxRouteRuntime = InboxRouteRuntime(
+            inboxRouteHandler = InboxRouteHandler(
                 scope = scope,
                 openConversation = openInboxConversation,
                 synchronizeConversation = synchronizeInboxConversation,
             ),
-            realtimeConnectionRuntime = RealtimeConnectionRuntime(
+            realtimeConnectionManager = RealtimeConnectionManager(
                 scope = scope,
                 realtimeClient = FakeConversationRealtimeClient(),
-                realtimeCoordinator = RealtimeCoordinator(conversationRepository),
-                reconnectRuntime = realtimeReconnectRuntime,
+                applyRealtimeConversationEvent = ApplyRealtimeConversationEventUseCase(conversationRepository),
+                reconnectScheduler = realtimeReconnectScheduler,
             ),
-            appPersistenceRuntime = AppPersistenceRuntime(appShellCoordinator),
-            appInitialHydrationRuntime = AppInitialHydrationRuntime(
+            persistAppStateUseCase = PersistAppStateUseCase(appShellUseCases),
+            restoreAppSessionUseCase = RestoreAppSessionUseCase(
                 loadInitialAuthenticatedConversations = { ConversationThreadsState() },
                 hydrateAppState = { threads -> AppHydrationState(AppSessionState(), threads, null) },
             ),
-            appRouteLoadRuntime = AppRouteLoadRuntime(
+            contactsRouteLoadHandler = ContactsRouteLoadHandler(
                 loadFriends = { null },
                 loadRequests = { snapshot -> FriendRequestStatusState(snapshot, null) },
             ),
-            appRouteNavigationRuntime = AppRouteNavigationRuntime(),
+            appRouteNavigator = AppRouteNavigator(),
         )
     }
 

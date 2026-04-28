@@ -1,8 +1,8 @@
 package com.kzzz3.argus.lens.app
 
 import com.kzzz3.argus.lens.app.navigation.AppRoute
-import com.kzzz3.argus.lens.feature.auth.navigation.AuthGraphRoute
-import com.kzzz3.argus.lens.navigation.MainGraphRoute
+import com.kzzz3.argus.lens.feature.auth.navigation.AuthGraphRoutePattern
+import com.kzzz3.argus.lens.navigation.MainGraphRoutePattern
 import com.kzzz3.argus.lens.navigation.TopLevelDestination
 import com.kzzz3.argus.lens.navigation.graphRouteForAppRoute
 import java.io.File
@@ -14,32 +14,36 @@ import org.junit.Test
 class NavigationGraphBoundaryTest {
     @Test
     fun argusNavHostOwnsRootGraphWithAuthAndMainChildren() {
-        val routeHostSource = appSource("AppRouteHost.kt").readText()
+        val shellHostSource = appHostSource("AppShellHost.kt").readText()
         val navHostSource = navigationSource("ArgusNavHost.kt").readText()
         val mainNavigationSource = navigationSource("MainNavigation.kt").readText()
 
-        assertTrue("AppRouteHost should call the normalized root nav host", routeHostSource.contains("ArgusNavHost("))
-        assertFalse("AppRouteHost should not call the old flat graph", routeHostSource.contains("AppRouteNavGraph("))
+        assertTrue("AppShellHost should call the normalized root nav host", shellHostSource.contains("ArgusNavHost("))
+        assertFalse("AppShellHost should not call the old flat graph", shellHostSource.contains("AppRouteNavGraph("))
         assertTrue(navHostSource.contains("NavHost("))
-        assertTrue(navHostSource.contains("authGraph("))
-        assertTrue(navHostSource.contains("mainGraph("))
-        assertTrue(mainNavigationSource.contains("navigation("))
-        assertTrue(mainNavigationSource.contains("route = MainGraphRoute"))
-        assertTrue(mainNavigationSource.contains("inboxNavigation("))
-        assertTrue(mainNavigationSource.contains("contactsNavigation("))
-        assertTrue(mainNavigationSource.contains("callNavigation("))
-        assertTrue(mainNavigationSource.contains("walletNavigation("))
-        assertTrue(mainNavigationSource.contains("meNavigation("))
+        assertTrue(navHostSource.contains("authGraph(routes.auth)"))
+        assertTrue(navHostSource.contains("mainGraph(routes.main)"))
+        assertTrue(navHostSource.contains("data class ArgusNavRoutes"))
+        assertTrue(mainNavigationSource.contains("navigation<MainGraphRoute>"))
+        listOf(
+            "inboxNavigation(routes.inbox)",
+            "contactsNavigation(routes.contacts)",
+            "callNavigation(routes.call)",
+            "walletNavigation(routes.wallet)",
+            "meNavigation(routes.me)",
+        ).forEach { expected ->
+            assertTrue(mainNavigationSource.contains(expected))
+        }
     }
 
     @Test
     fun authNavigationOwnsLoginAndRegisterChildRoutes() {
         val authNavigationSource = featureAuthNavigationSource("AuthNavigation.kt").readText()
 
-        assertTrue(authNavigationSource.contains("navigation("))
-        assertTrue(authNavigationSource.contains("route = AuthGraphRoute"))
-        assertTrue(authNavigationSource.contains("AuthDestination.Login.route"))
-        assertTrue(authNavigationSource.contains("AuthDestination.Register.route"))
+        assertTrue(authNavigationSource.contains("navigation<AuthGraphRoute>"))
+        assertTrue(authNavigationSource.contains("data object LoginRoute"))
+        assertTrue(authNavigationSource.contains("data object RegisterRoute"))
+        assertTrue(authNavigationSource.contains("data class AuthRoutes"))
         assertTrue(authNavigationSource.contains("AuthEntryScreen("))
         assertTrue(authNavigationSource.contains("RegisterScreen("))
     }
@@ -67,8 +71,8 @@ class NavigationGraphBoundaryTest {
 
     @Test
     fun graphRouteForAppRouteSeparatesAuthAndMainDestinations() {
-        assertEquals(AuthGraphRoute, graphRouteForAppRoute(AppRoute.AuthEntry))
-        assertEquals(AuthGraphRoute, graphRouteForAppRoute(AppRoute.RegisterEntry))
+        assertEquals(AuthGraphRoutePattern, graphRouteForAppRoute(AppRoute.AuthEntry))
+        assertEquals(AuthGraphRoutePattern, graphRouteForAppRoute(AppRoute.RegisterEntry))
         listOf(
             AppRoute.Inbox,
             AppRoute.Contacts,
@@ -78,24 +82,24 @@ class NavigationGraphBoundaryTest {
             AppRoute.CallSession,
             AppRoute.Chat,
         ).forEach { route ->
-            assertEquals(MainGraphRoute, graphRouteForAppRoute(route))
+            assertEquals(MainGraphRoutePattern, graphRouteForAppRoute(route))
         }
     }
 
     @Test
     fun hostEffectsClearPreviousGraphWhenRouteCrossesNavigationAreas() {
-        val effectsSource = appSource("AppRouteHostEffects.kt").readText()
+        val effectsSource = appHostSource("AppShellEffects.kt").readText()
 
-        assertTrue(effectsSource.contains("graphRouteForAppRoute(currentRoute)"))
-        assertTrue(effectsSource.contains("previousGraphRoute != targetGraphRoute"))
+        assertTrue(effectsSource.contains("buildNavigationTarget("))
+        assertTrue(effectsSource.contains("previousGraphRoute != targetNavigation.graphRoute"))
         assertTrue(effectsSource.contains("popUpTo(previousGraphRoute)"))
     }
 
     @Test
     fun hostEffectsNavigateWithRouteContractInsteadOfBareEnumName() {
-        val effectsSource = appSource("AppRouteHostEffects.kt").readText()
+        val effectsSource = appHostSource("AppShellEffects.kt").readText()
 
-        assertTrue(effectsSource.contains("buildNavigationRoute(currentRoute)"))
+        assertTrue(effectsSource.contains("buildNavigationTarget("))
         assertFalse(effectsSource.contains("currentDestinationRoute != currentRoute.name"))
         assertFalse(effectsSource.contains("navController.navigate(currentRoute.name)"))
     }
@@ -104,11 +108,11 @@ class NavigationGraphBoundaryTest {
     fun mainGraphStartDestinationUsesStableRouteContract() {
         val mainNavigationSource = navigationSource("MainNavigation.kt").readText()
 
-        assertTrue(mainNavigationSource.contains("AppRoute.Inbox.routeString"))
+        assertTrue(mainNavigationSource.contains("startDestination = InboxRoute"))
         assertFalse(mainNavigationSource.contains("AppRoute.Inbox.name"))
     }
 
-    private fun appSource(fileName: String): File = File("src/main/java/com/kzzz3/argus/lens/app/$fileName")
+    private fun appHostSource(fileName: String): File = File("src/main/java/com/kzzz3/argus/lens/app/host/$fileName")
 
     private fun navigationSource(fileName: String): File = File("src/main/java/com/kzzz3/argus/lens/navigation/$fileName")
 

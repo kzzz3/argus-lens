@@ -1,8 +1,8 @@
 package com.kzzz3.argus.lens.feature.wallet
 
-import com.kzzz3.argus.lens.data.payment.PaymentHistoryEntry
-import com.kzzz3.argus.lens.data.payment.PaymentTransferResolution
-import com.kzzz3.argus.lens.data.payment.WalletSummary
+import com.kzzz3.argus.lens.model.payment.PaymentHistoryEntry
+import com.kzzz3.argus.lens.model.payment.PaymentTransferResolution
+import com.kzzz3.argus.lens.model.payment.WalletSummary
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull

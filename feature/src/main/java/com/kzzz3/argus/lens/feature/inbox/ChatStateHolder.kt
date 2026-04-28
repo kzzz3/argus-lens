@@ -18,14 +18,14 @@ class ChatStateHolder(
     fun replaceInputs(
         currentUserDisplayName: String,
         threadsState: ConversationThreadsState,
-        selectedConversationId: String,
+        activeChatConversationId: String,
         statusMessage: String?,
         isStatusError: Boolean,
     ) {
-        val selectedConversation = threadsState.threads.firstOrNull { conversation ->
-            conversation.id == selectedConversationId
+        val activeChatConversation = threadsState.threads.firstOrNull { conversation ->
+            conversation.id == activeChatConversationId
         }
-        val chatState = selectedConversation?.let { conversation ->
+        val chatState = activeChatConversation?.let { conversation ->
             ChatState(
                 conversationId = conversation.id,
                 conversationTitle = conversation.title,

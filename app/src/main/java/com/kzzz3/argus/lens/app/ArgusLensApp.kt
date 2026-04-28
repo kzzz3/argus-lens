@@ -4,55 +4,38 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.kzzz3.argus.lens.app.host.AppShellCallbacks
+import com.kzzz3.argus.lens.app.host.AppShellHost
+import com.kzzz3.argus.lens.app.host.AppShellState
+import com.kzzz3.argus.lens.app.state.ArgusLensAppViewModel
 
 @Composable
 fun ArgusLensApp(
     viewModel: ArgusLensAppViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    AppRouteHost(
+    AppShellHost(
         dependencies = viewModel.dependencies,
-        runtimeScope = viewModel.runtimeScope,
-        authStateHolder = viewModel.authStateHolder,
-        chatStateHolder = viewModel.chatStateHolder,
-        inboxStateHolder = viewModel.inboxStateHolder,
-        walletStateHolder = viewModel.walletStateHolder,
-        state = AppRouteHostState(
+        appScope = viewModel.appScope,
+        featureStateHolders = viewModel.featureStateHolders,
+        state = AppShellState(
             appSessionState = uiState.appSessionState,
-            conversationThreadsState = uiState.conversationThreadsState,
             currentRoute = uiState.currentRoute,
-            callSessionState = uiState.callSessionState,
-            contactsState = uiState.contactsState,
-            friends = uiState.friends,
-            selectedConversationId = uiState.selectedConversationId,
+            activeChatConversationId = uiState.activeChatConversationId,
             restorableEntryContext = uiState.restorableEntryContext,
-            chatStatusMessage = uiState.chatStatusMessage,
-            chatStatusError = uiState.chatStatusError,
-            friendRequestsSnapshot = uiState.friendRequestsSnapshot,
-            friendRequestsStatusMessage = uiState.friendRequestsStatusMessage,
-            friendRequestsStatusError = uiState.friendRequestsStatusError,
             hydratedConversationAccountId = uiState.hydratedConversationAccountId,
             realtimeConnectionState = uiState.realtimeConnectionState,
             realtimeLastEventId = uiState.realtimeLastEventId,
             realtimeReconnectGeneration = uiState.realtimeReconnectGeneration,
         ),
-        callbacks = AppRouteHostCallbacks(
+        callbacks = AppShellCallbacks(
             onRouteChanged = viewModel::openRoute,
-            onCallSessionStateChanged = viewModel::updateCallSessionState,
-            onContactsStateChanged = viewModel::updateContactsState,
-            onFriendsChanged = viewModel::updateFriends,
             onConversationOpened = viewModel::openConversation,
-            onSelectedConversationChanged = viewModel::restoreSelectedConversation,
-            onChatStatusChanged = viewModel::updateChatStatus,
-            onChatStatusCleared = viewModel::clearChatStatus,
-            onFriendRequestStatusChanged = viewModel::updateFriendRequestStatus,
-            onFriendRequestsSnapshotChanged = viewModel::updateFriendRequestsSnapshot,
-            onFriendRequestStatusReset = viewModel::resetFriendRequestStatus,
+            onActiveChatConversationChanged = viewModel::restoreActiveChatConversation,
             onHydratedSessionApplied = viewModel::applyHydratedSession,
             onAuthenticatedSessionApplied = viewModel::applyAuthenticatedSession,
             onSessionRefreshed = viewModel::applyRefreshedSession,
             onSessionCleared = viewModel::clearSession,
-            onConversationThreadsChanged = viewModel::updateConversationThreadsState,
             onHydratedConversationAccountChanged = viewModel::updateHydratedConversationAccountId,
             onRestorableEntryContextCleared = viewModel::clearRestorableEntryContext,
             onRealtimeConnectionStateChanged = viewModel::updateRealtimeConnectionState,

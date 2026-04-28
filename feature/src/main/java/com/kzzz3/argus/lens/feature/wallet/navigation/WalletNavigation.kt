@@ -7,25 +7,35 @@ import com.kzzz3.argus.lens.feature.wallet.WalletAction
 import com.kzzz3.argus.lens.feature.wallet.WalletScreen
 import com.kzzz3.argus.lens.feature.wallet.WalletUiState
 import com.kzzz3.argus.lens.ui.shell.ShellDestination
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
-const val WalletRoute = "Wallet"
+const val WalletRoutePattern = "Wallet"
+
+@Serializable
+@SerialName(WalletRoutePattern)
+data object WalletRoute
+
+data class WalletRoutes(
+    val walletShellDestination: ShellDestination,
+    val onTabSelected: (ShellDestination) -> Unit,
+    val walletState: WalletUiState,
+    val permissionRequestPending: Boolean,
+    val onWalletAction: (WalletAction) -> Unit,
+)
 
 fun NavGraphBuilder.walletNavigation(
-    walletShellDestination: ShellDestination,
-    onTabSelected: (ShellDestination) -> Unit,
-    walletState: WalletUiState,
-    permissionRequestPending: Boolean,
-    onWalletAction: (WalletAction) -> Unit,
+    routes: WalletRoutes,
 ) {
-    composable(WalletRoute) {
+    composable<WalletRoute> {
         AuthenticatedFeatureRouteShell(
-            currentDestination = walletShellDestination,
-            onTabSelected = onTabSelected,
+            currentDestination = routes.walletShellDestination,
+            onTabSelected = routes.onTabSelected,
         ) { contentModifier ->
             WalletScreen(
-                state = walletState,
-                permissionRequestPending = permissionRequestPending,
-                onAction = onWalletAction,
+                state = routes.walletState,
+                permissionRequestPending = routes.permissionRequestPending,
+                onAction = routes.onWalletAction,
                 modifier = contentModifier,
             )
         }

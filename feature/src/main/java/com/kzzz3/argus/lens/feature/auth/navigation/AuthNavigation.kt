@@ -9,40 +9,54 @@ import com.kzzz3.argus.lens.feature.auth.AuthEntryUiState
 import com.kzzz3.argus.lens.feature.register.RegisterAction
 import com.kzzz3.argus.lens.feature.register.RegisterScreen
 import com.kzzz3.argus.lens.feature.register.RegisterUiState
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
-const val AuthGraphRoute = "auth_graph"
+const val AuthGraphRoutePattern = "auth_graph"
+const val LoginRoutePattern = "AuthEntry"
+const val RegisterRoutePattern = "RegisterEntry"
 
-enum class AuthDestination(val route: String) {
-    Login("AuthEntry"),
-    Register("RegisterEntry"),
-}
+@Serializable
+@SerialName(AuthGraphRoutePattern)
+data object AuthGraphRoute
+
+@Serializable
+@SerialName(LoginRoutePattern)
+data object LoginRoute
+
+@Serializable
+@SerialName(RegisterRoutePattern)
+data object RegisterRoute
+
+data class AuthRoutes(
+    val authState: AuthEntryUiState,
+    val registerState: RegisterUiState,
+    val onAuthAction: (AuthEntryAction) -> Unit,
+    val onRegisterAction: (RegisterAction) -> Unit,
+)
 
 fun NavGraphBuilder.authGraph(
-    authState: AuthEntryUiState,
-    registerState: RegisterUiState,
-    onAuthAction: (AuthEntryAction) -> Unit,
-    onRegisterAction: (RegisterAction) -> Unit,
+    routes: AuthRoutes,
 ) {
-    navigation(
-        startDestination = AuthDestination.Login.route,
-        route = AuthGraphRoute,
+    navigation<AuthGraphRoute>(
+        startDestination = LoginRoute,
     ) {
-        composable(AuthDestination.Login.route) {
+        composable<LoginRoute> {
             AuthEntryScreen(
-                state = authState,
-                onAction = onAuthAction,
+                state = routes.authState,
+                onAction = routes.onAuthAction,
             )
         }
 
-        composable(AuthDestination.Register.route) {
+        composable<RegisterRoute> {
             RegisterScreen(
-                state = registerState,
-                onAction = onRegisterAction,
+                state = routes.registerState,
+                onAction = routes.onRegisterAction,
             )
         }
     }
 }
 
 fun isAuthDestination(route: String?): Boolean {
-    return AuthDestination.entries.any { destination -> destination.route == route }
+    return route == LoginRoutePattern || route == RegisterRoutePattern
 }

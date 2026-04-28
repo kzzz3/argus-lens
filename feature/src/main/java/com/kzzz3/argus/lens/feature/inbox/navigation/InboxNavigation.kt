@@ -1,6 +1,7 @@
 package com.kzzz3.argus.lens.feature.inbox.navigation
 
 import androidx.navigation.NavGraphBuilder
+import androidx.navigation.toRoute
 import androidx.navigation.compose.composable
 import com.kzzz3.argus.lens.feature.inbox.ChatAction
 import com.kzzz3.argus.lens.feature.inbox.ChatScreen
@@ -11,54 +12,70 @@ import com.kzzz3.argus.lens.feature.inbox.InboxScreen
 import com.kzzz3.argus.lens.feature.inbox.InboxUiState
 import com.kzzz3.argus.lens.feature.navigation.AuthenticatedFeatureRouteShell
 import com.kzzz3.argus.lens.ui.shell.ShellDestination
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
-const val InboxRoute = "Inbox"
-const val ChatRoute = "Chat"
+const val InboxRoutePattern = "Inbox"
+const val ChatRoutePattern = "Chat"
+const val ChatThreadRoutePattern = "$ChatRoutePattern/{conversationId}"
+
+@Serializable
+@SerialName(InboxRoutePattern)
+data object InboxRoute
+
+@Serializable
+@SerialName(ChatRoutePattern)
+data class ChatThreadRoute(val conversationId: String)
+
+data class InboxRoutes(
+    val inboxShellDestination: ShellDestination,
+    val chatShellDestination: ShellDestination,
+    val missingChatShellDestination: ShellDestination,
+    val onTabSelected: (ShellDestination) -> Unit,
+    val inboxState: InboxUiState,
+    val chatState: ChatState?,
+    val chatUiState: ChatUiState?,
+    val onInboxAction: (InboxAction) -> Unit,
+    val onChatAction: (ChatAction) -> Unit,
+)
 
 fun NavGraphBuilder.inboxNavigation(
-    inboxShellDestination: ShellDestination,
-    chatShellDestination: ShellDestination,
-    missingChatShellDestination: ShellDestination,
-    onTabSelected: (ShellDestination) -> Unit,
-    inboxState: InboxUiState,
-    chatState: ChatState?,
-    chatUiState: ChatUiState?,
-    onInboxAction: (InboxAction) -> Unit,
-    onChatAction: (ChatAction) -> Unit,
+    routes: InboxRoutes,
 ) {
-    composable(InboxRoute) {
+    composable<InboxRoute> {
         AuthenticatedFeatureRouteShell(
-            currentDestination = inboxShellDestination,
-            onTabSelected = onTabSelected,
+            currentDestination = routes.inboxShellDestination,
+            onTabSelected = routes.onTabSelected,
         ) { contentModifier ->
             InboxScreen(
-                state = inboxState,
-                onAction = onInboxAction,
+                state = routes.inboxState,
+                onAction = routes.onInboxAction,
                 modifier = contentModifier,
             )
         }
     }
 
-    composable(ChatRoute) {
-        if (chatUiState == null || chatState == null) {
+    composable<ChatThreadRoute> { backStackEntry ->
+        val route = backStackEntry.toRoute<ChatThreadRoute>()
+        if (routes.chatUiState == null || routes.chatState == null || routes.chatState.conversationId != route.conversationId) {
             AuthenticatedFeatureRouteShell(
-                currentDestination = missingChatShellDestination,
-                onTabSelected = onTabSelected,
+                currentDestination = routes.missingChatShellDestination,
+                onTabSelected = routes.onTabSelected,
             ) { contentModifier ->
                 InboxScreen(
-                    state = inboxState,
-                    onAction = onInboxAction,
+                    state = routes.inboxState,
+                    onAction = routes.onInboxAction,
                     modifier = contentModifier,
                 )
             }
         } else {
             AuthenticatedFeatureRouteShell(
-                currentDestination = chatShellDestination,
-                onTabSelected = onTabSelected,
+                currentDestination = routes.chatShellDestination,
+                onTabSelected = routes.onTabSelected,
             ) { contentModifier ->
                 ChatScreen(
-                    state = chatUiState,
-                    onAction = onChatAction,
+                    state = routes.chatUiState,
+                    onAction = routes.onChatAction,
                     modifier = contentModifier,
                 )
             }

@@ -2,37 +2,47 @@ package com.kzzz3.argus.lens.app
 
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
+import com.kzzz3.argus.lens.app.composition.AppDependencies
 import com.kzzz3.argus.lens.app.navigation.AppRoute
 import com.kzzz3.argus.lens.app.navigation.routeString
-import com.kzzz3.argus.lens.data.auth.AuthFailureKind
-import com.kzzz3.argus.lens.data.auth.AuthRepository
-import com.kzzz3.argus.lens.data.auth.AuthRepositoryResult
-import com.kzzz3.argus.lens.data.conversation.ConversationRepository
-import com.kzzz3.argus.lens.data.friend.FriendRequestEntry
-import com.kzzz3.argus.lens.data.friend.FriendRequestsSnapshot
-import com.kzzz3.argus.lens.data.friend.FriendRepository
-import com.kzzz3.argus.lens.data.friend.FriendRepositoryResult
-import com.kzzz3.argus.lens.data.media.MediaRepository
-import com.kzzz3.argus.lens.data.media.MediaRepositoryResult
-import com.kzzz3.argus.lens.data.payment.PaymentRepository
-import com.kzzz3.argus.lens.data.payment.PaymentRepositoryResult
-import com.kzzz3.argus.lens.data.realtime.ConversationRealtimeClient
-import com.kzzz3.argus.lens.data.realtime.ConversationRealtimeConnectionState
-import com.kzzz3.argus.lens.data.realtime.ConversationRealtimeEvent
-import com.kzzz3.argus.lens.data.realtime.ConversationRealtimeSubscription
-import com.kzzz3.argus.lens.data.session.SessionCredentials
-import com.kzzz3.argus.lens.data.session.SessionRepository
-import com.kzzz3.argus.lens.feature.auth.AuthCoordinator
-import com.kzzz3.argus.lens.feature.contacts.ContactsCoordinator
-import com.kzzz3.argus.lens.feature.contacts.NewFriendsCoordinator
+import com.kzzz3.argus.lens.app.runtime.AppRestorableEntryContext
+import com.kzzz3.argus.lens.app.state.ArgusLensAppUiState
+import com.kzzz3.argus.lens.app.state.ArgusLensAppViewModel
+import com.kzzz3.argus.lens.app.state.applyAuthenticatedSessionTransition
+import com.kzzz3.argus.lens.app.state.applyHydratedSessionTransition
+import com.kzzz3.argus.lens.app.state.applySessionClearedTransition
+import com.kzzz3.argus.lens.app.state.resolveInitialAppRoute
+import com.kzzz3.argus.lens.app.state.resolveInitialHydratedConversationAccountId
+import com.kzzz3.argus.lens.core.data.auth.AuthFailureKind
+import com.kzzz3.argus.lens.core.data.auth.AuthRepository
+import com.kzzz3.argus.lens.core.data.auth.AuthRepositoryResult
+import com.kzzz3.argus.lens.core.data.conversation.ConversationRepository
+import com.kzzz3.argus.lens.core.data.friend.FriendRequestEntry
+import com.kzzz3.argus.lens.core.data.friend.FriendRequestsSnapshot
+import com.kzzz3.argus.lens.core.data.friend.FriendRepository
+import com.kzzz3.argus.lens.core.data.friend.FriendRepositoryResult
+import com.kzzz3.argus.lens.core.data.media.MediaRepository
+import com.kzzz3.argus.lens.core.data.media.MediaRepositoryResult
+import com.kzzz3.argus.lens.core.data.payment.PaymentRepository
+import com.kzzz3.argus.lens.core.data.payment.PaymentRepositoryResult
+import com.kzzz3.argus.lens.model.realtime.ConversationRealtimeClient
+import com.kzzz3.argus.lens.model.realtime.ConversationRealtimeConnectionState
+import com.kzzz3.argus.lens.model.realtime.ConversationRealtimeEvent
+import com.kzzz3.argus.lens.model.realtime.ConversationRealtimeSubscription
+import com.kzzz3.argus.lens.session.SessionCredentials
+import com.kzzz3.argus.lens.session.SessionCredentialsStore
+import com.kzzz3.argus.lens.session.SessionRepository
+import com.kzzz3.argus.lens.feature.auth.AuthUseCases
+import com.kzzz3.argus.lens.feature.contacts.ContactsUseCases
+import com.kzzz3.argus.lens.feature.contacts.FriendRequestUseCases
 import com.kzzz3.argus.lens.feature.contacts.createFriendRequestStatusState
-import com.kzzz3.argus.lens.feature.inbox.ChatCoordinator
+import com.kzzz3.argus.lens.feature.inbox.ChatUseCases
 import com.kzzz3.argus.lens.feature.inbox.ChatDraftAttachmentKind
 import com.kzzz3.argus.lens.feature.inbox.ChatMessageAttachment
 import com.kzzz3.argus.lens.feature.inbox.ChatState
 import com.kzzz3.argus.lens.feature.inbox.ConversationThreadsState
-import com.kzzz3.argus.lens.feature.realtime.RealtimeCoordinator
-import com.kzzz3.argus.lens.feature.wallet.WalletRequestCoordinator
+import com.kzzz3.argus.lens.feature.realtime.ApplyRealtimeConversationEventUseCase
+import com.kzzz3.argus.lens.feature.wallet.WalletUseCases
 import com.kzzz3.argus.lens.model.session.AppSessionState
 import com.kzzz3.argus.lens.worker.BackgroundSyncScheduler
 import java.io.File
@@ -49,91 +59,91 @@ class ArgusLensAppViewModelTest {
     }
 
     @Test
-    fun appRouteHost_doesNotOwnLongLivedCoroutineScope() {
-        val routeHostSource = File("src/main/java/com/kzzz3/argus/lens/app/AppRouteHost.kt").readText()
+    fun appShellHost_doesNotOwnLongLivedCoroutineScope() {
+        val routeHostSource = File("src/main/java/com/kzzz3/argus/lens/app/host/AppShellHost.kt").readText()
 
         assertFalse(routeHostSource.contains("rememberCoroutineScope"))
     }
 
     @Test
-    fun appRouteHost_usesExplicitStateAndCallbackBoundaryObjects() {
-        val boundaryFile = File("src/main/java/com/kzzz3/argus/lens/app/AppRouteHostState.kt")
-        val routeHostSource = File("src/main/java/com/kzzz3/argus/lens/app/AppRouteHost.kt").readText()
+    fun appShellHost_usesExplicitStateAndCallbackBoundaryObjects() {
+        val boundaryFile = File("src/main/java/com/kzzz3/argus/lens/app/host/AppShellState.kt")
+        val routeHostSource = File("src/main/java/com/kzzz3/argus/lens/app/host/AppShellHost.kt").readText()
         val appSource = File("src/main/java/com/kzzz3/argus/lens/app/ArgusLensApp.kt").readText()
 
-        assertTrue("AppRouteHostState.kt should define the host boundary objects", boundaryFile.exists())
+        assertTrue("AppShellState.kt should define the host boundary objects", boundaryFile.exists())
         val boundarySource = boundaryFile.readText()
-        assertTrue(boundarySource.contains("data class AppRouteHostState"))
-        assertTrue(boundarySource.contains("data class AppRouteHostCallbacks"))
-        assertTrue(routeHostSource.contains("state: AppRouteHostState"))
-        assertTrue(routeHostSource.contains("callbacks: AppRouteHostCallbacks"))
-        assertTrue(appSource.contains("AppRouteHostState("))
-        assertTrue(appSource.contains("AppRouteHostCallbacks("))
+        assertTrue(boundarySource.contains("data class AppShellState"))
+        assertTrue(boundarySource.contains("data class AppShellCallbacks"))
+        assertTrue(boundarySource.contains("data class AppFeatureCallbacks"))
+        assertTrue(routeHostSource.contains("state: AppShellState"))
+        assertTrue(routeHostSource.contains("callbacks: AppShellCallbacks"))
+        assertTrue(appSource.contains("AppShellState("))
+        assertTrue(appSource.contains("AppShellCallbacks("))
+        assertFalse(appSource.contains("onCallSessionStateChanged ="))
+        assertFalse(appSource.contains("onContactsStateChanged ="))
+        assertFalse(appSource.contains("onConversationThreadsChanged ="))
         assertFalse(routeHostSource.contains("appSessionState: AppSessionState"))
         assertFalse(routeHostSource.contains("onAuthFormStateChanged: (AuthFormState) -> Unit"))
     }
 
     @Test
-    fun appRouteHost_delegatesActionBindingFactories() {
-        val actionBindingsFile = File("src/main/java/com/kzzz3/argus/lens/app/AppRouteActionBindings.kt")
-        val routeHostSource = File("src/main/java/com/kzzz3/argus/lens/app/AppRouteHost.kt").readText()
+    fun appShellHost_delegatesActionDispatcherFactories() {
+        val actionBindingsFile = File("src/main/java/com/kzzz3/argus/lens/app/host/AppActionDispatcher.kt")
+        val routeHostSource = File("src/main/java/com/kzzz3/argus/lens/app/host/AppShellHost.kt").readText()
 
-        assertTrue("AppRouteActionBindings.kt should own route request/callback adapters", actionBindingsFile.exists())
+        assertTrue("AppActionDispatcher.kt should own route request/callback adapters", actionBindingsFile.exists())
         val actionBindingsSource = actionBindingsFile.readText()
         listOf(
-            "class AppRouteActionBindings",
+            "class AppActionDispatcher",
             "fun openTopLevelRoute",
             "fun openShellDestination",
-            "fun openInboxConversation",
             "fun authStateHolderCallbacks",
             "AppRoute.RegisterEntry",
             "AppRoute.AuthEntry",
-            "fun inboxStateHolderCallbacks",
             "AppRoute.Contacts",
             "AppRoute.Wallet",
-            "fun contactsRouteRequest",
-            "fun contactsRouteCallbacks",
+            "fun contactsFeatureCallbacks",
+            "fun handleInboxAction",
+            "fun handleChatAction",
+            "fun handleContactsAction",
             "fun realtimeConnectionCallbacks",
         ).forEach { expectedSource ->
-            assertTrue("Expected AppRouteActionBindings.kt to contain $expectedSource", actionBindingsSource.contains(expectedSource))
+            assertTrue("Expected AppActionDispatcher.kt to contain $expectedSource", actionBindingsSource.contains(expectedSource))
         }
         listOf(
             "fun openTopLevelRoute(",
             "fun openShellDestination(",
-            "fun openInboxConversation(",
             "fun authStateHolderCallbacks(",
-            "fun inboxStateHolderCallbacks(",
-            "fun contactsRouteRequest(",
-            "fun contactsRouteCallbacks(",
+            "fun contactsFeatureCallbacks(",
             "fun realtimeConnectionCallbacks(",
         ).forEach { forbiddenSource ->
-            assertFalse("AppRouteHost.kt should not declare $forbiddenSource", routeHostSource.contains(forbiddenSource))
+            assertFalse("AppShellHost.kt should not declare $forbiddenSource", routeHostSource.contains(forbiddenSource))
         }
     }
 
     @Test
-    fun appRouteHost_delegatesLifecycleEffects() {
-        val effectsFile = File("src/main/java/com/kzzz3/argus/lens/app/AppRouteHostEffects.kt")
-        val routeHostSource = File("src/main/java/com/kzzz3/argus/lens/app/AppRouteHost.kt").readText()
+    fun appShellHost_delegatesLifecycleEffects() {
+        val effectsFile = File("src/main/java/com/kzzz3/argus/lens/app/host/AppShellEffects.kt")
+        val routeHostSource = File("src/main/java/com/kzzz3/argus/lens/app/host/AppShellHost.kt").readText()
 
-        assertTrue("AppRouteHostEffects.kt should own host lifecycle effects", effectsFile.exists())
-        assertTrue(routeHostSource.contains("AppRouteHostEffects("))
+        assertTrue("AppShellEffects.kt should own host lifecycle effects", effectsFile.exists())
+        assertTrue(routeHostSource.contains("AppShellEffects("))
         assertFalse(routeHostSource.contains("LaunchedEffect("))
         assertFalse(routeHostSource.contains("DisposableEffect("))
     }
 
     @Test
-    fun appRouteHostEffectsUseNarrowDependencyBoundary() {
-        val effectsSource = File("src/main/java/com/kzzz3/argus/lens/app/AppRouteHostEffects.kt").readText()
-        val routeHostSource = File("src/main/java/com/kzzz3/argus/lens/app/AppRouteHost.kt").readText()
+    fun appShellEffectsUseNarrowDependencyBoundary() {
+        val effectsSource = File("src/main/java/com/kzzz3/argus/lens/app/host/AppShellEffects.kt").readText()
+        val routeHostSource = File("src/main/java/com/kzzz3/argus/lens/app/host/AppShellHost.kt").readText()
 
-        assertTrue(effectsSource.contains("data class AppRouteHostEffectDependencies"))
-        assertTrue(effectsSource.contains("effectDependencies: AppRouteHostEffectDependencies"))
+        assertTrue(effectsSource.contains("fun AppShellEffects"))
+        assertTrue(routeHostSource.contains("AppShellEffects("))
         assertTrue(effectsSource.contains("val initialSessionSnapshot: AppSessionState"))
         assertTrue(effectsSource.contains("val initialSessionCredentials: SessionCredentials"))
         assertTrue(effectsSource.contains("val sessionCredentialsStore: SessionCredentialsStore"))
         assertTrue(effectsSource.contains("val realtimeClient: ConversationRealtimeClient"))
-        assertTrue(routeHostSource.contains("AppRouteHostEffectDependencies("))
         assertFalse(effectsSource.contains("dependencies: AppDependencies"))
         assertFalse(effectsSource.contains("dependencies.initialSessionSnapshot"))
         assertFalse(effectsSource.contains("dependencies.initialSessionCredentials"))
@@ -142,69 +152,69 @@ class ArgusLensAppViewModelTest {
     }
 
     @Test
-    fun appViewModel_exposesRuntimeScopeBackedByViewModelScope() {
-        val viewModelSource = File("src/main/java/com/kzzz3/argus/lens/app/ArgusLensAppViewModel.kt").readText()
+    fun appViewModel_exposesAppScopeBackedByViewModelScope() {
+        val viewModelSource = File("src/main/java/com/kzzz3/argus/lens/app/state/ArgusLensAppViewModel.kt").readText()
 
         assertTrue(viewModelSource.contains("viewModelScope"))
-        assertTrue(viewModelSource.contains("val runtimeScope"))
+        assertTrue(viewModelSource.contains("val appScope"))
     }
 
     @Test
     fun appViewModelOwnsWalletStateHolderLifetime() {
-        val viewModelSource = File("src/main/java/com/kzzz3/argus/lens/app/ArgusLensAppViewModel.kt").readText()
-        val routeRuntimesSource = File("src/main/java/com/kzzz3/argus/lens/app/AppRouteRuntimes.kt").readText()
+        val viewModelSource = File("src/main/java/com/kzzz3/argus/lens/app/state/ArgusLensAppViewModel.kt").readText()
+        val routeHandlersSource = File("src/main/java/com/kzzz3/argus/lens/app/host/AppRouteHandlers.kt").readText()
         val appSource = File("src/main/java/com/kzzz3/argus/lens/app/ArgusLensApp.kt").readText()
 
-        assertTrue(viewModelSource.contains("val walletStateHolder: WalletStateHolder"))
-        assertTrue(viewModelSource.contains("WalletRequestRunner(runtimeScope)"))
-        assertTrue(appSource.contains("walletStateHolder = viewModel.walletStateHolder"))
-        assertFalse(routeRuntimesSource.contains("WalletStateHolder("))
-        assertFalse(routeRuntimesSource.contains("WalletRequestRunner("))
+        assertTrue(viewModelSource.contains("walletStateHolder = createWalletStateHolder"))
+        assertTrue(viewModelSource.contains("WalletRequestRunner(appScope)"))
+        assertTrue(appSource.contains("featureStateHolders = viewModel.featureStateHolders"))
+        assertFalse(routeHandlersSource.contains("WalletStateHolder("))
+        assertFalse(routeHandlersSource.contains("WalletRequestRunner("))
     }
 
     @Test
     fun appViewModelOwnsAuthStateHolderLifetime() {
-        val viewModelSource = File("src/main/java/com/kzzz3/argus/lens/app/ArgusLensAppViewModel.kt").readText()
-        val routeRuntimesSource = File("src/main/java/com/kzzz3/argus/lens/app/AppRouteRuntimes.kt").readText()
+        val viewModelSource = File("src/main/java/com/kzzz3/argus/lens/app/state/ArgusLensAppViewModel.kt").readText()
+        val routeHandlersSource = File("src/main/java/com/kzzz3/argus/lens/app/host/AppRouteHandlers.kt").readText()
         val appSource = File("src/main/java/com/kzzz3/argus/lens/app/ArgusLensApp.kt").readText()
 
-        assertTrue(viewModelSource.contains("val authStateHolder: AuthStateHolder"))
-        assertTrue(viewModelSource.contains("createAuthStateHolder(dependencies, runtimeScope)"))
-        assertTrue(appSource.contains("authStateHolder = viewModel.authStateHolder"))
-        assertFalse(routeRuntimesSource.contains("EntryRouteRuntime("))
-        assertFalse(routeRuntimesSource.contains("reduceAuthFormState"))
-        assertFalse(routeRuntimesSource.contains("reduceRegisterFormState"))
+        assertTrue(viewModelSource.contains("authStateHolder = createAuthStateHolder"))
+        assertTrue(viewModelSource.contains("createAuthStateHolder(dependencies, appScope)"))
+        assertTrue(appSource.contains("featureStateHolders = viewModel.featureStateHolders"))
+        assertFalse(routeHandlersSource.contains("AuthStateHolder("))
+        assertFalse(routeHandlersSource.contains("reduceAuthFormState"))
+        assertFalse(routeHandlersSource.contains("reduceRegisterFormState"))
     }
 
     @Test
     fun appViewModelOwnsInboxStateHolderLifetime() {
-        val viewModelSource = File("src/main/java/com/kzzz3/argus/lens/app/ArgusLensAppViewModel.kt").readText()
-        val routeRuntimesSource = File("src/main/java/com/kzzz3/argus/lens/app/AppRouteRuntimes.kt").readText()
+        val viewModelSource = File("src/main/java/com/kzzz3/argus/lens/app/state/ArgusLensAppViewModel.kt").readText()
+        val routeHandlersSource = File("src/main/java/com/kzzz3/argus/lens/app/host/AppRouteHandlers.kt").readText()
         val appSource = File("src/main/java/com/kzzz3/argus/lens/app/ArgusLensApp.kt").readText()
-        val routeHostSource = File("src/main/java/com/kzzz3/argus/lens/app/AppRouteHost.kt").readText()
-        val routeUiStateSource = File("src/main/java/com/kzzz3/argus/lens/app/AppRouteUiState.kt").readText()
-        val actionBindingsSource = File("src/main/java/com/kzzz3/argus/lens/app/AppRouteActionBindings.kt").readText()
+        val routeHostSource = File("src/main/java/com/kzzz3/argus/lens/app/host/AppShellHost.kt").readText()
+        val routeUiStateSource = File("src/main/java/com/kzzz3/argus/lens/app/host/AppShellUiState.kt").readText()
+        val actionBindingsSource = File("src/main/java/com/kzzz3/argus/lens/app/host/AppActionDispatcher.kt").readText()
 
-        assertTrue(viewModelSource.contains("val inboxStateHolder: InboxStateHolder"))
+        assertTrue(viewModelSource.contains("inboxStateHolder = createInboxStateHolder"))
         assertTrue(viewModelSource.contains("createInboxStateHolder()"))
-        assertTrue(appSource.contains("inboxStateHolder = viewModel.inboxStateHolder"))
+        assertTrue(appSource.contains("featureStateHolders = viewModel.featureStateHolders"))
         assertTrue(routeHostSource.contains("inboxStateHolder.state.collectAsStateWithLifecycle()"))
-        assertTrue(actionBindingsSource.contains("InboxStateHolderCallbacks"))
-        assertFalse(routeRuntimesSource.contains("InboxActionRouteRuntime"))
+        assertTrue(actionBindingsSource.contains("fun handleInboxAction("))
+        assertFalse(routeHandlersSource.contains("InboxStateHolder("))
         assertFalse(routeUiStateSource.contains("createInboxUiState("))
     }
 
     @Test
     fun appViewModelOwnsChatStateHolderLifetime() {
-        val viewModelSource = File("src/main/java/com/kzzz3/argus/lens/app/ArgusLensAppViewModel.kt").readText()
+        val viewModelSource = File("src/main/java/com/kzzz3/argus/lens/app/state/ArgusLensAppViewModel.kt").readText()
         val appSource = File("src/main/java/com/kzzz3/argus/lens/app/ArgusLensApp.kt").readText()
-        val routeHostSource = File("src/main/java/com/kzzz3/argus/lens/app/AppRouteHost.kt").readText()
-        val routeHostEffectsSource = File("src/main/java/com/kzzz3/argus/lens/app/AppRouteHostEffects.kt").readText()
-        val routeUiStateSource = File("src/main/java/com/kzzz3/argus/lens/app/AppRouteUiState.kt").readText()
+        val routeHostSource = File("src/main/java/com/kzzz3/argus/lens/app/host/AppShellHost.kt").readText()
+        val routeHostEffectsSource = File("src/main/java/com/kzzz3/argus/lens/app/host/AppShellEffects.kt").readText()
+        val routeUiStateSource = File("src/main/java/com/kzzz3/argus/lens/app/host/AppShellUiState.kt").readText()
 
-        assertTrue(viewModelSource.contains("val chatStateHolder: ChatStateHolder"))
+        assertTrue(viewModelSource.contains("chatStateHolder = createChatStateHolder"))
         assertTrue(viewModelSource.contains("createChatStateHolder()"))
-        assertTrue(appSource.contains("chatStateHolder = viewModel.chatStateHolder"))
+        assertTrue(appSource.contains("featureStateHolders = viewModel.featureStateHolders"))
         assertTrue(routeHostSource.contains("chatStateHolder.state.collectAsStateWithLifecycle()"))
         assertTrue(routeHostEffectsSource.contains("chatStateHolder.replaceInputs("))
         assertFalse(routeUiStateSource.contains("createChatUiState("))
@@ -213,10 +223,10 @@ class ArgusLensAppViewModelTest {
 
     @Test
     fun appUiStateDoesNotOwnAuthOrRegisterFormState() {
-        val stateSource = File("src/main/java/com/kzzz3/argus/lens/app/ArgusLensAppState.kt").readText()
-        val viewModelSource = File("src/main/java/com/kzzz3/argus/lens/app/ArgusLensAppViewModel.kt").readText()
+        val stateSource = File("src/main/java/com/kzzz3/argus/lens/app/state/ArgusLensAppState.kt").readText()
+        val viewModelSource = File("src/main/java/com/kzzz3/argus/lens/app/state/ArgusLensAppViewModel.kt").readText()
         val appSource = File("src/main/java/com/kzzz3/argus/lens/app/ArgusLensApp.kt").readText()
-        val routeHostStateSource = File("src/main/java/com/kzzz3/argus/lens/app/AppRouteHostState.kt").readText()
+        val routeHostStateSource = File("src/main/java/com/kzzz3/argus/lens/app/host/AppShellState.kt").readText()
 
         assertFalse(stateSource.contains("authFormState: AuthFormState"))
         assertFalse(stateSource.contains("registerFormState: RegisterFormState"))
@@ -230,8 +240,8 @@ class ArgusLensAppViewModelTest {
 
     @Test
     fun appViewModel_keepsStateModelAndTransitionsInDedicatedStateFile() {
-        val stateFile = File("src/main/java/com/kzzz3/argus/lens/app/ArgusLensAppState.kt")
-        val viewModelSource = File("src/main/java/com/kzzz3/argus/lens/app/ArgusLensAppViewModel.kt").readText()
+        val stateFile = File("src/main/java/com/kzzz3/argus/lens/app/state/ArgusLensAppState.kt")
+        val viewModelSource = File("src/main/java/com/kzzz3/argus/lens/app/state/ArgusLensAppViewModel.kt").readText()
 
         assertTrue("ArgusLensAppState.kt should own the app state model", stateFile.exists())
         val stateSource = stateFile.readText()
@@ -244,13 +254,13 @@ class ArgusLensAppViewModelTest {
     }
 
     @Test
-    fun appViewModel_defersRestoredSelectedConversationUntilHydrationValidatesThreads() {
-        val viewModelSource = File("src/main/java/com/kzzz3/argus/lens/app/ArgusLensAppViewModel.kt").readText()
+    fun appViewModel_defersRestoredActiveChatConversationUntilHydrationValidatesThreads() {
+        val viewModelSource = File("src/main/java/com/kzzz3/argus/lens/app/state/ArgusLensAppViewModel.kt").readText()
         val appSource = File("src/main/java/com/kzzz3/argus/lens/app/ArgusLensApp.kt").readText()
 
         assertTrue(viewModelSource.contains("restorableEntryContext = savedRestorableEntryContext"))
-        assertTrue(appSource.contains("onSelectedConversationChanged = viewModel::restoreSelectedConversation"))
-        assertFalse(viewModelSource.contains("selectedConversationId = initialRestorableEntryContext?.selectedConversationId.orEmpty()"))
+        assertTrue(appSource.contains("onActiveChatConversationChanged = viewModel::restoreActiveChatConversation"))
+        assertFalse(viewModelSource.contains("activeChatConversationId = initialRestorableEntryContext?.activeChatConversationId.orEmpty()"))
     }
 
     @Test
@@ -262,18 +272,18 @@ class ArgusLensAppViewModelTest {
 
         val state = viewModel.uiState.value
         assertEquals(AppRoute.Chat, state.currentRoute)
-        assertEquals("conversation-1", state.selectedConversationId)
+        assertEquals("conversation-1", state.activeChatConversationId)
         assertEquals(
             AppRestorableEntryContext(
                 accountId = "argus_tester",
                 routeString = AppRoute.Chat.routeString,
-                selectedConversationId = "conversation-1",
+                activeChatConversationId = "conversation-1",
             ),
             state.restorableEntryContext,
         )
         assertEquals("argus_tester", savedStateHandle["restorableEntryAccountId"])
         assertEquals(AppRoute.Chat.routeString, savedStateHandle["restorableEntryRoute"])
-        assertEquals("conversation-1", savedStateHandle["restorableEntrySelectedConversationId"])
+        assertEquals("conversation-1", savedStateHandle["restorableChatConversationId"])
         assertNull(savedStateHandle["accessToken"])
         assertNull(savedStateHandle["refreshToken"])
     }
@@ -290,17 +300,17 @@ class ArgusLensAppViewModelTest {
         assertEquals(null, viewModel.uiState.value.restorableEntryContext)
         assertNull(savedStateHandle["restorableEntryAccountId"])
         assertNull(savedStateHandle["restorableEntryRoute"])
-        assertNull(savedStateHandle["restorableEntrySelectedConversationId"])
+        assertNull(savedStateHandle["restorableChatConversationId"])
 
         viewModel.openConversation("conversation-2")
         viewModel.clearSession()
 
         assertEquals(AppRoute.AuthEntry, viewModel.uiState.value.currentRoute)
-        assertEquals("", viewModel.uiState.value.selectedConversationId)
+        assertEquals("", viewModel.uiState.value.activeChatConversationId)
         assertEquals(null, viewModel.uiState.value.restorableEntryContext)
         assertNull(savedStateHandle["restorableEntryAccountId"])
         assertNull(savedStateHandle["restorableEntryRoute"])
-        assertNull(savedStateHandle["restorableEntrySelectedConversationId"])
+        assertNull(savedStateHandle["restorableChatConversationId"])
     }
 
     @Test
@@ -309,19 +319,19 @@ class ArgusLensAppViewModelTest {
             mapOf(
                 "restorableEntryAccountId" to "argus_tester",
                 "restorableEntryRoute" to AppRoute.Chat.routeString,
-                "restorableEntrySelectedConversationId" to "conversation-1",
+                "restorableChatConversationId" to "conversation-1",
             )
         )
         val viewModel = createTestViewModel(savedStateHandle = savedStateHandle)
 
         val state = viewModel.uiState.value
         assertEquals(AppRoute.Inbox, state.currentRoute)
-        assertEquals("", state.selectedConversationId)
+        assertEquals("", state.activeChatConversationId)
         assertEquals(
             AppRestorableEntryContext(
                 accountId = "argus_tester",
                 routeString = AppRoute.Chat.routeString,
-                selectedConversationId = "conversation-1",
+                activeChatConversationId = "conversation-1",
             ),
             state.restorableEntryContext,
         )
@@ -425,7 +435,7 @@ class ArgusLensAppViewModelTest {
             state = ArgusLensAppUiState(
                 appSessionState = AppSessionState(),
                 currentRoute = AppRoute.AuthEntry,
-                selectedConversationId = "conversation-1",
+                activeChatConversationId = "conversation-1",
                 realtimeReconnectGeneration = 2,
             ),
             session = session,
@@ -435,7 +445,7 @@ class ArgusLensAppViewModelTest {
 
         assertEquals(session, state.appSessionState)
         assertEquals(AppRoute.Inbox, state.currentRoute)
-        assertEquals("", state.selectedConversationId)
+        assertEquals("", state.activeChatConversationId)
         assertEquals("argus_tester", state.hydratedConversationAccountId)
         assertEquals(3, state.realtimeReconnectGeneration)
     }
@@ -450,14 +460,14 @@ class ArgusLensAppViewModelTest {
                     displayName = "Argus Tester",
                 ),
                 currentRoute = AppRoute.Chat,
-                selectedConversationId = "conversation-1",
+                activeChatConversationId = "conversation-1",
                 hydratedConversationAccountId = "argus_tester",
             )
         )
 
         assertEquals(AppSessionState(), state.appSessionState)
         assertEquals(AppRoute.AuthEntry, state.currentRoute)
-        assertEquals("", state.selectedConversationId)
+        assertEquals("", state.activeChatConversationId)
         assertEquals(null, state.hydratedConversationAccountId)
     }
 
@@ -483,26 +493,28 @@ class ArgusLensAppViewModelTest {
     @Test
     fun appViewModel_chatStatusMutationsSetAndClearMessageState() {
         val viewModel = createTestViewModel(savedStateHandle = SavedStateHandle())
+        val holder = viewModel.featureStateHolders.inboxChatFeatureStateHolder
 
-        viewModel.updateChatStatus("Attachment downloaded.", isError = false)
+        holder.updateChatStatus("Attachment downloaded.", isError = false)
 
-        assertEquals("Attachment downloaded.", viewModel.uiState.value.chatStatusMessage)
-        assertFalse(viewModel.uiState.value.chatStatusError)
+        assertEquals("Attachment downloaded.", holder.state.value.chatStatusMessage)
+        assertFalse(holder.state.value.chatStatusError)
 
-        viewModel.updateChatStatus("Attachment failed.", isError = true)
+        holder.updateChatStatus("Attachment failed.", isError = true)
 
-        assertEquals("Attachment failed.", viewModel.uiState.value.chatStatusMessage)
-        assertTrue(viewModel.uiState.value.chatStatusError)
+        assertEquals("Attachment failed.", holder.state.value.chatStatusMessage)
+        assertTrue(holder.state.value.chatStatusError)
 
-        viewModel.clearChatStatus()
+        holder.clearChatStatus()
 
-        assertEquals(null, viewModel.uiState.value.chatStatusMessage)
-        assertFalse(viewModel.uiState.value.chatStatusError)
+        assertEquals(null, holder.state.value.chatStatusMessage)
+        assertFalse(holder.state.value.chatStatusError)
     }
 
     @Test
     fun appViewModel_friendRequestStatusMutationsApplySnapshotAndResetState() {
         val viewModel = createTestViewModel(savedStateHandle = SavedStateHandle())
+        val holder = viewModel.featureStateHolders.contactsFeatureStateHolder
         val incoming = FriendRequestEntry(
             requestId = "request-1",
             accountId = "alice",
@@ -516,7 +528,7 @@ class ArgusLensAppViewModelTest {
             outgoing = emptyList(),
         )
 
-        viewModel.updateFriendRequestStatus(
+        holder.applyFriendRequestStatus(
             createFriendRequestStatusState(
                 snapshot = snapshot,
                 message = "Friend request accepted.",
@@ -524,20 +536,20 @@ class ArgusLensAppViewModelTest {
             )
         )
 
-        assertEquals(snapshot, viewModel.uiState.value.friendRequestsSnapshot)
-        assertEquals("Friend request accepted.", viewModel.uiState.value.friendRequestsStatusMessage)
-        assertFalse(viewModel.uiState.value.friendRequestsStatusError)
+        assertEquals(snapshot, holder.state.value.friendRequestsSnapshot)
+        assertEquals("Friend request accepted.", holder.state.value.friendRequestsStatusMessage)
+        assertFalse(holder.state.value.friendRequestsStatusError)
 
-        viewModel.updateFriendRequestsSnapshot(FriendRequestsSnapshot(emptyList(), listOf(incoming)))
+        holder.replaceFriendRequestsSnapshot(FriendRequestsSnapshot(emptyList(), listOf(incoming)))
 
-        assertEquals(FriendRequestsSnapshot(emptyList(), listOf(incoming)), viewModel.uiState.value.friendRequestsSnapshot)
-        assertEquals("Friend request accepted.", viewModel.uiState.value.friendRequestsStatusMessage)
+        assertEquals(FriendRequestsSnapshot(emptyList(), listOf(incoming)), holder.state.value.friendRequestsSnapshot)
+        assertEquals("Friend request accepted.", holder.state.value.friendRequestsStatusMessage)
 
-        viewModel.resetFriendRequestStatus()
+        holder.resetFriendRequestStatus()
 
-        assertEquals(FriendRequestsSnapshot(emptyList(), emptyList()), viewModel.uiState.value.friendRequestsSnapshot)
-        assertEquals(null, viewModel.uiState.value.friendRequestsStatusMessage)
-        assertFalse(viewModel.uiState.value.friendRequestsStatusError)
+        assertEquals(FriendRequestsSnapshot(emptyList(), emptyList()), holder.state.value.friendRequestsSnapshot)
+        assertEquals(null, holder.state.value.friendRequestsStatusMessage)
+        assertFalse(holder.state.value.friendRequestsStatusError)
     }
 
     private fun createTestViewModel(
@@ -577,19 +589,19 @@ class ArgusLensAppViewModelTest {
             mediaRepository = mediaRepository,
             paymentRepository = paymentRepository,
             realtimeClient = FakeConversationRealtimeClient(),
-            appShellCoordinator = AppShellCoordinator(
+            appShellUseCases = AppShellUseCases(
                 sessionRepository = sessionRepository,
                 conversationRepository = conversationRepository,
                 paymentRepository = paymentRepository,
                 backgroundSyncScheduler = backgroundSyncScheduler,
             ),
-            appSessionCoordinator = AppSessionCoordinator(authRepository, sessionRepository),
-            authCoordinator = AuthCoordinator(authRepository),
-            contactsCoordinator = ContactsCoordinator(conversationRepository, friendRepository),
-            newFriendsCoordinator = NewFriendsCoordinator(friendRepository, conversationRepository),
-            chatCoordinator = ChatCoordinator(conversationRepository, mediaRepository),
-            walletRequestCoordinator = WalletRequestCoordinator(paymentRepository),
-            realtimeCoordinator = RealtimeCoordinator(conversationRepository),
+            appSessionRefresher = AppSessionRefresher(authRepository, sessionRepository),
+            authUseCases = AuthUseCases(authRepository),
+            contactsUseCases = ContactsUseCases(conversationRepository, friendRepository),
+            friendRequestUseCases = FriendRequestUseCases(friendRepository, conversationRepository),
+            chatUseCases = ChatUseCases(conversationRepository, mediaRepository),
+            walletUseCases = WalletUseCases(paymentRepository),
+            applyRealtimeConversationEventUseCase = ApplyRealtimeConversationEventUseCase(conversationRepository),
             initialSessionSnapshot = initialSession,
             initialSessionCredentials = initialCredentials,
             sessionCredentialsStore = SessionCredentialsStore(initialCredentials),
@@ -675,7 +687,7 @@ class ArgusLensAppViewModelTest {
             objectKey: String,
         ): MediaRepositoryResult = failure()
 
-        override suspend fun uploadContent(uploadSession: com.kzzz3.argus.lens.data.media.MediaUploadSession, contentBytes: ByteArray): MediaRepositoryResult = failure()
+        override suspend fun uploadContent(uploadSession: com.kzzz3.argus.lens.core.data.media.MediaUploadSession, contentBytes: ByteArray): MediaRepositoryResult = failure()
         override suspend fun downloadAttachment(attachmentId: String, fileName: String): MediaRepositoryResult = failure()
 
         private fun failure(): MediaRepositoryResult = MediaRepositoryResult.Failure("UNUSED", "unused")

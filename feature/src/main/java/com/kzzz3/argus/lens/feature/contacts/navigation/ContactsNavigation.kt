@@ -10,40 +10,54 @@ import com.kzzz3.argus.lens.feature.contacts.NewFriendsScreen
 import com.kzzz3.argus.lens.feature.contacts.NewFriendsUiState
 import com.kzzz3.argus.lens.feature.navigation.AuthenticatedFeatureRouteShell
 import com.kzzz3.argus.lens.ui.shell.ShellDestination
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
-const val ContactsRoute = "Contacts"
-const val NewFriendsRoute = "NewFriends"
+const val ContactsRoutePattern = "Contacts"
+const val NewFriendsRoutePattern = "NewFriends"
+
+@Serializable
+@SerialName(ContactsRoutePattern)
+data object ContactsRoute
+
+@Serializable
+@SerialName(NewFriendsRoutePattern)
+data object NewFriendsRoute
+
+data class ContactsRoutes(
+    val contactsShellDestination: ShellDestination,
+    val newFriendsShellDestination: ShellDestination,
+    val onTabSelected: (ShellDestination) -> Unit,
+    val contactsState: ContactsUiState,
+    val newFriendsState: NewFriendsUiState,
+    val onContactsAction: (ContactsAction) -> Unit,
+    val onNewFriendsAction: (NewFriendsAction) -> Unit,
+)
 
 fun NavGraphBuilder.contactsNavigation(
-    contactsShellDestination: ShellDestination,
-    newFriendsShellDestination: ShellDestination,
-    onTabSelected: (ShellDestination) -> Unit,
-    contactsState: ContactsUiState,
-    newFriendsState: NewFriendsUiState,
-    onContactsAction: (ContactsAction) -> Unit,
-    onNewFriendsAction: (NewFriendsAction) -> Unit,
+    routes: ContactsRoutes,
 ) {
-    composable(ContactsRoute) {
+    composable<ContactsRoute> {
         AuthenticatedFeatureRouteShell(
-            currentDestination = contactsShellDestination,
-            onTabSelected = onTabSelected,
+            currentDestination = routes.contactsShellDestination,
+            onTabSelected = routes.onTabSelected,
         ) { contentModifier ->
             ContactsScreen(
-                state = contactsState,
-                onAction = onContactsAction,
+                state = routes.contactsState,
+                onAction = routes.onContactsAction,
                 modifier = contentModifier,
             )
         }
     }
 
-    composable(NewFriendsRoute) {
+    composable<NewFriendsRoute> {
         AuthenticatedFeatureRouteShell(
-            currentDestination = newFriendsShellDestination,
-            onTabSelected = onTabSelected,
+            currentDestination = routes.newFriendsShellDestination,
+            onTabSelected = routes.onTabSelected,
         ) { contentModifier ->
             NewFriendsScreen(
-                state = newFriendsState,
-                onAction = onNewFriendsAction,
+                state = routes.newFriendsState,
+                onAction = routes.onNewFriendsAction,
                 modifier = contentModifier,
             )
         }

@@ -9,9 +9,9 @@ class ModernizationCoverageTest {
     fun modernizationRegressionGatesExistForEveryPriorityGroup() {
         listOf(
             "src/test/java/com/kzzz3/argus/lens/app/SessionBoundaryTest.kt",
-            "src/test/java/com/kzzz3/argus/lens/app/AppRouteNavigationRuntimeTest.kt",
+            "src/test/java/com/kzzz3/argus/lens/app/AppRouteNavigatorTest.kt",
             "src/test/java/com/kzzz3/argus/lens/app/ArgusLensAppViewModelTest.kt",
-            "../data/src/test/java/com/kzzz3/argus/lens/data/local/ArgusLensDatabaseMigrationTest.kt",
+            "../core/ui/src/test/java/com/kzzz3/argus/lens/ui/status/UiStatusMessageTest.kt",
             "src/test/java/com/kzzz3/argus/lens/worker/BackgroundSyncWorkTest.kt",
             "src/test/java/com/kzzz3/argus/lens/worker/BackgroundSyncTaskTest.kt",
             "src/test/java/com/kzzz3/argus/lens/worker/BackgroundSyncWorkerTest.kt",
