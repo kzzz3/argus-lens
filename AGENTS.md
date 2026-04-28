@@ -14,14 +14,26 @@ argus-lens/
 ├── app/
 │   ├── build.gradle.kts
 │   └── src/
-├── data/
-│   ├── build.gradle.kts
-│   └── src/
 ├── feature/
 │   ├── build.gradle.kts
 │   └── src/
 ├── core/
+│   ├── data/
+│   │   ├── build.gradle.kts
+│   │   └── src/
+│   ├── network/
+│   │   ├── build.gradle.kts
+│   │   └── src/
+│   ├── database/
+│   │   ├── build.gradle.kts
+│   │   └── src/
+│   ├── datastore/
+│   │   ├── build.gradle.kts
+│   │   └── src/
 │   ├── model/
+│   │   ├── build.gradle.kts
+│   │   └── src/
+│   ├── session/
 │   │   ├── build.gradle.kts
 │   │   └── src/
 │   └── ui/
@@ -34,15 +46,22 @@ argus-lens/
 ## WHERE TO LOOK
 | Task | Location | Notes |
 |------|----------|-------|
-| Project/module wiring | `settings.gradle.kts`, `build.gradle.kts` | Android modules: `:app`, `:feature`, `:data`, `:core:model`, `:core:ui` |
+| Project/module wiring | `settings.gradle.kts`, `build.gradle.kts` | Android modules: `:app`, `:feature`, `:core:data`, `:core:network`, `:core:database`, `:core:datastore`, `:core:model`, `:core:session`, `:core:ui` |
 | App assembly / entry build config | `app/build.gradle.kts` | App shell, Hilt, release shrink config |
-| Data/network/persistence build config | `data/build.gradle.kts` | Room/KSP, Retrofit/OkHttp, DataStore, backend BuildConfig values |
+| Repository build config | `core/data/build.gradle.kts` | Repository mode BuildConfig and data-layer dependencies |
+| Network build config | `core/network/build.gradle.kts` | Retrofit/OkHttp/SSE and backend URL BuildConfig values |
+| Database build config | `core/database/build.gradle.kts` | Room/KSP and schema export |
+| Datastore build config | `core/datastore/build.gradle.kts` | DataStore/Keystore/cache/file persistence dependencies |
 | Launcher/entry | `app/src/main/AndroidManifest.xml`, `app/src/main/java/com/kzzz3/argus/lens/MainActivity.kt` | Manifest + activity startup |
 | App shell code | `app/src/main/java/com/kzzz3/argus/lens/app/` | Navigation host, dependency assembly, Hilt wiring |
 | Root navigation | `app/src/main/java/com/kzzz3/argus/lens/navigation/` | Root `ArgusNavHost`, main graph container, top-level shell destinations |
 | Feature code | `feature/src/main/java/com/kzzz3/argus/lens/feature/` | Auth, inbox, contacts, wallet, call, realtime UI/business flows |
-| Data code | `data/src/main/java/com/kzzz3/argus/lens/data/` | Repositories, Room, network clients, session persistence |
-| Shared models | `core/model/src/main/java/com/kzzz3/argus/lens/model/` | Parcelable/domain models shared across data/feature/app |
+| Repository/data code | `core/data/src/main/java/com/kzzz3/argus/lens/core/data/` | Repository contracts/implementations and data-layer factories |
+| Network code | `core/network/src/main/java/com/kzzz3/argus/lens/core/network/` | Retrofit/OkHttp/SSE, API services, DTOs, backend URL config |
+| Database code | `core/database/src/main/java/com/kzzz3/argus/lens/core/database/` | Room database, DAO, entities, migrations, schemas |
+| Datastore code | `core/datastore/src/main/java/com/kzzz3/argus/lens/core/datastore/` | DataStore, Keystore, session snapshots, local caches, file persistence |
+| Shared models | `core/model/src/main/java/com/kzzz3/argus/lens/model/` | Parcelable/domain models shared across core/feature/app |
+| Session contract | `core/session/src/main/java/com/kzzz3/argus/lens/session/` | Session repository and credential contract shared across app/core data layers |
 | Shared UI | `core/ui/src/main/java/com/kzzz3/argus/lens/ui/` | Theme, shell widgets, status UI primitives |
 | Local unit tests | `*/src/test/java/` | JVM tests live with their owning module |
 | Instrumentation/UI tests | `app/src/androidTest/java/` | AndroidX / Compose test path |
@@ -65,8 +84,8 @@ argus-lens/
 - Repository resolution is centralized in `settings.gradle.kts` with `FAIL_ON_PROJECT_REPOS`; do not add ad hoc per-module repositories.
 - `gradle/libs.versions.toml` is the version source of truth.
 - `gradle.properties` explicitly sets `kotlin.code.style=official`.
-- `data/build.gradle.kts` encodes debug/release backend URL behavior and `AUTH_MODE` / `CONVERSATION_MODE` BuildConfig boundaries.
-- `app` may depend on all lower modules; `feature` may depend on `data`, `core:model`, and `core:ui`; `data` may depend on `core:model`; `core:ui` and `core:model` should not depend on product modules.
+- `core/network/build.gradle.kts` owns debug/release backend URL behavior; `core/data/build.gradle.kts` owns `AUTH_MODE` / `CONVERSATION_MODE` BuildConfig boundaries.
+- `app` composes `:feature` and app-facing core APIs (`:core:data`, `:core:model`, `:core:session`, `:core:ui`) and must not depend directly on low-level `:core:network`, `:core:database`, or `:core:datastore` implementations. `feature` may depend on `:core:data`, `:core:model`, `:core:session`, and `:core:ui`; `:core:data` may depend on `:core:network`, `:core:database`, `:core:datastore`, `:core:model`, and `:core:session`; leaf core modules should not depend on `app` or `feature`.
 - Room is wired through KSP; preserve that path instead of casually switching annotation processing style.
 
 ## DOCUMENTATION WORKFLOW
@@ -93,4 +112,4 @@ argus-lens/
 ## NOTES
 - `docs/project-plan.md` says Lens owns Android permissions/lifecycle, CameraX integration, AudioRecord orchestration, Room queue behavior, WorkManager resync behavior, and user-visible status.
 - `docs/project-plan.md` also says Lens does not own cloud session routing, heavy media filtering/signing internals, payment settlement logic, or model orchestration/final action authorization.
-- The biggest code concentration currently sits in `feature/`, `data/`, and app wiring under `app/`; keep those boundaries sharp.
+- The biggest code concentration currently sits in `feature/`, `core:data`, and app wiring under `app/`; keep those boundaries sharp.

@@ -1,6 +1,6 @@
 # Android Architecture Target
 
-This document is the durable target architecture for Argus Lens. It describes where the Android app should converge over multiple verified slices; it does not claim the current codebase already has every target module or layer.
+This document is the durable target architecture for Argus Lens. It describes the current core-module baseline and the remaining feature-module convergence path.
 
 ## Purpose and Scope
 
@@ -10,26 +10,31 @@ This file owns the long-term Android structure and migration roadmap. `PLAN.md` 
 
 ## Current Baseline
 
-The current project is a transitional modular baseline: `:core:model` and `:core:ui` have been physically extracted, while `:data` and `:feature` remain aggregate modules until their package-level boundaries are stable.
+The current project is a core-modular baseline: `:core:model`, `:core:session`, `:core:ui`, `:core:data`, `:core:network`, `:core:database`, and `:core:datastore` have been physically extracted. `:feature` remains an aggregate module while feature-owned roots/state holders/controllers continue converging toward independent feature modules.
 
 ```text
 argus-lens/
 ├── app/          app shell, Navigation Compose host, Hilt entry wiring, app tests
 ├── core/
-│   ├── model/   shared Parcelable/domain models
-│   └── ui/      theme and reusable UI primitives
-├── data/         repositories, Room, DataStore, Retrofit/OkHttp, media/sync/session clients
+│   ├── data/      repository contracts, implementations, and factories
+│   ├── network/   Retrofit/OkHttp/SSE clients, API services, DTOs, backend URL config
+│   ├── database/  Room database, DAOs, entities, migrations, schemas
+│   ├── datastore/ DataStore/Keystore/session/cache/file persistence
+│   ├── model/     shared Parcelable/domain models
+│   ├── session/   shared session repository and credential contract
+│   └── ui/        theme and reusable UI primitives
 └── feature/      package-level auth, inbox, chat, contacts, wallet, call, realtime flows
 ```
 
-The app shell has already moved past a single monolithic route host milestone:
+The app shell has moved past a single monolithic route host milestone:
 
-- `AppRouteHostState` and `AppRouteHostCallbacks` narrow the host API.
-- `AppRouteUiState` builds route-facing UI state outside `AppRouteHost`.
-- `AppRouteRuntimes` centralizes route runtime construction with ViewModel-owned coroutine scope.
+- `AppShellState` and `AppShellCallbacks` define the app-owned root state/callback API.
+- `AppFeatureCallbacks` carries feature-state mutations inside the host instead of exposing them from `ArgusLensApp.kt`.
+- `AppShellUiState` builds route-facing UI state outside `AppShellHost`.
 - `ArgusNavHost` centralizes root Navigation Compose registration with auth/main child graphs.
-- `AppRouteActionBindings` centralizes route request/callback/action adapters outside the Compose host.
-- `AppRouteHostEffects` centralizes host lifecycle effects outside the Compose host body.
+- `ArgusNavRoutes` and `MainRoutes` pass typed feature route bundles to graph registration instead of spreading action parameters across the root graph.
+- `AppActionDispatcher` centralizes route request/callback/action adapters outside the Compose host.
+- `AppShellEffects` centralizes host lifecycle effects outside the Compose host body.
 - `ArgusNavHost` is now the root Navigation Compose host. It separates auth and main child graphs while preserving `AppRoute` as the app-state compatibility contract.
 - `feature/auth/navigation/AuthNavigation.kt` owns login/register route registration, and feature-owned navigation files register main child destinations under the app-owned main graph container.
 - `WalletActionHandler` keeps wallet action reduction/effect dispatch in the wallet feature package.
@@ -40,11 +45,11 @@ The app shell has already moved past a single monolithic route host milestone:
 - `AuthStateHolder` owns login/register form `StateFlow` state, reducer dispatch, and auth submission in the feature package; `ArgusLensAppViewModel` owns its lifetime while app code still adapts auth graph navigation and session-success side effects.
 - `InboxStateHolder` owns derived inbox UI state and route-agnostic inbox action dispatch in the feature package; `ArgusLensAppViewModel` owns its lifetime while app code still owns shared thread mutation, conversation-open sequencing, app routes, sign-out/session effects, realtime, persistence, and chat behavior.
 - `ChatStateHolder` owns selected-conversation chat state and UI derivation in the feature package; `ArgusLensAppViewModel` owns its lifetime while app code still owns chat action side effects, call routing, selected conversation, shared thread mutation, realtime, and persistence.
-- `AppRouteContract` owns stable app route descriptors and route strings, so app navigation no longer depends on enum names. AndroidX `composable<T>` typed route registration, Kotlin serialization setup, and route args remain future slices after process-death restoration and selected-conversation ownership are explicit.
-- `AppRouteHostEffectDependencies` narrows host lifecycle/effects inputs so the effects layer no longer receives the full Hilt-backed `AppDependencies` aggregate.
-- `SavedStateHandle` process-death restoration now has a narrow compatibility policy: app state stores only account id, stable route string, and selected conversation id, and hydration restores `Chat` only after same-account credentials and loaded conversation threads validate the selected id.
-- `LocalSessionStore` remains the concrete `SessionRepository` facade, with safe identity persistence and encrypted credential persistence split behind module-internal stores while storage semantics remain unchanged.
-- `RemoteMediaRepository` remains behind the public `MediaRepository` factory contract and delegates Android download file persistence to module-internal `MediaFileDataSource`.
+- `AppRouteContract` owns stable app route descriptors and route strings, so app navigation no longer depends on enum names. AndroidX `composable<T>` typed route registration and Kotlin serialization are now used for auth/main/feature leaf route registration.
+- `AppShellEffectDependencies` narrows host lifecycle/effects inputs so the effects layer no longer receives the full Hilt-backed `AppDependencies` aggregate.
+- `SavedStateHandle` process-death restoration now has a narrow compatibility policy: app state stores only account id, stable route string, and active chat conversation id, and hydration restores `Chat` only after same-account credentials and loaded conversation threads validate the active chat id.
+- `:core:session` owns the canonical `SessionRepository` and `SessionCredentials` contract. `:core:datastore` owns the concrete `LocalSessionStore`, with safe identity persistence and encrypted credential persistence split behind module-internal stores while storage semantics remain unchanged.
+- `:core:data` owns repository contracts/implementations. `:core:network` owns DTO/API/SSE clients, `:core:database` owns Room, and `:core:datastore` owns Android download file persistence and local caches.
 - `:core:model` and `:core:ui` own the former shared `model` and `ui` modules without package renames, keeping the first physical core migration low risk.
 - `ArgusLensAppState` owns root UI state and pure session transition helpers.
 
@@ -140,9 +145,9 @@ Rules:
 
 ## Module Split Readiness Plan
 
-Current included modules remain `:app`, `:data`, `:feature`, `:core:model`, and `:core:ui`. The following target modules are planned but intentionally not included in `settings.gradle.kts` until readiness is proven: `:core:session`, `:core:network`, `:core:database`, `:feature:auth`, `:feature:inbox`, `:feature:chat`, and `:feature:wallet`.
+Current included modules are `:app`, `:feature`, `:core:data`, `:core:network`, `:core:database`, `:core:datastore`, `:core:model`, `:core:session`, and `:core:ui`. Remaining target feature modules such as `:feature:auth`, `:feature:inbox`, `:feature:chat`, and `:feature:wallet` are still planned and intentionally not included until their lifecycle/test ownership is proven.
 
-First physical split candidate: `:core:network`. It has the clearest package seed under `data/network`, but extraction must first isolate product BuildConfig inputs from reusable Retrofit/OkHttp/SSE setup. `:core:database` follows after Room database/entity/DAO/migration ownership is separated from repository adapters. `:core:session` follows only after session identity, credential storage, token crypto, and app-level session orchestration contracts are distinct. Feature modules are later: `:feature:auth` must include register flow ownership, `:feature:wallet` must resolve scan/payment DTO contracts, and `:feature:inbox` / `:feature:chat` need explicit shared conversation contracts before splitting from the current inbox package.
+The aggregate data module has been removed. Repository orchestration lives in `:core:data`; Retrofit/OkHttp/SSE and backend URL configuration live in `:core:network`; Room database/entity/DAO/migration/schema ownership lives in `:core:database`; DataStore, SharedPreferences, Keystore, local wallet cache, session persistence, and Android file persistence live in `:core:datastore`.
 
 Readiness gates before adding a physical module:
 
@@ -202,26 +207,28 @@ State and events:
 - `SnackbarHostState`, `SharedFlow`, `Channel`, and `Toast` are not default event mechanisms; add root message rendering only when app-wide producer pressure, lifecycle ownership, sign-out clearing, and duplicate-delivery behavior are explicit and tested.
 - Compose screens do not receive `NavController`. They expose callbacks such as `onConversationClick(id)`.
 - Token material never enters Parcelable, saveable Compose state, `SavedStateHandle` restore keys, logs, previews, or screenshots.
-- Use cases are not a mandatory layer. Add them when they remove real workflow orchestration from a coordinator, and keep single-repository mapping in coordinators/repositories until reuse or complexity justifies extraction.
+- Use cases are not a mandatory layer. Add them when they remove real workflow orchestration from handlers/managers, and keep single-repository mapping in handlers/repositories until reuse or complexity justifies extraction.
 
 ## Role Naming Boundary
 
 Use these role names consistently before broad renames or module moves:
 
-- `Runtime`: owns lifecycle-bound work such as jobs, subscriptions, timers, route synchronization, or explicit dispose/cancel semantics. App-owned runtimes may bridge app state, navigation, and feature callbacks; feature runtimes should be limited to feature-local lifecycle work.
-- `Coordinator`: orchestrates repositories or domain operations and returns explicit results. Coordinators should not own Compose state, navigation controllers, or long-lived coroutine jobs.
-- `Handler`: dispatches synchronous feature actions or effects to reducers/callbacks. Handlers should not become app route adapters.
+- `UseCase`: owns reusable workflow orchestration that composes repositories or other feature services and returns explicit results. Avoid pass-through use cases that only forward one repository call unchanged.
+- `Handler`: dispatches synchronous route or feature actions to reducers, callbacks, or feature controllers. Handlers should stay narrow and should not own long-lived coroutine jobs.
 - `Runner`: launches asynchronous requests and owns request freshness, cancellation, invalidation, or generation checks.
+- `Manager`: owns a stateful external connection or subscription boundary, such as `RealtimeConnectionManager`, and exposes explicit connect/dispose operations.
+- `Scheduler`: owns delayed or repeated work policy, such as `RealtimeReconnectScheduler` and `SessionRefreshScheduler`.
 - `Store`: owns storage. Persistent stores live in data/local/session packages; in-memory stores must say so explicitly.
 - `StateHolder`: owns feature `StateFlow` state and is a ViewModel precursor. State holders receive app inputs/callbacks but do not own navigation controllers.
 - `Controller`: a feature facade that composes multiple feature-owned roles only when that keeps a route/screen boundary smaller.
 
-Current transitional names are classified rather than renamed in this slice:
+Current app/feature names are classified as follows:
 
-- `AppRouteNavigationRuntime` is app-owned route navigation policy; it is not a coroutine lifecycle owner.
-- `AppPersistenceRuntime` is an app-owned persistence delegate around shell/session persistence.
-- `AppRouteRuntimes` is an app-owned wiring holder for route runtimes; it should not construct feature `StateHolder`, `Handler`, or `Controller` roles.
-- `CallSessionRuntime` is a feature-owned lifecycle runtime because it owns timer/cancel semantics for call sessions.
+- `AppRouteNavigator` is app-owned route navigation policy for typed navigation targets and shell destination mapping.
+- `PersistAppStateUseCase` and `RestoreAppSessionUseCase` are app-owned shell/session workflow use cases.
+- `AppRouteHandlers` is the app-owned wiring holder for route handlers and feature controllers; it must not construct feature `StateHolder`, `Handler`, or `Controller` roles that belong in feature packages.
+- `CallSessionTimer` is feature-owned timer policy for active call duration/cancel semantics.
+- `RealtimeConnectionManager` owns the realtime SSE connection lifecycle and delegates delayed retry policy to `RealtimeReconnectScheduler`.
 - `SessionCredentialsStore` is an app-owned in-memory credential holder, distinct from persistent data/session stores.
 - `LocalSessionStore` is the persistent `SessionRepository` facade over safe identity and encrypted credential stores.
 
@@ -255,7 +262,7 @@ Migration rule: keep the current nested `AppRoute` compatibility graph covered w
 ## Session and Token Boundary Target
 
 Current state: UI identity state and credential persistence are separated enough to keep access/refresh tokens out of saveable UI state.
-`LocalSessionStore` now reflects that boundary internally by delegating safe session identity persistence separately from encrypted credential persistence while preserving the existing public `SessionRepository` contract.
+`SessionRepository` and `SessionCredentials` live in `:core:session`, making the shared contract independent from Android persistence. `LocalSessionStore` lives in `:core:datastore` and delegates safe session identity persistence separately from encrypted credential persistence while preserving storage behavior.
 
 Target state:
 
@@ -309,9 +316,9 @@ Rules:
 - Local durable state is written before network-dependent reconciliation when a flow must survive process death or weak networks.
 - WorkManager handles constrained retry/reconciliation; foreground refresh must not silently replace durable sync policy.
 - Room schema changes require exported schema updates and migration tests before increasing `CURRENT_VERSION`.
-- Filename sanitization, content capability checks, and media upload contracts stay in the data/media boundary, not in Compose UI.
+- Filename sanitization and Android file writes stay in `:core:datastore` media persistence, while media upload contracts and repository orchestration stay in `:core:data`, not in Compose UI.
 
-## Hilt and Runtime Ownership Target
+## Hilt and Lifecycle Ownership Target
 
 - `@HiltAndroidApp` remains in the application class.
 - Activities and workers use Android-supported Hilt entry points.
@@ -359,7 +366,7 @@ Testing rules:
 Goal: keep the app safe and navigable while shrinking the app shell.
 
 - Preserve the token/session UI-state boundary.
-- Continue slimming `AppRouteHost` and `ArgusLensApp` behind explicit state/callback/runtime objects.
+- Continue slimming `AppShellHost` and `ArgusLensApp` behind explicit state/callback/route objects.
 - Move feature-owned state and actions out of the root ViewModel when a feature has an independent lifecycle boundary.
 - Use feature-owned state holders as verified intermediate seams when adding a full AndroidX/Hilt ViewModel would require a separate Gradle/lifecycle dependency slice.
 - Keep route behavior covered by JVM source-boundary and navigation policy tests.
@@ -367,7 +374,7 @@ Goal: keep the app safe and navigable while shrinking the app shell.
 Exit evidence:
 
 - `:app:testDebugUnitTest --tests "com.kzzz3.argus.lens.app.ArgusLensAppViewModelTest"`
-- `:app:testDebugUnitTest --tests "com.kzzz3.argus.lens.app.AppRouteNavigationRuntimeTest"`
+- `:app:testDebugUnitTest --tests "com.kzzz3.argus.lens.app.AppRouteNavigatorTest"`
 - Source-boundary checks for saveable UI state and host API shape.
 
 ### P1 — Typed Navigation and Lifecycle Ownership
@@ -383,7 +390,7 @@ Goal: move from centralized enum registration to typed route contracts without l
 Exit evidence:
 
 - Route registration coverage for typed and legacy routes during transition.
-- ViewModel/runtime ownership regression tests.
+- ViewModel/lifecycle ownership regression tests.
 - Targeted process-death/session-entry tests where state is persisted.
 
 ### P2 — Data, Session, and Use Case Boundaries
@@ -392,7 +399,7 @@ Goal: make repositories and data sources explicit enough to support offline-firs
 
 - Split `LocalSessionStore` into identity, token, and crypto responsibilities.
 - Introduce use cases only around reused or multi-repository operations.
-- Separate network, database, DataStore, session, and media data-source adapters within the current module before extracting Gradle modules.
+- Keep repository orchestration, network, database, DataStore/session, and media file persistence split across the current `:core:data`, `:core:network`, `:core:database`, and `:core:datastore` modules.
 - Add durable outbound queue decisions for message/media upload flows that must survive process death.
 
 Exit evidence:
@@ -407,7 +414,7 @@ Exit evidence:
 Goal: extract modules only after package boundaries are stable.
 
 - Keep the verified `:core:model` / `:core:ui` baseline stable, then extract `:core:designsystem` or `:core:navigation` only when shared UI/navigation ownership pressure appears.
-- Extract data infrastructure modules after package-level data-source boundaries exist: `:core:network`, `:core:database`, `:core:datastore`, `:core:session`.
+- Keep the extracted data infrastructure modules (`:core:data`, `:core:network`, `:core:database`, `:core:datastore`) stable and split only feature modules or additional core modules when ownership pressure appears.
 - Split aggregate `:feature` into `:feature:*` modules when feature ViewModels/routes/use cases are already independent.
 - Move shared Gradle configuration toward convention plugins when repeated module boilerplate becomes a maintenance problem.
 - Preserve release hardening: R8, shrink resources, non-production HTTPS base URL checks, backup exclusions.

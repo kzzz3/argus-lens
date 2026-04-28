@@ -8,15 +8,19 @@ Argus Lens is the Android host app for Argus. It owns user-visible runtime behav
 
 ## Architecture at a Glance
 
-Lens is local-first and Android Studio-centered. UI state flows through Compose screens and app coordinators, persisted state lives behind repository boundaries, and cloud behavior enters through Cortex-facing network clients. The current implementation has started the `:core:*` migration with shared model/UI modules; the long-term `:core:*` / `:feature:*` target lives in `docs/android-architecture-target.md`.
+Lens is local-first and Android Studio-centered. UI state flows through Compose screens and feature-owned state holders/controllers, persisted state lives behind repository boundaries, and cloud behavior enters through Cortex-facing network clients. Shared infrastructure is split across focused `:core:*` modules while `:app` remains the composition shell.
 
 ```text
 argus-lens/
 ├── app/          app shell, navigation host, Hilt wiring, instrumentation tests
 ├── core/
+│   ├── data/    repository contracts, implementations, and data-layer factories
+│   ├── network/ Retrofit/OkHttp/SSE clients, API services, DTOs, backend URL config
+│   ├── database/ Room database, DAO, entities, migrations, schemas
+│   ├── datastore/ DataStore/Keystore/session/local cache/file persistence
 │   ├── model/   shared Parcelable/domain models
+│   ├── session/ session repository and credential contract
 │   └── ui/      theme and shared UI primitives
-├── data/         repositories, Room, DataStore, Retrofit/OkHttp, sync/media clients
 ├── feature/      auth, inbox, chat, contacts, wallet, call, realtime feature flows
 └── docs/         product plans, modernization progress, payment flow notes
 ```
@@ -64,8 +68,12 @@ Instrumentation APK build:
 | Entry activity | `app/src/main/java/com/kzzz3/argus/lens/MainActivity.kt` |
 | App composition root | `app/src/main/java/com/kzzz3/argus/lens/app/` |
 | Root navigation | `app/src/main/java/com/kzzz3/argus/lens/navigation/` |
-| Network/data layer | `data/src/main/java/com/kzzz3/argus/lens/data/` |
+| Repository/data layer | `core/data/src/main/java/com/kzzz3/argus/lens/core/data/` |
+| Network clients and DTOs | `core/network/src/main/java/com/kzzz3/argus/lens/core/network/` |
+| Room database | `core/database/src/main/java/com/kzzz3/argus/lens/core/database/` |
+| Session/cache/file persistence | `core/datastore/src/main/java/com/kzzz3/argus/lens/core/datastore/` |
 | Shared models | `core/model/src/main/java/com/kzzz3/argus/lens/model/` |
+| Session contract | `core/session/src/main/java/com/kzzz3/argus/lens/session/` |
 | Shared UI | `core/ui/src/main/java/com/kzzz3/argus/lens/ui/` |
 
 ## Technology Stack

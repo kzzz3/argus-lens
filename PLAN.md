@@ -23,16 +23,18 @@ Argus Lens provides the Android runtime for Argus by delivering a reliable local
 - [x] P0 auth state-holder slice: move login/register form state and reducer/submission orchestration out of `ArgusLensAppUiState` and the app-owned entry runtime into a ViewModel-owned feature `AuthStateHolder`, while app code retains route/session-success callbacks.
 - [x] P0 inbox state-holder slice: move inbox UI-state derivation and route-agnostic inbox action dispatch into a ViewModel-owned feature `InboxStateHolder`, while app code retains conversation-open sequencing, route changes, sign-out, realtime, persistence, and chat ownership.
 - [x] P0 chat state-holder slice: move selected-conversation chat state/UI derivation into a ViewModel-owned feature `ChatStateHolder`, while app code retains chat action effects, call routing, dispatch, recall/download, selected conversation, and shared thread ownership.
-- [x] P1 typed-navigation compatibility slice: introduce an app-owned stable route contract around `AppRoute` so host navigation no longer depends on enum names, while deferring AndroidX `composable<T>` registration and route args until selected-conversation/process-death policy is explicit.
+- [x] P1 typed-navigation route-bundle slice: introduce an app-owned stable route contract around `AppRoute`, split auth/main child graphs, and route feature leaf registration through feature-owned route bundles instead of enum-name or action-soup navigation APIs.
 - [x] P1 app dependency effects-boundary slice: narrow `AppRouteHostEffects` to a four-field lifecycle/effects dependency object while leaving Hilt aggregate construction and feature ownership unchanged.
 - [x] P2 LocalSessionStore delegation slice: keep `SessionRepository` behavior unchanged while splitting local session identity and credential persistence behind module-internal stores.
 - [x] P2 role naming boundary slice: document and guard runtime-like role names before broad renames or ownership moves.
 - [x] P2 focused UseCase slice: extract only the outgoing chat send/media-upload workflow into a feature-local `SendOutgoingChatMessageUseCase`, avoiding pass-through repository wrappers and new modules.
-- [x] P2 module split readiness slice: document and guard future `:core:*` / `:feature:*` modules as planned targets, not current Gradle includes, while deferring `buildSrc` / `build-logic` to a dedicated convention-plugin slice.
+- [x] P2 module split readiness slice: document and guard module extraction gates before physical splits; `:core:data`, `:core:network`, `:core:database`, and `:core:datastore` are now current includes, while future `:feature:*` splits remain planned targets and `buildSrc` / `build-logic` stay deferred.
 - [x] P2 media datasource boundary slice: keep `MediaRepository` public while making `RemoteMediaRepository` internal and delegating Android download file persistence to a module-internal `MediaFileDataSource`.
-- [x] P3 first core-module sync slice: move shared model/UI modules into `:core:model` and `:core:ui` while preserving package names and aggregate `:data` / `:feature` ownership.
+- [x] P3 first core-module sync slice: move shared model/UI modules into `:core:model` and `:core:ui` while preserving package names.
+- [x] P3 core session contract slice: move `SessionRepository` and `SessionCredentials` into `:core:session`; Android DataStore/Keystore persistence now lives in `:core:datastore`.
 - [x] P1 navigation graph split slice: normalize root navigation into `ArgusNavHost`, separate auth/main child graphs, and move feature leaf registrations into feature-owned navigation files while preserving `AppRoute` compatibility.
 - [x] Long-term Android architecture target documented with `:app`, `:core:*`, `:feature:*`, typed navigation, session, data, test, and cleanup roadmaps.
+- [x] Data layer split into `:core:data`, `:core:network`, `:core:database`, and `:core:datastore` without retaining the old `:data` compatibility module.
 - [x] Process-death restoration decision for selected conversation/session entry context.
 - [ ] Richer first-class remote media send paths beyond the generic-file baseline.
 - [ ] Real RTC signaling integration and call lifecycle events.
@@ -54,14 +56,18 @@ Argus Lens provides the Android runtime for Argus by delivering a reliable local
 argus-lens/
 ├── app/          app shell, navigation, Hilt, app-level tests
 ├── core/
-│   ├── model/   shared domain/Parcelable models
-│   └── ui/      reusable theme and UI primitives
-├── data/         repositories, network clients, Room, DataStore
+│   ├── data/      repository contracts, implementations, and data factories
+│   ├── network/   Retrofit/OkHttp/SSE clients, API services, DTOs, backend URL config
+│   ├── database/  Room database, DAO, entities, migrations, schemas
+│   ├── datastore/ DataStore/Keystore/session/cache/file persistence
+│   ├── model/     shared domain/Parcelable models
+│   ├── session/   shared session repository and credential contract
+│   └── ui/        reusable theme and UI primitives
 ├── feature/      feature state/reducers/effects/screens
 └── docs/         architecture background and modernization progress
 ```
 
-Long-term target topology is documented in `docs/android-architecture-target.md`: `:app` remains the composition shell, shared infrastructure converges into `:core:*`, and independently owned flows converge into `:feature:*` modules after package-level boundaries are stable.
+Long-term target topology is documented in `docs/android-architecture-target.md`: `:app` remains the composition shell, shared infrastructure now lives in focused `:core:*` modules, and independently owned flows continue to converge into feature-owned roots/state holders/controllers.
 
 ## Development Phases and Milestones
 
@@ -78,15 +84,15 @@ Long-term target topology is documented in `docs/android-architecture-target.md`
 - [ ] Rich media-specific send paths.
 
 ### Phase 3 — Stage 1 Runtime Maturity
-- [x] Slim `AppRouteHost` by replacing scattered state/callback parameters with explicit host boundary objects.
-- [x] Extract `AppRouteActionBindings` so `AppRouteHost` no longer declares route action/request/callback factories inline.
-- [x] Extract `AppRouteHostEffects` so `AppRouteHost` no longer declares lifecycle effect blocks inline.
+- [x] Slim `AppShellHost` by replacing scattered state/callback parameters with explicit host boundary objects.
+- [x] Extract `AppActionDispatcher` so `AppShellHost` no longer declares route action/request/callback factories inline.
+- [x] Extract `AppShellEffects` so `AppShellHost` no longer declares lifecycle effect blocks inline.
 - [x] Split navigation into a normalized root host with auth and main child graphs while keeping login/register and main shell behavior stable.
 - [x] Move auth/register form state and submit orchestration into a feature-owned state holder while keeping session application and route transitions app-owned.
-- [x] Move inbox UI derivation and simple action dispatch into a feature-owned state holder while keeping conversation-open sequencing and shared thread mutation in app-owned runtime boundaries.
-- [x] Move selected chat state/UI derivation into a feature-owned state holder while keeping chat action effects and shared thread mutation in app-owned runtime boundaries.
-- [x] Replace app-side route enum-name navigation with a stable app-owned route contract helper while keeping feature leaf `composable("...")` registrations unchanged.
-- [x] Narrow host lifecycle effects to `AppRouteHostEffectDependencies` so this effects layer no longer receives the full `AppDependencies` aggregate.
+- [x] Move inbox UI derivation and simple action dispatch into a feature-owned state holder while keeping conversation-open sequencing and shared thread mutation in app-owned shell boundaries.
+- [x] Move selected chat state/UI derivation into a feature-owned state holder while keeping chat action effects and shared thread mutation in app-owned shell boundaries.
+- [x] Replace app-side route enum-name navigation with a stable app-owned route contract helper, auth/main nested graphs, and feature-owned route bundles.
+- [x] Narrow host lifecycle effects to `AppShellEffectDependencies` so this effects layer no longer receives the full `AppDependencies` aggregate.
 - [ ] RTC signaling integration.
 - [x] Stronger process-death restoration rules for safe selected-chat entry context.
 - [ ] Background reconciliation strategy for sync.
@@ -99,12 +105,13 @@ Long-term target topology is documented in `docs/android-architecture-target.md`
 ### Architecture Roadmap — Target Android Organization
 - [x] Document the durable target architecture and P0-P4 migration roadmap in `docs/android-architecture-target.md`.
 - [ ] P0: continue app-shell slimming and feature ViewModel extraction without changing route semantics; wallet, auth, inbox, and chat now have feature-owned state holders, host lifecycle effects receive a narrow dependency object, and future AndroidX/Hilt feature ViewModel wrappers can land once lifecycle/module dependencies are explicit.
-- [x] P1: establish the first typed route compatibility contract around existing `AppRoute` leaf strings without route args or Kotlin serialization.
-- [ ] P1: build on the verified auth/main nested graph baseline with AndroidX typed route registrations and route args one feature at a time; safe selected-chat process-death restoration now has a guarded compatibility-policy baseline.
+- [x] P1: establish the typed route-bundle baseline around stable `AppRoute` descriptors, auth/main nested graphs, and feature-owned `*Routes` navigation contracts.
+- [ ] P1: add richer typed route arguments and Kotlin serialization route payloads only after each feature's process-death, saved-state, and module-lifecycle policy is explicit.
 - [x] P2: continue splitting session/token/crypto responsibilities and make repository/data-source/use-case boundaries explicit before Gradle extraction; `LocalSessionStore` now delegates identity and credentials to separate stores, `RemoteMediaRepository` delegates download file persistence to `MediaFileDataSource`, but crypto/key operations remain in the credential store implementation; first UseCase work is limited to real multi-repository outgoing chat/media orchestration.
 - [x] P2: define the initial runtime/coordinator/handler/runner/store/state-holder/controller naming taxonomy and guard current transitional exceptions.
-- [x] P2/P3: document module split readiness gates and keep future target modules out of `settings.gradle.kts` until ownership, tests, and dependency direction are proven.
-- [ ] P3: continue `:core:*` and `:feature:*` extraction after the verified `:core:model` / `:core:ui` baseline, keeping ownership and package boundaries stable.
+- [x] P2/P3: document module split readiness gates, promote the proven core data-layer modules into `settings.gradle.kts`, and keep future `:feature:*` target modules deferred until ownership, tests, and dependency direction are proven.
+- [x] P3: split the former aggregate data module into `:core:data`, `:core:network`, `:core:database`, and `:core:datastore`, keeping ownership and package boundaries explicit.
+- [ ] P3: continue `:feature:*` extraction and remove remaining app glue after the core data-layer split is verified.
 - [ ] P4: enforce dependency direction, expand test fixtures, and remove transitional shims after each migration slice; first direct app ViewModel/SavedStateHandle test fixture now covers the P3 safe restore boundary.
 
 ## Mandatory M-R-E-A Cycle
@@ -130,7 +137,7 @@ Run Gradle tasks serially.
 
 - Reintroducing token material into saveable UI state.
 - Growing `ArgusLensApp.kt` or route host orchestration beyond readable lifecycle boundaries.
-- Moving route or session behavior while extracting shell boundary objects; this pass must preserve enum-backed navigation and existing `rememberUpdatedState` patterns.
+- Moving route or session behavior while extracting shell boundary objects; this pass must preserve stable route descriptors, auth/main graph boundaries, and token-free process-death restoration semantics.
 - Contract drift with Cortex media/message DTOs.
 - Background sync becoming implicit foreground refresh instead of explicit durable reconciliation.
 - Premature JNI coupling before Retina contracts stabilize.
